@@ -16,7 +16,7 @@ Billions of CFA francs are spent annually on critical infrastructure projects (r
 * Project timelines and completion status
 * Why projects get abandoned midway
 
-This **lack of transparency** enables corruption, wastes public funds, and delays essential development.
+This **lack of transparency** enables corruption, inefficiency, wastes public funds, and delays essential development.
 
 ---
 
@@ -64,8 +64,8 @@ This **lack of transparency** enables corruption, wastes public funds, and delay
 
 #### Prerequisites
 
-* Node.js 18+
-* npm or yarn
+* Node.js 
+* npm 
 * Git
 
 ---
@@ -73,9 +73,9 @@ This **lack of transparency** enables corruption, wastes public funds, and delay
 ### 🛠️ Installation
 
 ```bash
-# 1. Clone the Repository
+# 1. Clone the Repository to local machine
 git clone (https://github.com/Diyoh/CEF345GROUP16.git)
-cd buildright
+cd CEF345GROUP16
 
 # 2. Install Dependencies
 npm install        # Root dependencies (if monorepo)
