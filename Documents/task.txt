@@ -1,0 +1,66 @@
+Third-Party Services for BuildRight
+
+-Payment Gateways
+
+MTN Cameroon/ Orange Money: Facilitates payments within the platform.
+
+M-Pesa: Used for mobile transactions and donations.
+
+SMS Services
+
+-MTN Cameroon: Utilizes MTN's SMS gateway for messaging services.
+
+-Orange Cameroon: Connects via Orange's SMS API.
+
+-Africastalking: Unifies SMS sending across multiple carriers, including MTN and Orange.
+
+-Twilio: An alternative global provider for SMS services, useful for wider reach.
+
+Email Services
+
+-SendGrid: Handles transactional and notification emails.
+-Mailgun: Offers email sending and management with analytics.
+
+Map Services
+
+-Google Maps API: For embedding interactive maps to visualize project locations and updates.
+-Mapbox: An alternative for advanced mapping capabilities, ideal for responsive designs.
+
+Data Storage and Management
+
+-Firebase: Provides real-time database, authentication, and storage services.
+-AWS S3: For additional storage needs, particularly for larger files.
+
+DATAFLOW DIAGRAM
+
++---------------------+
+|                     |
+|        Users        |
+| (Citizens, NGOs,   |
+|  Government)        |
++----------+----------+
+           |
+           | Submit Project Updates / Reports
+           |
+           v
++---------------------+                     +---------------------+
+|                     |                     |                     |
+|   User Authentication|                    |    Project Tracking  |
+|                     |                     +----------+----------+
++----------+----------+                                |
+           |                                          |
+           |                                          |
+           |                                       +------------------+
+           |                                       |   Projects DB    |
+           |                                       +------------------+
+           |                                               |
+           |                      Notify Users            |
+           |                      +----------------------+--------------------+
+           |                      |                      |                    |
+           v                      v                      v                    v
++---------------------+  +---------------------+  +---------------------+ +---------------------+
+|   SMS Service       |  |   Email Service     |  |    Payment Gateway   | |   Google Maps API    |
+| (MTN, Orange,       |  | (SendGrid, Mailgun)|  |  (M-Pesa, Orange    | |                     |
+| Africastalking)     |  |                     |  |   Money)            | |                     |
+|                     |  |                     |  |                     | |                     |
++---------------------+  +---------------------+  +---------------------+ +---------------------+
