@@ -1,0 +1,4 @@
+We will develop a simple backend for the BuildRight web application sind Node.js
+We are expected to build a basic REST API using Node.js and Express
+Add functionality to connect the API to the MySQL database 
+We will work on user authentication and database queries
