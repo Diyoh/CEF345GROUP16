@@ -1,0 +1,40 @@
+CEF345 GROUP 16 - Frontend Repository
+
+This repository contains the frontend application for the CEF345 Group 16 project.
+
+OVERVIEW
+--------
+A modern, responsive web application built with contemporary front-end technologies and best practices.
+
+KEY FEATURES
+-----------
+- Responsive user interface
+- Component-based architecture
+- RESTful API integration
+- User authentication and authorization
+- Interactive dashboard and data visualization
+
+TECHNOLOGIES
+-----------
+[Specify your tech stack: React, Vue, Angular, etc.]
+[Add CSS framework: Bootstrap, Tailwind, etc.]
+[Add any other relevant libraries]
+
+PROJECT STRUCTURE
+-----------------
+/src - Source code
+/components - Reusable UI components
+/pages - Page components
+/styles - CSS and styling
+/assets - Images, fonts, and media
+/utils - Helper functions and utilities
+
+GETTING STARTED
+---------------
+1. Install dependencies: npm install
+2. Run development server: npm start
+3. Build for production: npm run build
+
+TEAM
+----
+CEF345 Group 16
