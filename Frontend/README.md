@@ -5,6 +5,6 @@ This contains everything you need to run your app locally.
 
 
 1. Install dependencies:
-   `npm install` or 'npm i'
+   `npm install` or `npm i`
 2. Run the app:
    `npm run dev`
