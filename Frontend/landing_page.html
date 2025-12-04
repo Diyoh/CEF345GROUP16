@@ -7,7 +7,7 @@
     <meta name="description" content="Track and explore ongoing projects in your town. See progress, budgets, timelines and where they are on the map." />
     <link rel="preconnect" href="https://unpkg.com" />
     <!-- Leaflet for a simple interactive map -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leDIRaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root{
             --bg:#0f1724;
@@ -222,7 +222,7 @@
     <div class="wrap">
         <header>
             <div class="brand">
-                <div class="logo" aria-hidden="true">TP</div>
+                <div class="logo" aria-hidden="true">BR</div>
                 <div>
                     <div style="font-weight:700">Build Right</div>
                     <div style="font-size:12px;color:var(--muted)">Public works, development and community projects at a glance</div>
@@ -270,7 +270,7 @@
                             <div class="muted">projects tracked</div>
                         </div>
                         <div class="stat">
-                            <div style="font-size:18px" id="stat-budget">$0</div>
+                            <div style="font-size:18px" id="stat-budget">0FCFA</div>
                             <div class="muted">total estimated budget</div>
                         </div>
                         <div class="stat">
@@ -345,18 +345,18 @@
     <script>
         // Demo data set of projects (replace with API integration)
         const projects = [
-            { id:1, title:"Bamenda Road Construction", status:"Ongoing", budget: 720000, progress:68, lat:40.412, lng:-74.006, area:"Downtown", updated:"2025-11-01"},
-            { id:2, title:"", status:"Planned", budget:120000, progress:6, lat:40.419, lng:-74.02, area:"Riverside", updated:"2025-10-21"},
-            { id:3, title:"Waterline Replacement", status:"Ongoing", budget:950000, progress:44, lat:40.405, lng:-73.99, area:"Old Quarter", updated:"2025-11-10"},
-            { id:4, title:"Community Center Renovation", status:"Finished", budget:420000, progress:100, lat:40.425, lng:-74.005, area:"North End", updated:"2025-08-09"},
-            { id:5, title:"New Bike Lanes", status:"Ongoing", budget:240000, progress:33, lat:40.415, lng:-74.012, area:"Harbor District", updated:"2025-11-07"},
-            { id:6, title:"Flood Mitigation Works", status:"Planned", budget:500000, progress:2, lat:40.408, lng:-74.035, area:"Lowlands", updated:"2025-09-30"},
-            { id:7, title:"School Facilities Upgrade", status:"Ongoing", budget:350000, progress:58, lat:40.422, lng:-73.995, area:"Midtown", updated:"2025-11-09"},
-            { id:8, title:"Public Art Installation", status:"Finished", budget:80000, progress:100, lat:40.418, lng:-74.003, area:"Civic Square", updated:"2025-07-22"}
+            { id:1, title:"Bamenda Road Construction", status:"Ongoing", budget: 7200000, progress:68, lat:40.412, lng:-74.006, area:"Downtown", updated:"2025-11-01"},
+            { id:2, title:"Lom Pangar Dam", status:"Planned", budget:12000000, progress:6, lat:40.419, lng:-74.02, area:"Riverside", updated:"2025-10-21"},
+            { id:3, title:"Bridges", status:"Ongoing", budget:9500000, progress:44, lat:40.405, lng:-73.99, area:"Old Quarter", updated:"2025-11-10"},
+            { id:4, title:"Digital Connectivity", status:"Finished", budget:4200000, progress:100, lat:40.425, lng:-74.005, area:"North End", updated:"2025-08-09"},
+            { id:5, title:"New Bike Lanes", status:"Ongoing", budget:2400000, progress:33, lat:40.415, lng:-74.012, area:"Harbor District", updated:"2025-11-07"},
+            // { id:6, title:"Flood Mitigation Works", status:"Planned", budget:500000, progress:2, lat:40.408, lng:-74.035, area:"Lowlands", updated:"2025-09-30"},
+            // { id:7, title:"School Facilities Upgrade", status:"Ongoing", budget:350000, progress:58, lat:40.422, lng:-73.995, area:"Midtown", updated:"2025-11-09"},
+            // { id:8, title:"Public Art Installation", status:"Finished", budget:80000, progress:100, lat:40.418, lng:-74.003, area:"Civic Square", updated:"2025-07-22"}
         ];
 
         // Map initialization
-        const map = L.map('map', { zoomControl:false, attributionControl:false }).setView([40.415, -74.01], 13);
+        const map = L.map('map', { zoomControl:false, attributionControl:false }).setView([4.15, 9.24], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
         let markers = [];
 
@@ -410,7 +410,7 @@
                         <div style="display:flex;align-items:center;gap:10px;margin-top:6px;color:var(--muted);font-size:13px">
                             <div>${p.area}</div>
                             <div>•</div>
-                            <div style="font-weight:700;color:var(--muted)">$${numberWithCommas(p.budget)}</div>
+                            <div style="font-weight:700;color:var(--muted)">${numberWithCommas(p.budget)}FCFA</div>
                         </div>
                         <div class="progress" aria-hidden="true"><div style="width:${p.progress}%"></div></div>
                         <div style="display:flex;justify-content:space-between;margin-top:8px;color:var(--muted);font-size:12px">
@@ -476,7 +476,7 @@
                 const t = Math.min(1, (now - startTime)/duration);
                 const eased = t*(2 - t);
                 const val = Math.round(start + (target - start) * eased);
-                el.textContent = '$' + numberWithCommas(val);
+                el.textContent = numberWithCommas(val) + ' FCFA';
                 if(t < 1) requestAnimationFrame(tick);
                 else el.dataset.currentMoney = target;
             }
