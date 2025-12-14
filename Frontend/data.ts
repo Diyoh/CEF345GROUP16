@@ -25,8 +25,8 @@ export const MOCK_PROJECTS: Project[] = [
     startDate: '2023-01-15',
     completionDate: '2026-06-30',
     images: [
-      'https://picsum.photos/800/600?random=1',
-      'https://picsum.photos/800/600?random=2'
+      '/pictures/upbeat-gen-z-girl-reading-messages-phone.jpg',
+      '/pictures/beautiful-smiling-african-american-woman-using-phone-outdoors.jpg'
     ],
     updates: [
       { id: 'up1', date: '2023-11-20', message: 'Foundation work completed for bridge section.', author: 'Site Manager' }
@@ -47,8 +47,8 @@ export const MOCK_PROJECTS: Project[] = [
     startDate: '2022-03-10',
     completionDate: '2024-01-20',
     images: [
-      'https://picsum.photos/800/600?random=3',
-      'https://picsum.photos/800/600?random=4'
+      '/pictures/upbeat-gen-z-girl-reading-messages-phone.jpg',
+      '/pictures/beautiful-smiling-african-american-woman-using-phone-outdoors.jpg'
     ],
     updates: []
   },
@@ -67,7 +67,7 @@ export const MOCK_PROJECTS: Project[] = [
     startDate: '2024-01-01',
     completionDate: '2025-12-31',
     images: [
-      'https://picsum.photos/800/600?random=5'
+      '/pictures/upbeat-gen-z-girl-reading-messages-phone.jpg'
     ],
     updates: [
       { id: 'up2', date: '2024-02-15', message: 'Equipment delivery delayed due to customs.', author: 'Logistics Officer' }
@@ -99,35 +99,35 @@ export const MOCK_TEAM: TeamMember[] = [
     name: 'Diyoh shiloh',
     role: 'Lead Engineer',
     bio: 'SOFTWARE engineer with 15 years experience in public works monitoring.',
-    imageUrl: 'https://picsum.photos/200/200?random=10'
+    imageUrl: '/pictures/Doc 2.png'
   },
   {
     id: 't2',
     name: 'ASOBO JOYCE',
     role: 'Data Scientist',
     bio: 'Specialist in detecting financial anomalies in public datasets.',
-    imageUrl: 'https://picsum.photos/200/200?random=11'
+    imageUrl: '/pictures/Doc 2.png'
   },
   {
     id: 't3',
     name: 'SHOTS FO REAL',
     role: 'Development Team',
     bio: 'The brilliant minds behind the BuildRight platform.',
-    imageUrl: 'https://picsum.photos/200/200?random=12'
+    imageUrl: '/pictures/Doc 2.png'
   },
   {
     id: 't4',
     name: 'soh marrious',
     role: 'Development Team',
     bio: 'The brilliant minds behind the BuildRight platform.',
-    imageUrl: 'https://picsum.photos/200/200?random=13'
+    imageUrl: '/pictures/Doc 2.png'
   },
   {
     id: 't5',
     name: 'Gboyz',
     role: 'Development Team',
     bio: 'The brilliant minds behind the BuildRight platform.',
-    imageUrl: 'https://picsum.photos/200/200?random=14'
+    imageUrl: '/pictures/Doc 2.png'
   }
 ];
 
@@ -140,7 +140,8 @@ export const MOCK_COMMENTS: Comment[] = [
     authorType: 'Citizen',
     text: 'Work seems to be moving fast near the river.',
     date: '2024-02-10',
-    images: ['https://picsum.photos/200/200?random=20']
+    images: ['/pictures/upbeat-gen-z-girl-reading-messages-phone.jpg',
+      '/pictures/beautiful-smiling-african-american-woman-using-phone-outdoors.jpg']
   },
   {
     id: 'c2',
