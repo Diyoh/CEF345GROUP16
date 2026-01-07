@@ -1,241 +1,168 @@
+# BuildRight - Public Infrastructure Monitoring Platform
+
+**BuildRight** is a smart and intuitive application designed to help students, professionals, and citizens manage and monitor public infrastructure projects. It facilitates transparency and efficiency by allowing users to record transactions, view project progress, and report issues.
+
+## 📋 Table of Contents
+
+- [About the Project](#about-the-project)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+  - [1. Clone the Repository](#1-clone-the-repository)
+  - [2. Database Setup](#2-database-setup)
+  - [3. Backend Setup](#3-backend-setup)
+  - [4. Frontend Setup](#4-frontend-setup)
+- [Project Structure](#project-structure)
+- [Documentation](#documentation)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
-# 🌍 BuildRight — Transparent Infrastructure, Accountable Governance 🏗️
+## 🧐 About the Project
 
-> A public infrastructure transparency platform that tracks government and donor-funded projects in real time — promoting accountability, citizen engagement, and data-driven governance.
+This platform incorporates three main roles:
 
----
+- **Public Citizens**: View projects, filter by region/status, and report issues.
+- **Contractors**: Update project status, progress, and financial records.
+- **Administrators**: Create projects, manage users, and view global analytics.
 
-## 🚧 Problem Statement
+**Technologies Used:**
 
-Billions of CFA francs are spent annually on critical infrastructure projects (roads, schools, hospitals) across **Cameroon** and **Africa**, yet citizens remain in the dark about:
-
-* Who’s responsible for specific projects
-* How much was budgeted and spent
-* Project timelines and completion status
-* Why projects get abandoned midway
-
-This **lack of transparency** enables corruption, inefficiency, wastes public funds, and delays essential development.
+- **Frontend**: React, Vite, Tailwind CSS
+- **Backend**: Node.js, Express, MySQL2
+- **Database**: MySQL
 
 ---
 
-## 💡 Our Solution — *BuildRight Platform*
+## ⚙️ Prerequisites
 
-**BuildRight** is a **public infrastructure transparency platform** that tracks government and donor-funded projects **in real time**, bringing visibility and accountability to public spending.
+Before you begin, ensure you have the following installed on your machine:
 
-### 🔑 Key Features
-
-* 📊 **Project Dashboard:** Interactive maps showing ongoing projects, budgets, contractors, and timelines.
-* 📱 **Citizen Reporting:** On-site photo uploads and progress updates from local communities.
-* 🤖 **AI Monitoring:** Automatic inconsistency detection (e.g., “completed” projects with no field updates).
-* 👥 **Multi-Stakeholder Access:** Dedicated portals for governments, citizens, and NGOs to verify and update data.
-* 🔍 **Transparency Tools:** Budget tracking, contractor performance ratings, and completion analytics.
+1.  **Node.js** (v18+ recommended) - [Download Here](https://nodejs.org/)
+2.  **MySQL Server** - [Download Here](https://dev.mysql.com/downloads/installer/)
+3.  **Git** - [Download Here](https://git-scm.com/)
 
 ---
 
-## 🧠 Tech Stack
+## 🚀 Getting Started
 
-| Layer          | Technology                                  |
-| -------------- | ------------------------------------------- |
-| **Frontend**   | Next.js 14 (React + TypeScript)             |
-| **Backend**    | Node.js + Express                           |
-| **Database**   | Firebase (Firestore, Authentication)        |
-| **Maps**       | Mapbox GL JS                                |
-| **AI/ML**      | Python (Anomaly Detection)  (tentative)     |
-| **Storage**    | Firebase Storage                            |
-| **Deployment** | Vercel (Frontend), Railway/Render (Backend) |
+Follow these steps to get the project up and running locally.
 
----
+### 1. Clone the Repository
 
-## 🌍 Impact
-
-* 💼 **Accountability:** Shine light on public spending and contractor performance.
-* 🧑‍🤝‍🧑 **Citizen Empowerment:** Enable communities to monitor local projects.
-* 📰 **Journalist Tooling:** Provide data for investigative reporting.
-* 🌐 **Donor Confidence:** Increase transparency for international funders.
-* 🚨 **Reduced Corruption:** Create public pressure for project completion.
-
----
-
-## ⚙️ Development Guide
-
-### 🧩 Getting Started
-
-#### Prerequisites
-
-* Node.js 
-* npm 
-* Git
-
----
-
-### 🛠️ Installation
+Open your terminal or command prompt and run:
 
 ```bash
-# 1. Clone the Repository to local machine
-git clone (https://github.com/Diyoh/CEF345GROUP16.git)
+git clone <repository-url>
 cd CEF345GROUP16
-
-# 2. Install Dependencies
-npm install        # Root dependencies (if monorepo)
-cd frontend && npm install
-cd ../backend && npm install
-
-# 3. Setup Environment Variables
-cp .env.example .env.local
-# Fill in your API keys (Mapbox, Firebase, etc.)
-
-# 4. Run Development Servers
-# Frontend
-cd frontend && npm run dev
-# Backend
-cd ../backend && npm run dev
 ```
 
----
+### 2. Database Setup
 
-## 🧭 Collaboration Workflow
+1.  Open your MySQL Workbench or Command Line.
+2.  Create the database and tables by running the script located in `Database/schema.sql`.
+    - **MySQL Workbench**: Open `Database/schema.sql` and click the lightning bolt icon to execute.
+    - **Command Line**:
+      `bash
+    mysql -u root -p < Database/schema.sql
+    `
+      _(Note: Ensure the script creates a database named `buildright`. If not, create it manually first: `CREATE DATABASE buildright;`)_
 
-### 🔀 Branch Strategy (Git Flow)
+### 3. Backend Setup
 
-| Branch Type            | Description                     |
-| ---------------------- | ------------------------------- |
-| `main`                 | Production-ready code           |
-| `develop`              | Integration branch for features |
-| `feature/feature-name` | New features                    |
-| `bugfix/bug-name`      | Bug fixes                       |
-| `hotfix/hotfix-name`   | Critical production fixes       |
+The backend handles the API and database communication.
 
----
+1.  Navigate to the **Backend** directory:
 
-### 👩‍💻 Working on a Feature
+    ```bash
+    cd Backend
+    ```
 
-```bash
-# 1. Start from updated develop branch
-git checkout develop
-git pull origin develop
+2.  Install dependencies:
 
-# 2. Create your feature branch
-git checkout -b feature/your-feature-name
-# Examples:
-# feature/map-integration
-# feature/user-authentication
-# feature/project-reporting
+    ```bash
+    npm install
+    ```
 
-# 3. Make your changes
-git add .
-git commit -m "feat: add realtime project tracking on map"
-```
+3.  Configure Environment Variables:
 
-#### 💬 Commit Message Convention
+    - Create a file named `.env` in the `Backend` directory.
+    - Copy the contents from `.env.example` (if available) or use the following template:
+      ```env
+      PORT=5000
+      DB_HOST=localhost
+      DB_USER=root
+      DB_PASS=your_mysql_password
+      DB_NAME=buildright
+      JWT_SECRET=supersecretkey123
+      ```
+    - **Important**: Replace `your_mysql_password` with your actual MySQL root password.
 
-We use **Conventional Commits**:
+4.  Seed the Database (Optional but Recommended):
 
-| Type        | Purpose               |
-| ----------- | --------------------- |
-| `feat:`     | New features          |
-| `fix:`      | Bug fixes             |
-| `docs:`     | Documentation updates |
-| `style:`    | Code formatting       |
-| `refactor:` | Code restructuring    |
-| `test:`     | Tests                 |
-| `chore:`    | Maintenance tasks     |
+    - Populate the database with initial mock data:
+      ```bash
+      npm run seed
+      ```
 
----
+5.  Start the Backend Server:
+    ```bash
+    npm run dev
+    ```
+    - The server should start on `http://localhost:5000`.
 
-### 🚀 Pushing and Pull Requests
+### 4. Frontend Setup
 
-```bash
-# Push your branch
-git push origin feature/your-feature-name
-```
+The frontend is the user interface of the application.
 
-Then:
+1.  Open a **new** terminal window (keep the backend running) and navigate to the **Frontend** directory:
 
-1. Open a Pull Request (PR) on GitHub
-2. Compare `feature/your-feature-name` → `develop`
-3. Request reviews from teammates
-4. Address feedback and **Squash & Merge**
+    ```bash
+    cd Frontend
+    ```
 
----
+2.  Install dependencies:
 
-## 🧹 Code Quality Standards
+    ```bash
+    npm install
+    ```
 
-Before pushing, always run:
-
-```bash
-npm run lint       # Linting
-npm test           # Unit tests
-npm run format     # Code formatting
-```
+3.  Start the Frontend Application:
+    ```bash
+    npm run dev
+    ```
+    - The application will launch automatically in your browser, usually at `http://localhost:5173`.
 
 ---
 
 ## 📂 Project Structure
 
+```text
+CEF345GROUP16/
+├── Backend/            # Node.js & Express API
+│   ├── config/         # Database configuration
+│   ├── controllers/    # Logic for handling requests
+│   ├── routes/         # API endpoints
+│   └── ...
+├── Database/           # SQL scripts and schema
+│   └── schema.sql      # Main database creation script
+├── Documents/          # Project documentation & reports
+├── Frontend/           # React application
+│   ├── src/
+│   │   ├── components/ # Reusable UI components
+│   │   ├── pages/      # Application pages
+│   │   └── ...
+└── README.md           # This file
 ```
-buildright/
-├── frontend/                  # Next.js application
-│   ├── components/            # Reusable UI components
-│   ├── pages/                 # Next.js routes
-│   ├── lib/                   # Configurations & utilities
-│   └── styles/                # Global styles
-├── backend/                   # Node.js API
-│   ├── routes/                # Express routes
-│   ├── controllers/           # Business logic
-│   ├── models/                # Data models
-│   └── middleware/            # Auth & validation
-├── shared/                    # Shared code between frontend & backend
-└── documents/                 # Documentation
-└── Database/  
-                    
-```
 
----
+## 📚 Documentation
 
-## 📏 Contribution Rules
+For more detailed information about specific parts of the project, refer to the documentation in the `Documents` folder or the specific READMEs:
 
-1. 🚫 Never push directly to `main` or `develop`
-2. 🧩 Always create a PR for code reviews
-3. ✅ Write unit tests for new features
-4. 📝 Update documentation after changes
-5. 🧱 Keep commits focused and atomic
-6. 🤝 Resolve merge conflicts responsibly
+- [Backend README](./Backend/README.md)
+- [Frontend README](./Frontend/README.md)
 
----
+## 🔧 Troubleshooting
 
-## 🆘 Getting Help
-
-* Check existing docs in `/docs`
-* Ask in team Slack or Discord channels
-* Request pair programming sessions
-* Create GitHub Issues for bugs/features
-
----
-
-## 🤝 Contributing
-
-We welcome contributions from developers passionate about **transparency and accountability**!
-Please read our [Contributing Guidelines](CONTRIBUTING.md) before getting started.
-
----
-
-## 🧾 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
----
-
-## 📬 Contact
-
-* GitHub Issues → For technical discussions & bug reports
-* Project Maintainers → **Group 16**
-* Course → **CEF345: Software Development Tools**
-
----
-
-> **BuildRight — Building transparency, one project at a time.**
-> 🛣️🏥🏫
-
-
+- **Database Connection Error**: Double-check your `.env` file in the `Backend` folder. Ensure the `DB_PASS` is correct and the MySQL server is running.
+- **Port in Use**: If port 5000 or 5173 is busy, close the other application or change the port in `.env` (Backend) or `vite.config.js` (Frontend).
+- **"Table doesn't exist"**: Make sure you ran the `Database/schema.sql` script before starting the backend.
