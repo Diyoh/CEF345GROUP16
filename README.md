@@ -1,84 +1,111 @@
 # BuildRight Cameroon - Infrastructure Monitoring Platform
 
-BuildRight is a web platform designed to promote transparency and accountability in public infrastructure projects in Cameroon. It allows citizens to view project details, and contractors/admins to manage updates.
+BuildRight is a web platform designed to promote transparency and accountability in public infrastructure projects across Cameroon. It connects Contractors, Developers (Government/Auditors), and the Public to monitor project progress, budget spending, and completion statuses.
+
+![BuildRight Logo](https://via.placeholder.com/150)
+
+## Features
+
+- **Public Portal**: View all infrastructure projects on a map or list, filter by region and contractor.
+- **Contractor Dashboard**: Contractors can log in to update their assigned projects (progress %, budget spent, photos).
+- **Admin/Developer Dashboard**: Government officials can create projects, assign contractors, and generate access codes.
+- **Real-time Updates**: Live progress tracking using WebSockets (Socket.io).
+- **Security**: Role-based access control (Admin, Contractor, Developer Admin), JWT authentication, and secure password hashing.
 
 ## Tech Stack
 
-- **Frontend**: React (Vite), TailwindCSS
-- **Backend**: Node.js, Express, Socket.io
+- **Frontend**: React, Vite, TailwindCSS
+- **Backend**: Node.js, Express, MySQL
 - **Database**: MySQL
+- **Real-time**: Socket.io
 
 ## Prerequisites
 
-Before running the project, ensure you have the following installed:
+Before running the project, ensure you have:
 
 1.  **Node.js** (v18 or higher)
-2.  **MySQL Server** (local installation or cloud instance)
+2.  **MySQL Server** (running locally or remotely)
 3.  **Git**
 
-## Setup Instructions
+## Installation
 
-### 1. Database Setup
+1.  **Clone the repository**:
 
-1.  Open your MySQL Client (Workbench, Command Line, etc.).
-2.  Create a new database (e.g., `buildright_db`).
-3.  Run the commands in `contractors_seed.sql` (if provided) or ensure your backend handles migration (check backend `db.js` config).
-    - _Note: This project currently relies on the database schema already existing. If you need the schema, check `contractors_seed.sql` for table definitions._
+    ```bash
+    git clone https://github.com/yourusername/buildright-cameroon.git
+    cd buildright-cameroon
+    ```
 
-### 2. Backend Configuration
+2.  **Install Backend Dependencies**:
 
-1.  Navigate to the `Backend` directory:
     ```bash
     cd Backend
-    ```
-2.  Install dependencies:
-    ```bash
     npm install
     ```
-3.  Create a `.env` file in the `Backend` directory with the following variables:
-    ```env
-    PORT=5000
-    DB_HOST=localhost
-    DB_USER=your_db_user
-    DB_PASSWORD=your_db_password
-    DB_NAME=buildright_db
-    JWT_SECRET=your_jwt_secret_key_here
-    ```
-4.  Start the Backend server:
-    ```bash
-    npm run dev
-    ```
-    (The server should start on `http://localhost:5000`)
 
-### 3. Frontend Configuration
-
-1.  Open a new terminal and navigate to the `Frontend` directory:
+3.  **Install Frontend Dependencies**:
     ```bash
+    cd ../Frontend
+    npm install
+    ```
+
+## Configuration
+
+1.  **Database Setup**:
+    - Create a MySQL database named `buildright` (or your preferred name).
+    - Run the provided seed/schema scripts if available (or use `npm run seed` in Backend if configured).
+
+2.  **Environment Variables**:
+    - Navigate to `Backend/`
+    - Create a file named `.env`
+    - Copy the contents from `.env.example` and update with your credentials:
+      ```env
+      PORT=5000
+      DB_HOST=localhost
+      DB_USER=root
+      DB_PASS=your_password
+      DB_NAME=buildright
+      JWT_SECRET=your_secure_random_string
+      ```
+
+## Running the Application
+
+1.  **Start the Backend**:
+
+    ```bash
+    cd Backend
+    npm start
+    # Server will run on http://localhost:5000
+    ```
+
+2.  **Start the Frontend**:
+
+    ```bash
+    # Open a new terminal
     cd Frontend
-    ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Start the Frontend development server:
-    ```bash
     npm run dev
+    # Client will run on http://localhost:5173
     ```
-    (The app should be running at `http://localhost:5173`)
 
-## Usage
+3.  **Access the App**:
+    Open your browser and navigate to `http://localhost:5173`.
 
-1.  Open your browser to `http://localhost:5173`.
-2.  **Public User**: Browse projects, filter by region/contractor.
-3.  **Login**: Use the "Login" button.
-    - **Admin**: Login with admin credentials to manage all projects.
-    - **Contractor**: Login to manage assigned projects and upload photos.
+## Project Structure
 
-## Deployment Notes
+- **/Backend**: Node.js API server
+  - `/controllers`: Business logic
+  - `/routes`: API endpoints
+  - `/config`: Database connection
+  - `/middleware`: Auth & upload handling
+- **/Frontend**: React application
+  - `/src/pages`: Main views
+  - `/src/components`: Reusable UI components
+  - `/src/store.jsx`: Global state management
 
-- **Images**: Uploaded images are stored in `Backend/public/uploads`. This folder is ignored by Git, so production images won't be in the repo.
-- **Security**: Ensure your `.env` file is **never** committed to GitHub (it is already in `.gitignore`).
+## Contributing
 
----
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to this project.
 
-_Created by Gemini for BuildRight Cameroon_
+## License
+
+This project is licensed under the MIT License.

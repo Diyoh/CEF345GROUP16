@@ -144,3 +144,9 @@ vite.config.ts.timestamp-*
 
 # Uploads
 Backend/public/uploads/
+
+# Documentation
+*.md
+!README.md
+!CONTRIBUTING.md
+!setup_guide.md
