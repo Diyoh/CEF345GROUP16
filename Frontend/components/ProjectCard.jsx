@@ -34,10 +34,21 @@ export const ProjectCard = ({ project }) => {
                             <span>Budget Spent</span>
                             <span>{Math.round(progress)}%</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 mb-2">
                             <div
-                                className={`h-2 rounded-full ${project.status === ProjectStatus.STALLED ? 'bg-red-500' : 'bg-primary'}`}
+                                className={`h-1.5 rounded-full ${project.status === ProjectStatus.STALLED ? 'bg-red-500' : 'bg-green-600'}`}
                                 style={{ width: `${progress}%` }}
+                            ></div>
+                        </div>
+
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>Work Done</span>
+                            <span>{project.progress || 0}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 mb-3">
+                            <div
+                                className="h-1.5 rounded-full bg-secondary"
+                                style={{ width: `${project.progress || 0}%` }}
                             ></div>
                         </div>
                         <div className="flex justify-between items-center text-xs font-medium">

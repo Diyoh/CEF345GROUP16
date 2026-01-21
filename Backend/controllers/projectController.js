@@ -140,7 +140,13 @@ export const createProject = async (req, res) => {
             }
         }
 
-        res.status(201).json({ success: true, data: { id: projectId, ...req.body } });
+        const newProjectData = { id: projectId, ...req.body };
+        
+        // [SOCKET] Emit event
+        const io = req.app.get('io');
+        io.emit('project:created', newProjectData);
+
+        res.status(201).json({ success: true, data: newProjectData });
 
     } catch (error) {
         console.error(error);
@@ -190,6 +196,12 @@ export const updateProject = async (req, res) => {
             }
         }
 
+        // [SOCKET] Emit event
+        const io = req.app.get('io');
+        // We emit the ID so clients know which project to re-fetch or update
+        // Optimally, we would return the full updated object, but for now ID is enough to trigger a refresh
+        io.emit('project:updated', { id: projectId, ...req.body });
+
         res.json({ success: true, message: 'Project updated' });
 
     } catch (error) {
@@ -207,6 +219,11 @@ export const deleteProject = async (req, res) => {
     try {
         // Cascading delete in database ensures images/comments are also removed
         await pool.query('DELETE FROM projects WHERE id = ?', [req.params.id]);
+        
+        // [SOCKET] Emit event
+        const io = req.app.get('io');
+        io.emit('project:deleted', { id: req.params.id });
+
         res.json({ success: true, message: 'Project deleted' });
     } catch (error) {
         console.error(error);
@@ -229,6 +246,10 @@ export const addProjectUpdate = async (req, res) => {
         );
 
         res.status(201).json({ success: true, message: 'Timeline update added' });
+        
+        // [SOCKET] Emit event - treat this as a project update so dashboards refresh
+        const io = req.app.get('io');
+        io.emit('project:updated', { id: projectId });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, error: 'Server Error' });

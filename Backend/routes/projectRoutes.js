@@ -12,6 +12,7 @@
 import express from 'express';
 import { getProjects, getProjectById, createProject, updateProject, deleteProject, addProjectUpdate } from '../controllers/projectController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
+import { upload } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
@@ -28,10 +29,11 @@ router.get('/:id', getProjectById); // GET /api/v1/projects/123
  */
 
 // 1. Create Project: Only ADMINS can create new projects.
-router.post('/', protect, authorize('ADMIN'), createProject);
+router.post('/', protect, authorize('ADMIN'), upload.array('images', 10), createProject);
 
 // 2. Update Project: Contractors update their progress; Admins can update anything.
-router.patch('/:id', protect, authorize('ADMIN', 'CONTRACTOR'), updateProject);
+// We allow image uploads on updates too
+router.patch('/:id', protect, authorize('ADMIN', 'CONTRACTOR'), upload.array('images', 10), updateProject);
 
 // 3. Delete Project: Only ADMINS can delete.
 router.delete('/:id', protect, authorize('ADMIN'), deleteProject);

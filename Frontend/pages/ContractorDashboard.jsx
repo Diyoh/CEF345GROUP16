@@ -3,14 +3,17 @@ import { useAppStore } from '../store';
 import { UserRole } from '../types';
 import { Navigate } from 'react-router-dom';
 import { ContractorProjectCard } from '../components/dashboard/ContractorProjectCard';
+import { ChangePasswordModal } from '../components/ChangePasswordModal';
 
 export const ContractorDashboard = () => {
     const { user, projects, updateProject } = useAppStore();
     const [editingId, setEditingId] = useState(null);
+    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
     if (!user || user.role !== UserRole.CONTRACTOR) return <Navigate to="/login" />;
 
-    const myProjects = projects.filter(p => p.contractorId === user.id);
+    // [FIX] Handle both camelCase (from Socket/Optimistic) and snake_case (from DB)
+    const myProjects = projects.filter(p => (p.contractorId === user.id) || (p.contractor_id === user.id));
 
     const handleUpdate = (e) => {
         e.preventDefault();
@@ -51,9 +54,17 @@ export const ContractorDashboard = () => {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-dark mb-2">Contractor Portal</h1>
-                <p className="text-gray-500">Welcome back, <span className="font-bold text-primary">{user.name}</span>. Manage your assigned projects below.</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-dark mb-2">Contractor Portal</h1>
+                    <p className="text-gray-500">Welcome back, <span className="font-bold text-primary">{user.name}</span>. Manage your assigned projects below.</p>
+                </div>
+                <button
+                    onClick={() => setIsPasswordModalOpen(true)}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 whitespace-nowrap"
+                >
+                    <i className="fas fa-key"></i> Change Password
+                </button>
             </div>
 
             {myProjects.length === 0 ? (
@@ -76,6 +87,11 @@ export const ContractorDashboard = () => {
                     ))}
                 </div>
             )}
+
+            <ChangePasswordModal 
+                isOpen={isPasswordModalOpen} 
+                onClose={() => setIsPasswordModalOpen(false)} 
+            />
         </div>
     );
 };

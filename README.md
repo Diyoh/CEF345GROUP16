@@ -1,168 +1,84 @@
-# BuildRight - Public Infrastructure Monitoring Platform
+# BuildRight Cameroon - Infrastructure Monitoring Platform
 
-**BuildRight** is a smart and intuitive application designed to help students, professionals, and citizens manage and monitor public infrastructure projects. It facilitates transparency and efficiency by allowing users to record transactions, view project progress, and report issues.
+BuildRight is a web platform designed to promote transparency and accountability in public infrastructure projects in Cameroon. It allows citizens to view project details, and contractors/admins to manage updates.
 
-## 📋 Table of Contents
+## Tech Stack
 
-- [About the Project](#about-the-project)
-- [Prerequisites](#prerequisites)
-- [Getting Started](#getting-started)
-  - [1. Clone the Repository](#1-clone-the-repository)
-  - [2. Database Setup](#2-database-setup)
-  - [3. Backend Setup](#3-backend-setup)
-  - [4. Frontend Setup](#4-frontend-setup)
-- [Project Structure](#project-structure)
-- [Documentation](#documentation)
-- [Troubleshooting](#troubleshooting)
-
----
-
-## 🧐 About the Project
-
-This platform incorporates three main roles:
-
-- **Public Citizens**: View projects, filter by region/status, and report issues.
-- **Contractors**: Update project status, progress, and financial records.
-- **Administrators**: Create projects, manage users, and view global analytics.
-
-**Technologies Used:**
-
-- **Frontend**: React, Vite, Tailwind CSS
-- **Backend**: Node.js, Express, MySQL2
+- **Frontend**: React (Vite), TailwindCSS
+- **Backend**: Node.js, Express, Socket.io
 - **Database**: MySQL
 
----
+## Prerequisites
 
-## ⚙️ Prerequisites
+Before running the project, ensure you have the following installed:
 
-Before you begin, ensure you have the following installed on your machine:
+1.  **Node.js** (v18 or higher)
+2.  **MySQL Server** (local installation or cloud instance)
+3.  **Git**
 
-1.  **Node.js** (v18+ recommended) - [Download Here](https://nodejs.org/)
-2.  **MySQL Server** - [Download Here](https://dev.mysql.com/downloads/installer/)
-3.  **Git** - [Download Here](https://git-scm.com/)
+## Setup Instructions
 
----
+### 1. Database Setup
 
-## 🚀 Getting Started
+1.  Open your MySQL Client (Workbench, Command Line, etc.).
+2.  Create a new database (e.g., `buildright_db`).
+3.  Run the commands in `contractors_seed.sql` (if provided) or ensure your backend handles migration (check backend `db.js` config).
+    - _Note: This project currently relies on the database schema already existing. If you need the schema, check `contractors_seed.sql` for table definitions._
 
-Follow these steps to get the project up and running locally.
+### 2. Backend Configuration
 
-### 1. Clone the Repository
-
-Open your terminal or command prompt and run:
-
-```bash
-git clone <repository-url>
-cd CEF345GROUP16
-```
-
-### 2. Database Setup
-
-1.  Open your MySQL Workbench or Command Line.
-2.  Create the database and tables by running the script located in `Database/schema.sql`.
-    - **MySQL Workbench**: Open `Database/schema.sql` and click the lightning bolt icon to execute.
-    - **Command Line**:
-      `bash
-    mysql -u root -p < Database/schema.sql
-    `
-      _(Note: Ensure the script creates a database named `buildright`. If not, create it manually first: `CREATE DATABASE buildright;`)_
-
-### 3. Backend Setup
-
-The backend handles the API and database communication.
-
-1.  Navigate to the **Backend** directory:
-
+1.  Navigate to the `Backend` directory:
     ```bash
     cd Backend
     ```
-
 2.  Install dependencies:
-
     ```bash
     npm install
     ```
-
-3.  Configure Environment Variables:
-
-    - Create a file named `.env` in the `Backend` directory.
-    - Copy the contents from `.env.example` (if available) or use the following template:
-      ```env
-      PORT=5000
-      DB_HOST=localhost
-      DB_USER=root
-      DB_PASS=your_mysql_password
-      DB_NAME=buildright
-      JWT_SECRET=supersecretkey123
-      ```
-    - **Important**: Replace `your_mysql_password` with your actual MySQL root password.
-
-4.  Seed the Database (Optional but Recommended):
-
-    - Populate the database with initial mock data:
-      ```bash
-      npm run seed
-      ```
-
-5.  Start the Backend Server:
+3.  Create a `.env` file in the `Backend` directory with the following variables:
+    ```env
+    PORT=5000
+    DB_HOST=localhost
+    DB_USER=your_db_user
+    DB_PASSWORD=your_db_password
+    DB_NAME=buildright_db
+    JWT_SECRET=your_jwt_secret_key_here
+    ```
+4.  Start the Backend server:
     ```bash
     npm run dev
     ```
-    - The server should start on `http://localhost:5000`.
+    (The server should start on `http://localhost:5000`)
 
-### 4. Frontend Setup
+### 3. Frontend Configuration
 
-The frontend is the user interface of the application.
-
-1.  Open a **new** terminal window (keep the backend running) and navigate to the **Frontend** directory:
-
+1.  Open a new terminal and navigate to the `Frontend` directory:
     ```bash
     cd Frontend
     ```
-
 2.  Install dependencies:
-
     ```bash
     npm install
     ```
-
-3.  Start the Frontend Application:
+3.  Start the Frontend development server:
     ```bash
     npm run dev
     ```
-    - The application will launch automatically in your browser, usually at `http://localhost:5173`.
+    (The app should be running at `http://localhost:5173`)
+
+## Usage
+
+1.  Open your browser to `http://localhost:5173`.
+2.  **Public User**: Browse projects, filter by region/contractor.
+3.  **Login**: Use the "Login" button.
+    - **Admin**: Login with admin credentials to manage all projects.
+    - **Contractor**: Login to manage assigned projects and upload photos.
+
+## Deployment Notes
+
+- **Images**: Uploaded images are stored in `Backend/public/uploads`. This folder is ignored by Git, so production images won't be in the repo.
+- **Security**: Ensure your `.env` file is **never** committed to GitHub (it is already in `.gitignore`).
 
 ---
 
-## 📂 Project Structure
-
-```text
-CEF345GROUP16/
-├── Backend/            # Node.js & Express API
-│   ├── config/         # Database configuration
-│   ├── controllers/    # Logic for handling requests
-│   ├── routes/         # API endpoints
-│   └── ...
-├── Database/           # SQL scripts and schema
-│   └── schema.sql      # Main database creation script
-├── Documents/          # Project documentation & reports
-├── Frontend/           # React application
-│   ├── src/
-│   │   ├── components/ # Reusable UI components
-│   │   ├── pages/      # Application pages
-│   │   └── ...
-└── README.md           # This file
-```
-
-## 📚 Documentation
-
-For more detailed information about specific parts of the project, refer to the documentation in the `Documents` folder or the specific READMEs:
-
-- [Backend README](./Backend/README.md)
-- [Frontend README](./Frontend/README.md)
-
-## 🔧 Troubleshooting
-
-- **Database Connection Error**: Double-check your `.env` file in the `Backend` folder. Ensure the `DB_PASS` is correct and the MySQL server is running.
-- **Port in Use**: If port 5000 or 5173 is busy, close the other application or change the port in `.env` (Backend) or `vite.config.js` (Frontend).
-- **"Table doesn't exist"**: Make sure you ran the `Database/schema.sql` script before starting the backend.
+_Created by Gemini for BuildRight Cameroon_

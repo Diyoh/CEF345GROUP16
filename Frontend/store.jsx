@@ -33,6 +33,45 @@ export const AppProvider = ({ children }) => {
     const [loading, setLoading] = useState(false); // Global loading spinner
     const [error, setError] = useState(null);      // Global error message
 
+    // --- SOCKET.IO REAL-TIME UPDATES ---
+    useEffect(() => {
+        // Import dynamically to avoid SSR issues if we were using Next.js (good practice)
+        import('socket.io-client').then(({ io }) => {
+            const socket = io('http://localhost:5000', {
+                withCredentials: true,
+            });
+
+            socket.on('connect', () => {
+                console.log('Connected to real-time updates');
+            });
+
+            // Handle Project Created
+            socket.on('project:created', (newProject) => {
+                setProjects(prev => {
+                    if (prev.some(p => p.id === newProject.id)) return prev;
+                    return [newProject, ...prev];
+                });
+            });
+
+            // Handle Project Updated
+            socket.on('project:updated', (updatedData) => {
+                setProjects(prev => prev.map(p => 
+                    p.id === updatedData.id ? { ...p, ...updatedData } : p
+                ));
+            });
+
+            // Handle Project Deleted
+            socket.on('project:deleted', ({ id }) => {
+                setProjects(prev => prev.filter(p => p.id !== id));
+            });
+
+            // Cleanup on unmount
+            return () => {
+                socket.disconnect();
+            };
+        });
+    }, []);
+
     // --- INITIAL DATA FETCHING ---
     // This effect runs ONLY once when the application starts/reloads.
     useEffect(() => {
@@ -82,7 +121,15 @@ export const AppProvider = ({ children }) => {
         try {
             const res = await api.login(email, password);
             if (res.success) {
-                setUser(res.data); // Backend set the cookie, we just set state
+                const currentUser = res.data;
+                setUser(currentUser); 
+                
+                // [FIX] Fetch protected data immediately after login
+                if (currentUser.role === 'ADMIN' || currentUser.role === 'DEVELOPER_ADMIN') {
+                     const codesRes = await api.getAccessCodes();
+                     if (codesRes.success) setAccessCodes(codesRes.data);
+                }
+
                 return true;
             } else {
                 setError(res.error);
@@ -107,10 +154,22 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    const register = async (name, email, code) => {
+    const changePassword = async (currentPassword, newPassword) => {
         setLoading(true);
         try {
-            const res = await api.register(name, email, 'password123', code);
+            const res = await api.changePassword(currentPassword, newPassword);
+            return res; // { success: true/false, message/error }
+        } catch (err) {
+            return { success: false, error: err.message };
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const register = async (name, email, code, password) => {
+        setLoading(true);
+        try {
+            const res = await api.register(name, email, password, code);
             if (res.success) {
                 setUser(res.data);
                 return true;
@@ -126,19 +185,32 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    const updateProject = async (updatedProject) => {
+    const updateProject = async (optimisticProject, apiData = null) => {
         try {
-            setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
-            await api.updateProject(updatedProject.id, updatedProject);
+            setProjects(prev => prev.map(p => p.id === optimisticProject.id ? optimisticProject : p));
+            // Use apiData (FormData) if provided, otherwise JSON object
+            await api.updateProject(optimisticProject.id, apiData || optimisticProject);
         } catch (err) { console.error("Update failed", err); }
     };
 
-    const addProject = async (newProject) => {
+    const addProject = async (optimisticProject, apiData = null) => {
         try {
-            setProjects(prev => [newProject, ...prev]);
-            const res = await api.createProject(newProject);
+            // Optimistic update
+            const tempId = optimisticProject.id || `temp-${Date.now()}`;
+            const projectWithTempId = { ...optimisticProject, id: tempId };
+            
+            setProjects(prev => [projectWithTempId, ...prev]);
+
+            // Use apiData (FormData) if provided, otherwise JSON object
+            const res = await api.createProject(apiData || optimisticProject);
+            
             if (res.success) {
-                setProjects(prev => prev.map(p => p === newProject ? res.data : p));
+                const realProject = res.data;
+                // Replace optimistic with real
+                setProjects(prev => prev.map(p => p.id === tempId ? realProject : p));
+            } else {
+                // Remove optimistic if failed
+                setProjects(prev => prev.filter(p => p.id !== tempId));
             }
         } catch (err) { console.error("Create failed", err); }
     };
@@ -190,13 +262,37 @@ export const AppProvider = ({ children }) => {
         }
     };
 
+    const [contractors, setContractors] = useState([]); // List of registered contractors
+
+    // ... (existing code)
+
+    const fetchContractors = async () => {
+        try {
+            const res = await api.getContractors();
+            if (res.success) setContractors(res.data);
+        } catch (err) { console.error(err); }
+    };
+
+    const fetchContractorStats = async (id) => {
+        try {
+            const res = await api.getContractorStats(id);
+            if (res.success) return res.data;
+            return null;
+        } catch (err) { 
+            console.error(err); 
+            return null;
+        }
+    };
+
     return (
         <AppContext.Provider value={{
-            user, projects, teamMembers, comments, accessCodes,
+            user, projects, teamMembers, comments, accessCodes, contractors,
             loading, error, authChecked,
-            login, logout, register,
+            login, logout, register, changePassword,
             updateProject, updateTeamMember, addProject, deleteProject,
-            addComment, deleteComment, generateAccessCode, fetchProjectComments
+            updateProject, updateTeamMember, addProject, deleteProject,
+            addComment, deleteComment, generateAccessCode, fetchProjectComments,
+            fetchContractors, fetchContractorStats
         }}>
             {children}
         </AppContext.Provider>

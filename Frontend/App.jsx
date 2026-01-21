@@ -11,6 +11,7 @@ import { Layout } from './components/Layout'; // The wrapper with Navbar and Foo
 
 // Import Pages (The views of our app)
 import { Home } from './pages/Home';
+import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetails } from './pages/ProjectDetails';
 import { Developers } from './pages/Developers';
 import { Login } from './pages/Login';
@@ -30,6 +31,7 @@ const App = () => {
                         
                         {/* Public Routes: Accessible by everyone */}
                         <Route index element={<Home />} /> {/* Homepage */}
+                        <Route path="projects" element={<ProjectsPage />} />
                         <Route path="project/:id" element={<ProjectDetails />} /> {/* Dynamic Route: :id changes */}
                         <Route path="developers" element={<Developers />} />
                         <Route path="login" element={<Login />} />
