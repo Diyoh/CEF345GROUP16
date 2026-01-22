@@ -25,6 +25,12 @@ const seedDatabase = async () => {
           { id: 'u2', name: 'BTP Cameroun S.A.', role: 'CONTRACTOR', email: 'contact@btpcameroun.cm' },
           { id: 'u3', name: 'BuildFast Const', role: 'CONTRACTOR', email: 'info@buildfast.cm' },
           { id: 'u4', name: 'Dev Team Lead', role: 'DEVELOPER_ADMIN', email: 'dev@buildright.cm' },
+          // New Developer Accounts
+          { id: 'dev1', name: 'Diyoh Shiloh', role: 'DEVELOPER_ADMIN', email: 'diyoh@buildright.cm' },
+          { id: 'dev2', name: 'Asobo Joyce', role: 'DEVELOPER_ADMIN', email: 'joyce@buildright.cm' },
+          { id: 'dev3', name: 'Shots Fo Real', role: 'DEVELOPER_ADMIN', email: 'shots@buildright.cm' },
+          { id: 'dev4', name: 'Soh Marrious', role: 'DEVELOPER_ADMIN', email: 'soh@buildright.cm' },
+          { id: 'dev5', name: 'Gboyz', role: 'DEVELOPER_ADMIN', email: 'gboyz@buildright.cm' },
         ];
 
         const salt = await bcrypt.genSalt(10);

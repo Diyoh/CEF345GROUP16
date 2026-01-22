@@ -33,7 +33,7 @@ export const Navbar = () => {
 
                     {/* Desktop Menu */}
                     <div className="hidden md:flex items-center gap-6">
-                        <Link to="/" className="hover:text-accent transition-colors font-medium">Projects</Link>
+                        <Link to="/projects" className="hover:text-accent transition-colors font-medium">Projects</Link>
                         <Link to="/developers" className="hover:text-accent transition-colors font-medium">Developers</Link>
 
                         {user ? (
@@ -82,7 +82,7 @@ export const Navbar = () => {
                 {/* Mobile Menu Dropdown */}
                 {isMobileMenuOpen && (
                     <div className="md:hidden mt-4 pb-4 border-t border-white/20 flex flex-col gap-4 pt-4 animate-fade-in">
-                        <Link to="/" className="hover:text-accent transition-colors font-medium" onClick={() => setIsMobileMenuOpen(false)}>Projects</Link>
+                        <Link to="/projects" className="hover:text-accent transition-colors font-medium" onClick={() => setIsMobileMenuOpen(false)}>Projects</Link>
                         <Link to="/developers" className="hover:text-accent transition-colors font-medium" onClick={() => setIsMobileMenuOpen(false)}>Developers</Link>
 
                         {user ? (

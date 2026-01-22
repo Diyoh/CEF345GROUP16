@@ -39,15 +39,17 @@ app.use(helmet({
 // Limits a single IP to 100 requests per 15 minutes
 const limiter = rateLimit({
 	windowMs: 15 * 60 * 1000, 
-	max: 100, 
-    message: 'Too many requests from this IP, please try again after 15 minutes'
+	max: 1000, // [DEV] Increased from 100 to 1000 to prevent locking out during testing
+    message: 'Too many requests from this IP, please try again after 15 minutes',
+    standardHeaders: true,
+	legacyHeaders: false,
 });
 app.use(limiter);
 
 // [SECURITY FIX] Restrict CORS to our Frontend Only
 // credentials: true is REQUIRED for Cookies to work
 app.use(cors({
-    origin: 'http://localhost:5173', // Only allow our Frontend
+    origin: true,                    // [DEV] Allow ANY origin dynamically (reflects request origin)
     credentials: true,               // Allow Cookies
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
 }));
@@ -88,6 +90,15 @@ app.use((err, req, res, next) => {
 });
 
 // --- SERVER START ---
-app.listen(PORT, () => {
+import { startSocketServer } from './socket.js'; // [NEW] Import socket init function
+import http from 'http';
+
+const server = http.createServer(app);
+const io = startSocketServer(server); // Initialize Socket.io
+
+// Make io accessible to our routes
+app.set('io', io);
+
+server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });

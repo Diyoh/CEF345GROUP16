@@ -10,11 +10,14 @@ export const Login = () => {
   // Login State
   const [loginEmail, setLoginEmail] = useState('admin@buildright.cm');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // [NEW] Toggle state
 
   // Register State
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regCode, setRegCode] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [regError, setRegError] = useState('');
 
   if (user) {
@@ -25,6 +28,7 @@ export const Login = () => {
   }
 
   const handleLogin = async (e) => {
+    // ... (unchanged)
     e.preventDefault();
     /* 
        Demo Auto-fill Logic:
@@ -48,7 +52,18 @@ export const Login = () => {
   const handleRegister = async (e) => {
       e.preventDefault();
       setRegError('');
-      const success = await register(regName, regEmail, regCode);
+
+      if (regPassword !== regConfirmPassword) {
+          setRegError('Passwords do not match');
+          return;
+      }
+
+      if (regPassword.length < 6) {
+          setRegError('Password must be at least 6 characters');
+          return;
+      }
+
+      const success = await register(regName, regEmail, regCode, regPassword);
       if (!success) {
           setRegError('Registration failed. Check your code or email.');
       }
@@ -87,6 +102,24 @@ export const Login = () => {
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
                 />
+                
+                <input 
+                  type="password" 
+                  placeholder="Create Password" 
+                  required 
+                  className="w-full border p-3 rounded-lg"
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                />
+                <input 
+                  type="password" 
+                  placeholder="Confirm Password" 
+                  required 
+                  className="w-full border p-3 rounded-lg"
+                  value={regConfirmPassword}
+                  onChange={(e) => setRegConfirmPassword(e.target.value)}
+                />
+
                 <input 
                     type="text" 
                     placeholder="Access Code (Provided by Developers)" 
@@ -118,13 +151,22 @@ export const Login = () => {
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                 />
-                <input 
-                    type="password" 
-                    placeholder="Password" 
-                    className="w-full border p-3 rounded-lg" 
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                />
+                <div className="relative">
+                    <input 
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="Password" 
+                        className="w-full border p-3 rounded-lg pr-10" 
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                    >
+                        <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                    </button>
+                </div>
                 <button type="submit" disabled={loading} className="w-full bg-primary hover:bg-sky-600 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50">
                     {loading ? 'Signing In...' : 'Sign In'}
                 </button>

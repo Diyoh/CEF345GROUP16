@@ -137,3 +137,16 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Gemini Agent
+.agent
+
+
+# Uploads
+Backend/public/uploads/
+
+# Documentation
+*.md
+!README.md
+!CONTRIBUTING.md
+!setup_guide.md

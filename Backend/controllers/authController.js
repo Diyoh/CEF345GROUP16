@@ -66,9 +66,34 @@ export const register = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
+        // [CUSTOM ID GENERATION]
+        // Format: dev1, con1, adm1
+        let prefix = 'user';
+        if (role === 'DEVELOPER_ADMIN') prefix = 'dev';
+        else if (role === 'CONTRACTOR') prefix = 'con';
+        else if (role === 'ADMIN') prefix = 'adm';
+
+        // Find the latest ID with this prefix to determine the next number
+        // We look for IDs starting with the prefix and order by length (to handle dev9 vs dev10) and then value
+        const [lastUser] = await pool.query(
+            `SELECT id FROM users WHERE id LIKE ? ORDER BY LENGTH(id) DESC, id DESC LIMIT 1`, 
+            [`${prefix}%`]
+        );
+
+        let nextId = `${prefix}1`; // Default if none exist
+
+        if (lastUser.length > 0) {
+            const lastId = lastUser[0].id;
+            // Extract the number part: 'dev12' -> 12
+            const numberPart = parseInt(lastId.replace(prefix, ''));
+            if (!isNaN(numberPart)) {
+                nextId = `${prefix}${numberPart + 1}`;
+            }
+        }
+
         await pool.query(
-            'INSERT INTO users (id, name, email, password_hash, role) VALUES (UUID(), ?, ?, ?, ?)',
-            [name, email, passwordHash, role]
+            'INSERT INTO users (id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)',
+            [nextId, name, email, passwordHash, role]
         );
 
         await pool.query('UPDATE access_codes SET is_used = TRUE WHERE code = ?', [accessCode]);
@@ -132,4 +157,35 @@ export const getMe = async (req, res) => {
         success: true,
         data: req.user
     });
+};
+
+export const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        
+        // 1. Get user with password hash
+        const [users] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+        if (users.length === 0) return res.status(404).json({ success: false, error: 'User not found' });
+        
+        const user = users[0];
+
+        // 2. Verify current password
+        const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!isMatch) {
+            return res.status(400).json({ success: false, error: 'Incorrect current password' });
+        }
+
+        // 3. Hash new password
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(newPassword, salt);
+
+        // 4. Update DB
+        await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, user.id]);
+
+        res.json({ success: true, message: 'Password updated successfully' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
 };

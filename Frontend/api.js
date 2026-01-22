@@ -30,10 +30,17 @@ const DEFAULT_HEADERS = {
 const getOptions = (method = 'GET', body = null) => {
     const opts = {
         method,
-        headers: DEFAULT_HEADERS,
+        headers: { ...DEFAULT_HEADERS },
         credentials: 'include', // [CRITICAL] Enables sending/receiving Cookies for Auth
     };
-    if (body) opts.body = JSON.stringify(body);
+
+    if (body instanceof FormData) {
+        // [FIX] Do NOT set Content-Type for FormData; browser sets it with boundary
+        delete opts.headers['Content-Type'];
+        opts.body = body;
+    } else if (body) {
+        opts.body = JSON.stringify(body);
+    }
     return opts;
 };
 
@@ -56,6 +63,11 @@ export const api = {
 
     logout: async () => {
         const res = await fetch(`${BASE_URL}/auth/logout`, getOptions('POST'));
+        return await res.json();
+    },
+
+    changePassword: async (currentPassword, newPassword) => {
+        const res = await fetch(`${BASE_URL}/auth/change-password`, getOptions('PUT', { currentPassword, newPassword }));
         return await res.json();
     },
 
@@ -127,6 +139,17 @@ export const api = {
     // Stats
     getStats: async () => {
         const res = await fetch(`${BASE_URL}/stats/global`);
+        return await res.json();
+    },
+
+    // Contractor Analytics
+    getContractors: async () => {
+        const res = await fetch(`${BASE_URL}/admin/contractors`, getOptions('GET'));
+        return await res.json();
+    },
+
+    getContractorStats: async (id) => {
+        const res = await fetch(`${BASE_URL}/admin/contractors/${id}/stats`, getOptions('GET'));
         return await res.json();
     }
 };
