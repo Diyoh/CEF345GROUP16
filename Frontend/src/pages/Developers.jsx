@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAppStore } from '../store';
+import { useAppStore } from '../useAppStore';
 
 export const Developers = () => {
     const { teamMembers } = useAppStore();

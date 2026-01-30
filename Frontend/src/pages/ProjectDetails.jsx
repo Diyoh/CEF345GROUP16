@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useAppStore } from '../store';
+import { useAppStore } from '../useAppStore';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatCurrency, fileToBase64 } from '../utils/helpers';
 import { ProjectStatus } from '../types';

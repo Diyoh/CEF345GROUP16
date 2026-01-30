@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useAppStore } from '../../store';
+import { useAppStore } from '../../useAppStore';
 
 export const ContractorList = ({ onSelect }) => {
     const { contractors, fetchContractors } = useAppStore();

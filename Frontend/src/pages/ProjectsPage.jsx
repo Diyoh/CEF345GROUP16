@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useAppStore } from '../store';
+import { useAppStore } from '../useAppStore';
 import { ProjectCard } from '../components/ProjectCard';
 import { ProjectStatus } from '../types';
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useAppStore } from '../../store';
+import { useAppStore } from '../../useAppStore';
 // Helper to format large currency numbers
 const formatCurrency = (amount) => {
     if (amount >= 1_000_000_000) return `${(amount / 1_000_000_000).toFixed(1)}B FCFA`;

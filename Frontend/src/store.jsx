@@ -17,7 +17,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from './api';
 
-const AppContext = createContext(undefined);
+export const AppContext = createContext(undefined);
 
 export const AppProvider = ({ children }) => {
     
@@ -290,7 +290,6 @@ export const AppProvider = ({ children }) => {
             loading, error, authChecked,
             login, logout, register, changePassword,
             updateProject, updateTeamMember, addProject, deleteProject,
-            updateProject, updateTeamMember, addProject, deleteProject,
             addComment, deleteComment, generateAccessCode, fetchProjectComments,
             fetchContractors, fetchContractorStats
         }}>
@@ -299,8 +298,4 @@ export const AppProvider = ({ children }) => {
     );
 };
 
-export const useAppStore = () => {
-    const context = useContext(AppContext);
-    if (!context) throw new Error("useAppStore must be used within AppProvider");
-    return context;
-};
+
