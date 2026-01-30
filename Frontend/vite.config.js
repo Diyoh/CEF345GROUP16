@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
    test: {
     globals: true, // Allows using describe, it, expect without importing
-    environment: "jsdom", // Simulates a browser environment
+    environment: "happy-dom", // Simulates a browser environment (faster/compat with Vite)
     setupFiles: "./src/test/setup.js", // Global setup file
   },
 })
