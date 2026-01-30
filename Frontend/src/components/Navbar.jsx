@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAppStore } from '../store';
+import { useAppStore } from '../useAppStore';
 import { UserRole } from '../types';
 
 export const Navbar = () => {

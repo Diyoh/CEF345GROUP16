@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useAppStore } from '../store';
+import { useAppStore } from '../useAppStore';
 import { ProjectCard } from '../components/ProjectCard';
 import { formatCurrency } from '../utils/helpers';
 import { ProjectStatus } from '../types';

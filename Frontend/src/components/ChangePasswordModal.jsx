@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAppStore } from '../store';
+import { useAppStore } from '../useAppStore';
 
 export const ChangePasswordModal = ({ isOpen, onClose }) => {
     const { changePassword } = useAppStore();

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAppStore } from '../store';
+import { useAppStore } from '../useAppStore';
 import { UserRole } from '../types';
 import { Navigate } from 'react-router-dom';
 
