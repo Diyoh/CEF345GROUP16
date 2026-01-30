@@ -1,33 +1,42 @@
 name: Run Tests
+
 on:
   push:
-    branches: ["main", "master"]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: ["main", "master"]
+    branches: [ "main", "master" ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         node-version: [18.x]
+
     steps:
-      - uses: actions/checkout@v3
-      # Setup Node.js
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-      # Frontend Tests
-      - name: Install Frontend Dependencies
-        working-directory: ./Frontend
-        run: npm ci
-      - name: Run Frontend Tests
-        working-directory: ./Frontend
-        run: npm test -- --run # "--run" tells Vitest to run once and exit, not watch
-      # Backend Tests
-      - name: Install Backend Dependencies
-        working-directory: ./Backend
-        run: npm ci
-      - name: Run Backend Tests
-        working-directory: ./Backend
-        run: npm test
+    - uses: actions/checkout@v3
+
+    # Setup Node.js
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    # Frontend Tests
+    - name: Install Frontend Dependencies
+      working-directory: ./Frontend
+      run: npm ci
+
+    - name: Run Frontend Tests
+      working-directory: ./Frontend
+      run: npm test -- --run # "--run" forces Vitest to run once (CI mode)
+
+    # Backend Tests
+    - name: Install Backend Dependencies
+      working-directory: ./Backend
+      run: npm ci
+
+    - name: Run Backend Tests
+      working-directory: ./Backend
+      run: npm test
