@@ -9,41 +9,46 @@ import { ProjectModal } from '../components/dashboard/ProjectModal';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { ContractorList } from '../components/dashboard/ContractorList';
 import { ContractorAnalyticsModal } from '../components/dashboard/ContractorAnalyticsModal';
+import { StatusModal } from '../components/dashboard/StatusModal';
 
 export const AdminDashboard = () => {
     const { user, projects, comments, contractors, updateProject, addProject, deleteComment } = useAppStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProject, setEditingProject] = useState(null);
     const [selectedContractorId, setSelectedContractorId] = useState(null); 
-    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false); // [NEW]
+    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+    
+    // [NEW] Status Modal State
+    const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
 
     if (!user || user.role !== UserRole.ADMIN) return <Navigate to="/login" />;
 
-    const handleSave = (e, files) => {
+    const handleSave = async (e, files) => {
         e.preventDefault();
         const form = e.currentTarget;
         const formData = new FormData(form);
         
-        // Find selected contractor name for display (Optimistic UI)
         const selectedId = formData.get('contractorId');
         const selectedContractor = contractors.find(c => c.id === selectedId);
 
-        // [FIX] We need to reconstruct the FormData because we might have extra fields 
-        // or we need to append the files manually if they weren't input fields.
-        // Actually, 'new FormData(form)' captures all inputs. 
-        // We just need to append the files carefully.
-        
-        // Remove 'images' if it exists in the form to avoid duplicates or empty inputs
         formData.delete('images'); 
         
-        // Append actual File objects
         if (files && files.length > 0) {
             files.forEach(file => {
                 formData.append('images', file);
             });
         }
 
-        // Optimistic Object (for display while uploading)
+        // [FIX] Add default values for required fields not in the form
+        // Region is now in the form, so we don't default it.
+        // Start/End Dates are also in the form, but we can keep defaults if they are empty
+        if (!formData.get('startDate')) formData.append('startDate', new Date().toISOString().split('T')[0]);
+        if (!formData.get('completionDate')) {
+            const nextYear = new Date();
+            nextYear.setFullYear(nextYear.getFullYear() + 1);
+            formData.append('completionDate', nextYear.toISOString().split('T')[0]);
+        }
+
         const optimisticProject = {
             id: editingProject ? editingProject.id : `p${Date.now()}`,
             title: formData.get('title'),
@@ -56,34 +61,35 @@ export const AdminDashboard = () => {
             region: 'Centre',
             spent: editingProject ? editingProject.spent : 0,
             progress: editingProject ? editingProject.progress : 0,
-            images: [], // Optimistically empty or show previews if we passed them
+            images: [],
             startDate: '2024-01-01',
             completionDate: '2025-01-01',
             updates: []
         };
 
-        // Note: updateProject/addProject in store.jsx now handle FormData
-        // But store functions expect an OBJECT for the optimistic update, and FormData for the API call? 
-        // The store functions currently take just 'newProject'. 
-        // We need to refactor store.jsx one more time to handle { optimistic, formData }.
-        // OR, we just pass the FormData to the API, and use the optimistic object for the state.
-        
-        // Let's modify the store call to take two arguments or handle strict FormData.
-        // Simpler for now: Pass Object to store (for optimistic), but use FormData in API.
-        // Actually, we should update the Store first.
-        
-        // Wait, 'addProject' in store calls 'api.createProject(newProject)'.
-        // If we pass FormData to 'addProject', 'setProjects' will try to put FormData in the state array, which breaks the UI.
-        
-        // So we MUST separate them.
+        let result;
         if (editingProject) {
-             updateProject(optimisticProject, formData);
+             result = await updateProject(optimisticProject, formData);
         } else {
-             addProject(optimisticProject, formData);
+             result = await addProject(optimisticProject, formData);
         }
 
-        setIsModalOpen(false);
-        setEditingProject(null);
+        if (result && result.success) {
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                message: editingProject ? 'Project updated successfully!' : 'Project created successfully!'
+            });
+            setIsModalOpen(false);
+            setEditingProject(null);
+        } else {
+             setStatusModal({
+                isOpen: true,
+                type: 'error',
+                message: result?.error || 'Failed to save project.'
+            });
+            // Keep editor open so user can retry
+        }
     };
 
     return (
@@ -114,7 +120,6 @@ export const AdminDashboard = () => {
                 <CommentManager comments={comments} onDelete={deleteComment} />
             </div>
 
-            {/* [NEW] Contractor Analytics Section */}
             <ContractorList onSelect={setSelectedContractorId} />
 
             <h3 className="text-xl font-bold text-gray-800 mb-4">Project Management</h3>
@@ -131,7 +136,6 @@ export const AdminDashboard = () => {
                 contractors={contractors}
             />
 
-            {/* [NEW] Analytics Modal */}
             <ContractorAnalyticsModal 
                 contractorId={selectedContractorId} 
                 onClose={() => setSelectedContractorId(null)} 
@@ -140,6 +144,14 @@ export const AdminDashboard = () => {
             <ChangePasswordModal 
                 isOpen={isPasswordModalOpen} 
                 onClose={() => setIsPasswordModalOpen(false)} 
+            />
+
+            {/* [NEW] Status Modal */}
+            <StatusModal 
+                isOpen={statusModal.isOpen} 
+                onClose={() => setStatusModal({ ...statusModal, isOpen: false })} 
+                type={statusModal.type}
+                message={statusModal.message}
             />
         </div>
     );

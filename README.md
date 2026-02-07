@@ -90,6 +90,30 @@ Before running the project, ensure you have:
 3.  **Access the App**:
     Open your browser and navigate to `http://localhost:5173`.
 
+## Docker Deployment (Recommended)
+
+1.  **Start Services**:
+    Simply run the provided startup script:
+
+    ```bash
+    ./start-docker.bat
+    ```
+
+    Or manually:
+
+    ```bash
+    docker-compose up --build -d
+    ```
+
+2.  **Access**:
+    - **App**: `http://localhost:8080`
+    - **API**: `http://localhost:5000`
+    - **Database**: Port `3306`
+
+3.  **Database Data**:
+    - The `Database/` folder is mapped to the container. Any `.sql` files there will be executed on the _first_ run to initialize the database.
+    - Data persists in the `db_data` volume.
+
 ## Project Structure
 
 - **/Backend**: Node.js API server

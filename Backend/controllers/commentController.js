@@ -39,7 +39,7 @@ export const createComment = async (req, res) => {
         // 2. Handle Images
         if (images && images.length > 0) {
             for (const imgBase64 of images) {
-                const imageUrl = saveBase64Image(imgBase64, 'comments');
+                const imageUrl = await saveBase64Image(imgBase64, 'comments');
                 if (imageUrl) {
                     await pool.query(
                         'INSERT INTO comment_images (comment_id, image_url) VALUES (?, ?)',

@@ -110,6 +110,10 @@ export const getProjectById = async (req, res) => {
  */
 export const createProject = async (req, res) => {
     try {
+        console.log('--- CREATE PROJECT REQUEST ---');
+        console.log('Body:', req.body);
+        console.log('Files:', req.files);
+
         const { title, description, location, region, budget, contractorId, startDate, completionDate, images } = req.body;
 
         // 1. Insert Project Data
@@ -123,13 +127,25 @@ export const createProject = async (req, res) => {
         const [newP] = await pool.query('SELECT id FROM projects WHERE title = ? ORDER BY created_at DESC LIMIT 1', [title]);
         const projectId = newP[0].id;
 
-        // 2. Handle Image Uploads (Base64 strings)
-        if (images && images.length > 0) {
-            for (let i = 0; i < images.length; i++) {
-                // Determine if it's the main cover (first image)
+        // 2. Handle Image Uploads (From Cloudinary Middleware)
+        // Multer with Cloudinary Storage automatically uploads files and populates req.files
+        if (req.files && req.files.length > 0) {
+            for (let i = 0; i < req.files.length; i++) {
+                const file = req.files[i];
+                const imageUrl = file.path || file.secure_url; // Cloudinary URL
                 const isMain = i === 0;
-                // Save file to disk helper
-                const imageUrl = saveBase64Image(images[i], 'projects');
+
+                await pool.query(
+                    'INSERT INTO project_images (project_id, image_url, is_main_cover) VALUES (?, ?, ?)',
+                    [projectId, imageUrl, isMain]
+                );
+            }
+        }
+        // Fallback for Base64 (if legacy frontend used)
+        else if (images && images.length > 0 && Array.isArray(images)) {
+             for (let i = 0; i < images.length; i++) {
+                const isMain = i === 0;
+                const imageUrl = await saveBase64Image(images[i], 'projects');
                 
                 if (imageUrl) {
                     await pool.query(
@@ -184,9 +200,20 @@ export const updateProject = async (req, res) => {
         }
 
         // Handle New Images added during update
-        if (newImages && newImages.length > 0) {
+        // Handle New Images (From Cloudinary Middleware)
+        if (req.files && req.files.length > 0) {
+            for (const file of req.files) {
+                const imageUrl = file.path || file.secure_url;
+                await pool.query(
+                    'INSERT INTO project_images (project_id, image_url, is_main_cover) VALUES (?, ?, ?)',
+                    [projectId, imageUrl, false]
+                );
+            }
+        }
+        // Fallback for Base64
+        else if (newImages && newImages.length > 0 && Array.isArray(newImages)) {
             for (const imgBase64 of newImages) {
-                const imageUrl = saveBase64Image(imgBase64, 'projects');
+                const imageUrl = await saveBase64Image(imgBase64, 'projects');
                 if (imageUrl) {
                     await pool.query(
                         'INSERT INTO project_images (project_id, image_url, is_main_cover) VALUES (?, ?, ?)',
