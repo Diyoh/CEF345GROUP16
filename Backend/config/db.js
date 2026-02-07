@@ -20,6 +20,7 @@ const pool = mysql.createPool({
     waitForConnections: true,        // Wait if all connections are busy
     connectionLimit: 10,             // Max number of simultaneous connections
     queueLimit: 0,                   // Unlimited queue for waiting requests
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined, // Enable SSL for cloud DBs
     
     // Custom Type Casting
     // MySQL 'DECIMAL' types are returned as strings by default to preserve precision.
