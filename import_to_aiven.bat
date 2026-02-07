@@ -5,12 +5,11 @@ setlocal
 set MYSQL_EXE="C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
 
 :: ----------------------------------------------------
-:: Aiven Connection Details (Filled from your screenshot)
+:: Aiven Connection Details (NO HARDCODED PASSWORD!)
 :: ----------------------------------------------------
 set AIVEN_HOST=buildright-db-buildright-2026.j.aivencloud.com
 set AIVEN_PORT=27951
 set AIVEN_USER=avnadmin
-set AIVEN_PASS=AVNS_-6Fd9UoBQQUX80Cxg_7
 :: ----------------------------------------------------
 
 echo ===========================================
@@ -28,14 +27,19 @@ if not exist backup_latest.sql (
     exit /b
 )
 
-%MYSQL_EXE% -h %AIVEN_HOST% -P %AIVEN_PORT% -u %AIVEN_USER% -p%AIVEN_PASS% --ssl-mode=REQUIRED defaultdb < backup_latest.sql
+echo.
+echo [!] Please paste your Aiven Password when prompted below...
+echo.
+
+%MYSQL_EXE% -h %AIVEN_HOST% -P %AIVEN_PORT% -u %AIVEN_USER% -p --ssl-mode=REQUIRED defaultdb < backup_latest.sql
 
 if %errorlevel% equ 0 (
     echo.
     echo [SUCCESS] Import Completed!
 ) else (
     echo.
-    echo [ERROR] Import Failed. Check your internet connection.
+    echo [ERROR] Import Failed. Check your credentials.
 )
 
+echo.
 pause
