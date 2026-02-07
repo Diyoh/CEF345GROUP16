@@ -15,12 +15,14 @@ dotenv.config();
 const pool = mysql.createPool({
     host: process.env.DB_HOST,       // Database server address (e.g., localhost)
     user: process.env.DB_USER,       // Database username
-    password: process.env.DB_PASS,   // Database password
+    password: process.env.DB_PASS || process.env.DB_PASSWORD,   // Database password (support both naming conventions)
     database: process.env.DB_NAME,   // The specific database name (e.g., buildright)
+    port: process.env.DB_PORT || 3306, // Custom port support (needed for Aiven)
     waitForConnections: true,        // Wait if all connections are busy
     connectionLimit: 10,             // Max number of simultaneous connections
     queueLimit: 0,                   // Unlimited queue for waiting requests
-    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined, // Enable SSL for cloud DBs
+    // Enable SSL if explicitly set OR if in production (Render/Aiven usually sidebar SSL)
+    ssl: (process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production') ? { rejectUnauthorized: false } : undefined,
     
     // Custom Type Casting
     // MySQL 'DECIMAL' types are returned as strings by default to preserve precision.
