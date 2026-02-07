@@ -1,53 +1,32 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { v2 as cloudinary } from 'cloudinary';
+import { storage } from '../config/cloudinary.js'; // Ensure config is loaded
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-export const saveBase64Image = (base64String, subfolder = 'misc') => {
+export const saveBase64Image = async (base64String, subfolder = 'misc') => {
     if (!base64String) return null;
 
     try {
-        // [SECURITY FIX] Strict Regex Check
+        // Validation: Verify it's a real Base64 image
         const matches = base64String.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
         
         if (!matches || matches.length !== 3) {
+            // It might be an already existing URL (e.g. from an update where image wasn't changed)
+            if (base64String.startsWith('http')) {
+                return base64String;
+            }
             console.error('Invalid base64 string format');
             return null;
         }
 
-        const ext = matches[1].toLowerCase();
-        const data = matches[2];
+        // Upload to Cloudinary
+        const result = await cloudinary.uploader.upload(base64String, {
+            folder: `buildright_uploads/${subfolder}`,
+            resource_type: 'image'
+        });
 
-        // [SECURITY FIX] Whitelist extensions
-        if (!['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
-            console.error('Unsupported file type:', ext);
-            return null;
-        }
-
-        const buffer = Buffer.from(data, 'base64');
-
-        // [SECURITY FIX] Validate File Size (e.g., Max 5MB per file)
-        if (buffer.length > 5 * 1024 * 1024) { 
-            console.error('File too large > 5MB');
-            return null; 
-        }
-
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-        const uploadDir = path.join(__dirname, '../public/uploads', subfolder);
-
-        if (!fs.existsSync(uploadDir)){
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-
-        const filePath = path.join(uploadDir, fileName);
-        fs.writeFileSync(filePath, buffer);
-
-        return `/uploads/${subfolder}/${fileName}`;
+        return result.secure_url;
 
     } catch (error) {
-        console.error('Error saving base64 image:', error);
+        console.error('Error uploading base64 image to Cloudinary:', error);
         return null;
     }
 };

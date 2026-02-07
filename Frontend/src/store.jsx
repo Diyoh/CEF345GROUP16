@@ -35,9 +35,11 @@ export const AppProvider = ({ children }) => {
 
     // --- SOCKET.IO REAL-TIME UPDATES ---
     useEffect(() => {
+        let socket;
+
         // Import dynamically to avoid SSR issues if we were using Next.js (good practice)
         import('socket.io-client').then(({ io }) => {
-            const socket = io('http://localhost:5000', {
+            socket = io('http://localhost:5000', {
                 withCredentials: true,
             });
 
@@ -64,12 +66,15 @@ export const AppProvider = ({ children }) => {
             socket.on('project:deleted', ({ id }) => {
                 setProjects(prev => prev.filter(p => p.id !== id));
             });
-
-            // Cleanup on unmount
-            return () => {
-                socket.disconnect();
-            };
         });
+
+        // Cleanup on unmount
+        return () => {
+             if (socket) {
+                 socket.disconnect();
+                 console.log('Disconnected from real-time updates');
+             }
+        };
     }, []);
 
     // --- INITIAL DATA FETCHING ---
@@ -148,7 +153,7 @@ export const AppProvider = ({ children }) => {
             await api.logout(); // Clears cookie on server
             setUser(null);
             setProjects([]); 
-            window.location.reload();
+            // window.location.reload(); // Removed to prevent 401 error on reload
         } catch (e) {
             console.error(e);
         }
@@ -189,8 +194,15 @@ export const AppProvider = ({ children }) => {
         try {
             setProjects(prev => prev.map(p => p.id === optimisticProject.id ? optimisticProject : p));
             // Use apiData (FormData) if provided, otherwise JSON object
-            await api.updateProject(optimisticProject.id, apiData || optimisticProject);
-        } catch (err) { console.error("Update failed", err); }
+            const res = await api.updateProject(optimisticProject.id, apiData || optimisticProject);
+            
+            if (res.success) return { success: true };
+            else return { success: false, error: res.error };
+
+        } catch (err) { 
+            console.error("Update failed", err); 
+            return { success: false, error: err.message };
+        }
     };
 
     const addProject = async (optimisticProject, apiData = null) => {
@@ -206,13 +218,28 @@ export const AppProvider = ({ children }) => {
             
             if (res.success) {
                 const realProject = res.data;
-                // Replace optimistic with real
-                setProjects(prev => prev.map(p => p.id === tempId ? realProject : p));
+                
+                // [FIX] Check if socket already added it to avoid duplicates
+                setProjects(prev => {
+                    // if real project is already there (from socket), just remove the temp one
+                    if (prev.some(p => p.id === realProject.id)) {
+                        return prev.filter(p => p.id !== tempId);
+                    }
+                    // otherwise, replace temp with real
+                    return prev.map(p => p.id === tempId ? realProject : p);
+                });
+                
+                return { success: true };
             } else {
                 // Remove optimistic if failed
                 setProjects(prev => prev.filter(p => p.id !== tempId));
+                setError(res.error);
+                return { success: false, error: res.error };
             }
-        } catch (err) { console.error("Create failed", err); }
+        } catch (err) { 
+            console.error("Create failed", err);
+            return { success: false, error: err.message };
+        }
     };
 
     const deleteProject = async (id) => {

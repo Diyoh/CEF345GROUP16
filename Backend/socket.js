@@ -3,8 +3,14 @@ import { Server } from 'socket.io';
 export const startSocketServer = (httpServer) => {
     const io = new Server(httpServer, {
         cors: {
-            origin: "http://localhost:5173",
-            methods: ["GET", "POST"],
+            // [DEV] ALlow multiple local ports in case 5173 is busy
+            origin: [
+                "http://localhost:5173", 
+                "http://localhost:5174",
+                "http://localhost:5175",
+                "http://localhost:3000"
+            ],
+            methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
             credentials: true
         }
     });

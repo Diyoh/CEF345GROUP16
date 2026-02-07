@@ -60,7 +60,7 @@ export const ProjectModal = ({ isOpen, onClose, onSave, editingProject, contract
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Project Title</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Project Title <span className="text-red-500">*</span></label>
                         <input
                             name="title"
                             required
@@ -71,7 +71,7 @@ export const ProjectModal = ({ isOpen, onClose, onSave, editingProject, contract
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Description <span className="text-red-500">*</span></label>
                         <textarea
                             name="description"
                             required
@@ -113,7 +113,7 @@ export const ProjectModal = ({ isOpen, onClose, onSave, editingProject, contract
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Location <span className="text-red-500">*</span></label>
                             <input
                                 name="location"
                                 required
@@ -123,7 +123,52 @@ export const ProjectModal = ({ isOpen, onClose, onSave, editingProject, contract
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Contractor</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Region <span className="text-red-500">*</span></label>
+                            <select
+                                name="region"
+                                required
+                                defaultValue={editingProject?.region || ""}
+                                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white"
+                            >
+                                <option value="" disabled>Select Region</option>
+                                <option value="Adamaoua">Adamaoua</option>
+                                <option value="Centre">Centre</option>
+                                <option value="East">East</option>
+                                <option value="Far North">Far North</option>
+                                <option value="Littoral">Littoral</option>
+                                <option value="North">North</option>
+                                <option value="North West">North West</option>
+                                <option value="South">South</option>
+                                <option value="South West">South West</option>
+                                <option value="West">West</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                            <input
+                                type="date"
+                                name="startDate"
+                                defaultValue={editingProject?.startDate ? new Date(editingProject.startDate).toISOString().split('T')[0] : ''}
+                                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Completion Date</label>
+                            <input
+                                type="date"
+                                name="completionDate"
+                                defaultValue={editingProject?.completionDate ? new Date(editingProject.completionDate).toISOString().split('T')[0] : ''}
+                                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Contractor <span className="text-red-500">*</span></label>
                             <select
                                 name="contractorId"
                                 required
@@ -131,6 +176,7 @@ export const ProjectModal = ({ isOpen, onClose, onSave, editingProject, contract
                                 className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white"
                             >
                                 <option value="" disabled>Select a Contractor</option>
+                                <option value="eafddc30-f6f3-11f0-900e-f875a4049563">Tech Solutions Ltd</option> {/* Fallback/Mock */}
                                 {contractors && contractors.map(c => (
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}

@@ -12,7 +12,7 @@
  *    send the 'token' cookie along with the request to the backend.
  */
 
-const BASE_URL = 'http://localhost:5000/api/v1';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 // Standard headers for sending JSON data
 const DEFAULT_HEADERS = {
