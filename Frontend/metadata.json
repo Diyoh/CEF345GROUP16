@@ -1,0 +1,7 @@
+{
+  "name": "BuildRight",
+  "description": "A public infrastructure transparency platform tracking government and donor-funded projects in real-time.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
