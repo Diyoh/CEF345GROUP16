@@ -25,8 +25,8 @@ const sendTokenResponse = (user, statusCode, res) => {
     const options = {
         expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 Days
         httpOnly: true, // [SECURITY] JS cannot access this cookie on client
-        secure: process.env.NODE_ENV === 'production', // Use SSL in production
-        sameSite: 'strict' // CSRF protection
+        secure: true,   // [CRITICAL] Must be true for SameSite=None
+        sameSite: 'none' // [CRITICAL] Required for Cross-Origin (Vercel -> Render)
     };
 
     res.status(statusCode)
@@ -146,7 +146,9 @@ export const login = async (req, res) => {
 export const logout = async (req, res) => {
     res.cookie('token', 'none', {
         expires: new Date(Date.now() + 10 * 1000),
-        httpOnly: true
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none'
     });
 
     res.status(200).json({ success: true, message: 'Logged out successfully' });

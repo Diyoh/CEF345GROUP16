@@ -30,6 +30,10 @@ const PORT = process.env.PORT || 5000;
 
 // --- SECURITY MIDDLEWARE SETUP ---
 
+// [SECURITY FIX] Trust Proxy
+// Required for secure cookies to work behind Render's Load Balancer
+app.set('trust proxy', 1);
+
 // [SECURITY FIX] Helmet sets various HTTP headers to secure the app (XSS protection, etc.)
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" } // Allow images to be loaded by frontend
