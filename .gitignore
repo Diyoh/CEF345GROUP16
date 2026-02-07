@@ -150,3 +150,11 @@ Backend/public/uploads/
 !README.md
 !CONTRIBUTING.md
 !setup_guide.md
+
+# Microsoft Office Temp Files
+~$*
+
+# Generated Files
+*.pdf
+*.docx
+*.pptx
