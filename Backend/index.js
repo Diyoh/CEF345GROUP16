@@ -22,6 +22,7 @@ import commentRoutes from './routes/commentRoutes.js';
 import teamRoutes from './routes/teamRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import statsRoutes from './routes/statsRoutes.js';
+import publicRoutes from './routes/publicRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -75,7 +76,17 @@ app.use(cookieParser());
 // uploads go through multer as multipart, which this limit does not apply to.
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '10mb' }));
 
-// [CONTRACT] Everything leaving this API uses camelCase keys.
+// [OPEN DATA] Mounted BEFORE the camelCase serializer, deliberately.
+//
+// The public API publishes snake_case field names (budget_xaf, start_date) because they are
+// the same names used as CSV column headers, and a published contract must not have its JSON
+// and its CSV disagree. The serializer below would rewrite them to budgetXaf/startDate while
+// leaving the CSV untouched, silently breaking every consumer's script.
+//
+// Its own CORS and rate limit live in routes/publicRoutes.js.
+app.use('/api/v1/public', publicRoutes);
+
+// [CONTRACT] Everything leaving the APPLICATION API uses camelCase keys.
 // MySQL columns are snake_case; the frontend reads camelCase. Converting once here means
 // no endpoint — present or future — can reintroduce the mismatch. See utils/serialize.js.
 app.use(serializeResponse);

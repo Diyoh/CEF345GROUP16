@@ -35,6 +35,7 @@ purpose: that is the check on contractor self-reporting.
 | Add a CORS origin | `Backend/config/allowedOrigins.js` + `CORS_ORIGINS` env — used by REST **and** sockets |
 | Change DB connection / SSL | `Backend/config/db.js` |
 | Change API output key casing | `Backend/utils/serialize.js` — one global rule, applied in `index.js` |
+| Change the public/open API or CSV | `Backend/controllers/publicController.js` (`PROJECT_FIELDS`), `routes/publicRoutes.js`, `utils/csv.js` — published contract, additive changes only |
 | Change password policy or limits | `MIN_PASSWORD_LENGTH` in `authController.js` (mirror it in `Login.jsx`), `RATE_LIMIT_MAX` / `JSON_BODY_LIMIT` env vars in `index.js` |
 | Add a role-guarded page | `components/AuthPending.jsx` pattern — gate on `authChecked` BEFORE `user`, and put every hook above the early returns |
 | Add a frontend API call | `Frontend/src/api.js` → wire an action in `Frontend/src/store.jsx` |

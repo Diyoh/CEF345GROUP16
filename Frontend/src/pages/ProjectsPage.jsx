@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
+import { csvExportUrl } from '../api';
 import { ProjectCard } from '../components/ProjectCard';
 import { Button, Card, Select, EmptyState, Badge, Skeleton, SkeletonRegion } from '../components/ui';
 import { ProjectStatus } from '../types';
@@ -186,6 +187,21 @@ export const ProjectsPage = () => {
               </option>
             ))}
           </Select>
+          {/* Anyone can take the data away and check it against another source. That is the
+              point of a transparency platform: the filters travel with the download, so what
+              you export is what you were looking at. */}
+          <Button
+            as="a"
+            href={csvExportUrl({ status: statusFilter, region: regionFilter, search })}
+            variant="ghost"
+            size="md"
+            className="hidden sm:inline-flex"
+            leadingIcon={<i className="fas fa-file-csv" aria-hidden="true" />}
+            title="Download these projects as a spreadsheet"
+          >
+            Export
+          </Button>
+
           <Button
             variant="secondary"
             size="md"

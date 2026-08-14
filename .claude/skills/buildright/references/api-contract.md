@@ -175,6 +175,40 @@ Public. **Dead — no caller.**
 
 ---
 
+## Public open-data API — `/api/v1/public`
+
+`Backend/routes/publicRoutes.js` → `controllers/publicController.js`. Read-only, no auth.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/public` | Self-describing index: endpoints, fields, units, notes |
+| GET | `/public/projects` | JSON. `?region &status &flagged &search &limit(≤200) &page` |
+| GET | `/public/projects.csv` | Same filters, ≤5000 rows, `Content-Disposition: attachment` |
+| GET | `/public/stats` | Totals, counts by status, flagged/critical counts |
+
+**This is a PUBLISHED CONTRACT — other people's scripts depend on it.**
+
+- **snake_case field names** (`budget_xaf`, `start_date`), matching the CSV headers exactly.
+  Mounted in `index.js` **BEFORE** `serializeResponse`, deliberately: the camelCase serializer
+  would rewrite the JSON while leaving the CSV alone, so the two halves of one contract would
+  disagree. **Do not move it below the serializer.**
+- Field mapping is explicit in `PROJECT_FIELDS`, decoupled from DB columns, so renaming a
+  column cannot break a consumer. Additive changes only.
+- Money is **XAF** (ISO code) here, not the `FCFA` used in the UI. Machine contexts get the
+  machine name.
+- Its own CORS (`origin: '*'`, **`credentials: false`**) and rate limit (120/15min,
+  `PUBLIC_API_RATE_LIMIT`). The app's origin allowlist exists because the app API carries an
+  auth cookie; none of that applies to an uncredentialed read-only endpoint, and restricting
+  it would block the exact use it exists for.
+
+**CSV specifics** (`utils/csv.js`):
+- Values starting `= + - @` tab or CR are prefixed with `'` — otherwise a project title like
+  `=HYPERLINK(...)` executes in the spreadsheet of every journalist who opens the export.
+- **Numbers bypass that guard**, so `variance_points` (negative exactly when a project is in
+  trouble) stays numeric and sortable rather than becoming text.
+- UTF-8 BOM by default, or Excel renders `Yaoundé` as `YaoundÃ©`.
+- Only declared columns are emitted, so an internal field cannot leak into the export.
+
 ## Error shape
 
 `utils/AppError.js`: services throw `AppError(message, statusCode)`; `sendError(res, err)` maps
