@@ -8,6 +8,7 @@ import { FlagList } from '../components/FlagList';
 import { Button, Card, Meter, Input, Select, Textarea, Badge, EmptyState } from '../components/ui';
 import { formatMoney, formatDate, formatRelative, fileToBase64 } from '../utils/helpers';
 import { projectHealth } from '../utils/projectHealth';
+import { useT } from '../i18n';
 
 /**
  * Project detail. Spec: docs/design/02-ia-ux.md section 4.3.
@@ -22,6 +23,7 @@ import { projectHealth } from '../utils/projectHealth';
  * upload capped at 4, and the expandable evidence thumbnails.
  */
 export const ProjectDetails = () => {
+  const t = useT();
   const { id } = useParams();
   const { projects, comments, addComment, fetchProjectComments, fetchProject } = useAppStore();
   const project = projects.find((p) => p.id === id);
@@ -47,11 +49,11 @@ export const ProjectDetails = () => {
       <div className="mx-auto max-w-content px-4 py-16 md:px-8">
         <EmptyState
           icon="fa-circle-question"
-          title="Project not found"
-          body="If it was just created it may take a moment to appear."
+          title={t('project.notFound')}
+          body={t('project.notFoundBody')}
           action={
             <Button as={Link} to="/projects" variant="primary">
-              Back to projects
+              {t('project.backToProjects')}
             </Button>
           }
         />
@@ -73,7 +75,7 @@ export const ProjectDetails = () => {
     if (!e.target.files) return;
     setUploadError('');
     if (e.target.files.length + commentImages.length > 4) {
-      setUploadError('You can attach up to 4 photos per report.');
+      setUploadError(t('reports.tooManyPhotos'));
       return;
     }
     const next = [];
@@ -139,21 +141,21 @@ export const ProjectDetails = () => {
           {/* 2. Build vs Spend: the fix. Full width, directly under the title. */}
           <section aria-labelledby="money-heading">
             <h2 id="money-heading" className="mb-4 text-h2 text-fg">
-              Build against spend
+              {t('project.buildAgainstSpend')}
             </h2>
             <Card padding="lg">
               <Meter health={health} variant="dual" size="lg" showSentence />
 
               <dl className="mt-6 grid gap-4 border-t border-line-subtle pt-5 sm:grid-cols-3">
                 <div>
-                  <dt className="text-overline uppercase text-fg-tertiary">Budget</dt>
+                  <dt className="text-overline uppercase text-fg-tertiary">{t('project.budget')}</dt>
                   <dd className="tabular mt-1 text-h3 text-fg">{formatMoney(health.budget, 'compact')}</dd>
                   <dd className="tabular mt-0.5 text-caption text-fg-tertiary">
                     {formatMoney(health.budget, 'full')}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-overline uppercase text-fg-tertiary">Spent</dt>
+                  <dt className="text-overline uppercase text-fg-tertiary">{t('project.spent')}</dt>
                   <dd
                     className={`tabular mt-1 text-h3 ${health.overBudget ? 'text-over-fg' : 'text-fg'}`}
                   >
@@ -164,12 +166,12 @@ export const ProjectDetails = () => {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-overline uppercase text-fg-tertiary">Remaining</dt>
+                  <dt className="text-overline uppercase text-fg-tertiary">{t('project.remaining')}</dt>
                   <dd className="tabular mt-1 text-h3 text-fg">
                     {formatMoney(Math.max(health.budget - health.spent, 0), 'compact')}
                   </dd>
                   <dd className="mt-0.5 text-caption text-fg-tertiary">
-                    {health.overBudget ? 'Budget exhausted' : 'Of the allocated budget'}
+                    {t(health.overBudget ? 'project.budgetExhausted' : 'project.ofAllocated')}
                   </dd>
                 </div>
               </dl>
@@ -177,7 +179,7 @@ export const ProjectDetails = () => {
               {/* Automatic checks, stated with the figures that triggered them so a reader
                   can disagree with the arithmetic rather than having to trust us. */}
               <div className="mt-6 border-t border-line-subtle pt-5">
-                <h3 className="mb-3 text-overline uppercase text-fg-tertiary">Automatic checks</h3>
+                <h3 className="mb-3 text-overline uppercase text-fg-tertiary">{t('project.automaticChecks')}</h3>
                 <FlagList flags={flags} />
               </div>
 
@@ -191,7 +193,7 @@ export const ProjectDetails = () => {
           {/* 3. Evidence outranks prose in a transparency product. */}
           <section aria-labelledby="photos-heading">
             <h2 id="photos-heading" className="mb-4 text-h2 text-fg">
-              Site photos
+              {t('project.sitePhotos')}
             </h2>
             <PhotoGallery images={galleryImages} title={project.title} />
           </section>
@@ -200,7 +202,7 @@ export const ProjectDetails = () => {
           {project.description && (
             <section aria-labelledby="about-heading">
               <h2 id="about-heading" className="mb-4 text-h2 text-fg">
-                About this project
+                {t('project.about')}
               </h2>
               <p className="max-w-prose text-body-lg leading-relaxed text-fg-secondary">
                 {project.description}
@@ -212,7 +214,7 @@ export const ProjectDetails = () => {
           {updates.length > 0 && (
             <section aria-labelledby="updates-heading">
               <h2 id="updates-heading" className="mb-4 text-h2 text-fg">
-                Update history
+                {t('project.updateHistory')}
               </h2>
               <ol className="border-l border-line pl-5">
                 {updates.map((u, i) => (
@@ -241,7 +243,7 @@ export const ProjectDetails = () => {
               uncurated one together rather than having to go looking. */}
           <section aria-labelledby="changes-heading">
             <h2 id="changes-heading" className="mb-1 text-h2 text-fg">
-              Record of changes
+              {t('project.recordOfChanges')}
             </h2>
             <p className="mb-4 max-w-prose text-caption text-fg-tertiary">
               Every edit to this project's figures, recorded automatically. Entries cannot be
@@ -255,7 +257,7 @@ export const ProjectDetails = () => {
           {/* 6. Citizen reports: highest volume, so last, with a count. */}
           <section aria-labelledby="reports-heading">
             <h2 id="reports-heading" className="mb-4 text-h2 text-fg">
-              Citizen reports
+              {t('reports.heading')}
               <span className="tabular ml-2 text-body font-normal text-fg-tertiary">
                 {projectComments.length}
               </span>
@@ -263,15 +265,15 @@ export const ProjectDetails = () => {
 
             <Card variant="inset" padding="lg" className="mb-8">
               <form onSubmit={submitComment}>
-                <h3 className="text-h3 text-fg">Add a report</h3>
+                <h3 className="text-h3 text-fg">{t('reports.addReport')}</h3>
                 <p className="mt-1 text-caption text-fg-tertiary">
                   If you have visited this site, tell everyone what you saw.
                 </p>
 
                 <div className="mt-5">
-                  <Select label="Reporting as" value={authorType} onChange={(e) => setAuthorType(e.target.value)}>
-                    <option value="Citizen">Citizen</option>
-                    <option value="NGO">NGO</option>
+                  <Select label={t('reports.reportingAs')} value={authorType} onChange={(e) => setAuthorType(e.target.value)}>
+                    <option value="Citizen">{t('reports.citizen')}</option>
+                    <option value="NGO">{t('reports.ngo')}</option>
                   </Select>
                   <p className="mt-2 text-caption text-fg-tertiary">
                     <i className="fas fa-user-shield mr-1.5" aria-hidden="true" />
@@ -280,13 +282,13 @@ export const ProjectDetails = () => {
                 </div>
 
                 <Textarea
-                  label="What did you observe at the site?"
+                  label={t('reports.observation')}
                   required
                   className="mt-4"
                   fieldClassName="mt-4"
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Describe what you saw, and when you were there."
+                  placeholder={t('reports.observationPlaceholder')}
                 />
 
                 {commentImages.length > 0 && (
@@ -297,7 +299,7 @@ export const ProjectDetails = () => {
                         <button
                           type="button"
                           onClick={() => setCommentImages((prev) => prev.filter((_, i) => i !== idx))}
-                          aria-label={`Remove photo ${idx + 1}`}
+                          aria-label={t('reports.removePhoto', { number: idx + 1 })}
                           className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-danger-fill text-caption text-danger-fg"
                         >
                           <i className="fas fa-xmark" aria-hidden="true" />
@@ -317,8 +319,8 @@ export const ProjectDetails = () => {
                   >
                     <i className="fas fa-camera" aria-hidden="true" />
                     {commentImages.length >= 4
-                      ? 'Maximum of 4 photos attached'
-                      : `Attach photos (${commentImages.length} of 4)`}
+                      ? t('reports.maxPhotos')
+                      : t('reports.attachPhotos', { count: commentImages.length })}
                     <input
                       type="file"
                       accept="image/*"
@@ -338,7 +340,7 @@ export const ProjectDetails = () => {
                     className="sm:w-auto"
                     fullWidth
                   >
-                    Post report
+                    {t('reports.post')}
                   </Button>
                 </div>
               </form>
@@ -347,8 +349,8 @@ export const ProjectDetails = () => {
             {projectComments.length === 0 ? (
               <EmptyState
                 icon="fa-comments"
-                title="No reports yet"
-                body="If you have visited this site, you can be the first to report."
+                title={t('reports.none')}
+                body={t('reports.noneBody')}
               />
             ) : (
               <ol className="flex flex-col gap-6">
@@ -375,7 +377,7 @@ export const ProjectDetails = () => {
                               <p className="text-body font-medium text-fg">
                                 {/* Older reports were filed under a name, before reporting
                                     became anonymous. Those are still shown as submitted. */}
-                                {comment.authorName || (isNGO ? 'Anonymous organisation' : 'Anonymous report')}
+                                {comment.authorName || t(isNGO ? 'reports.anonymousOrg' : 'reports.anonymousReport')}
                               </p>
                               <Badge tone={isNGO ? 'planned' : 'neutral'} size="sm">
                                 {comment.authorType}
@@ -401,7 +403,7 @@ export const ProjectDetails = () => {
                                   <img
                                     key={idx}
                                     src={img}
-                                    alt={`Evidence photo ${idx + 1} attached to this report`}
+                                    alt={t('reports.evidence')}
                                     loading="lazy"
                                     className="aspect-photo w-full rounded-md object-cover"
                                   />
@@ -412,7 +414,7 @@ export const ProjectDetails = () => {
                                   aria-expanded="true"
                                   className="col-span-full text-left text-caption font-medium text-accent hover:underline"
                                 >
-                                  Show fewer photos
+                                  {t('reports.showFewerPhotos')}
                                 </button>
                               </div>
                             ) : (
@@ -424,7 +426,7 @@ export const ProjectDetails = () => {
                               >
                                 <img
                                   src={images[0]}
-                                  alt="Evidence photo attached to this report"
+                                  alt={t('reports.evidence')}
                                   loading="lazy"
                                   className="h-full w-full object-cover"
                                 />
@@ -449,24 +451,24 @@ export const ProjectDetails = () => {
         {/* Sidebar: stable facts only. The money moved to the main column. */}
         <aside className="lg:sticky lg:top-24">
           <Card padding="lg">
-            <h2 className="text-h3 text-fg">Project details</h2>
+            <h2 className="text-h3 text-fg">{t('project.details')}</h2>
             <dl className="mt-4 flex flex-col gap-3 text-body">
               <div className="flex justify-between gap-4 border-b border-line-subtle pb-3">
-                <dt className="text-fg-tertiary">Contractor</dt>
-                <dd className="text-right font-medium text-fg">{project.contractorName || 'Not assigned'}</dd>
+                <dt className="text-fg-tertiary">{t('projects.contractor')}</dt>
+                <dd className="text-right font-medium text-fg">{project.contractorName || t('common.notAssigned')}</dd>
               </div>
               <div className="flex justify-between gap-4 border-b border-line-subtle pb-3">
-                <dt className="text-fg-tertiary">Region</dt>
-                <dd className="text-right text-fg">{project.region || 'Not set'}</dd>
+                <dt className="text-fg-tertiary">{t('projects.region')}</dt>
+                <dd className="text-right text-fg">{project.region || t('common.notSet')}</dd>
               </div>
               <div className="flex justify-between gap-4 border-b border-line-subtle pb-3">
-                <dt className="text-fg-tertiary">Started</dt>
+                <dt className="text-fg-tertiary">{t('project.started')}</dt>
                 <dd className="tabular text-right text-fg">
                   {formatDate(project.startDate || project.start_date)}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-fg-tertiary">Due</dt>
+                <dt className="text-fg-tertiary">{t('project.due')}</dt>
                 <dd className="tabular text-right text-fg">{formatDate(health.completionDate)}</dd>
               </div>
             </dl>

@@ -25,41 +25,45 @@ const change = (over = {}) => ({
   ...over,
 });
 
+/** ChangeHistory calls useT, so it needs the provider — same as in the app. */
+const renderHistory = (changes) =>
+  render(
+    <I18nProvider>
+      <ChangeHistory changes={changes} />
+    </I18nProvider>
+  );
+
 describe('ChangeHistory', () => {
   test('shows what the value was, not only what it is now', () => {
-    render(<ChangeHistory changes={[change()]} />);
+    renderHistory([change()]);
     expect(screen.getByText('60%')).toBeInTheDocument();
     expect(screen.getByText('30%')).toBeInTheDocument();
   });
 
   test('marks a downward revision of reported progress', () => {
-    render(<ChangeHistory changes={[change({ oldValue: '60', newValue: '30' })]} />);
+    renderHistory([change({ oldValue: '60', newValue: '30' })]);
     expect(screen.getByText(/reported progress reduced/i)).toBeInTheDocument();
   });
 
   test('does not mark progress moving forward', () => {
-    render(<ChangeHistory changes={[change({ oldValue: '30', newValue: '60' })]} />);
+    renderHistory([change({ oldValue: '30', newValue: '60' })]);
     expect(screen.queryByText(/reported progress reduced/i)).not.toBeInTheDocument();
   });
 
   test('renders money fields as money, not bare numbers', () => {
-    render(
-      <ChangeHistory
-        changes={[change({ field: 'spent', oldValue: '200000000', newValue: '450000000' })]}
-      />
-    );
+    renderHistory([change({ field: 'spent', oldValue: '200000000', newValue: '450000000' })]);
     expect(screen.getByText(/200\.0m FCFA/)).toBeInTheDocument();
     expect(screen.getByText(/450\.0m FCFA/)).toBeInTheDocument();
   });
 
   test('attributes every change to a person and a role', () => {
-    render(<ChangeHistory changes={[change()]} />);
+    renderHistory([change()]);
     expect(screen.getByText(/BTP Cameroun S\.A\./)).toBeInTheDocument();
     expect(screen.getByText(/contractor/i)).toBeInTheDocument();
   });
 
   test('explains itself when a project has never been edited', () => {
-    render(<ChangeHistory changes={[]} />);
+    renderHistory([]);
     expect(screen.getByText(/no changes recorded yet/i)).toBeInTheDocument();
   });
 
@@ -67,7 +71,7 @@ describe('ChangeHistory', () => {
     const many = Array.from({ length: 12 }, (_, i) =>
       change({ id: `c${i}`, oldValue: String(i), newValue: String(i + 1) })
     );
-    render(<ChangeHistory changes={many} />);
+    renderHistory(many);
 
     expect(screen.getAllByRole('listitem')).toHaveLength(8);
 
@@ -76,7 +80,7 @@ describe('ChangeHistory', () => {
   });
 
   test('survives a null previous value', () => {
-    render(<ChangeHistory changes={[change({ field: 'completionDate', oldValue: null, newValue: '2026-12-31' })]} />);
+    renderHistory([change({ field: 'completionDate', oldValue: null, newValue: '2026-12-31' })]);
     expect(screen.getByText('not set')).toBeInTheDocument();
   });
 });

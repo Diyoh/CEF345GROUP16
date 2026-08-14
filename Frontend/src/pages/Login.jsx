@@ -3,6 +3,7 @@ import { Navigate, Link } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
 import { UserRole } from '../types';
 import { Button, Card, Input, Field } from '../components/ui';
+import { useT } from '../i18n';
 
 /**
  * Staff sign in. Spec: docs/design/03-components.md section 2.
@@ -13,6 +14,7 @@ import { Button, Card, Input, Field } from '../components/ui';
  * password toggle no longer removes its own focus ring.
  */
 export const Login = () => {
+  const t = useT();
   const { login, register, user, loading, error } = useAppStore();
   const [isRegistering, setIsRegistering] = useState(false);
 
@@ -45,7 +47,7 @@ export const Login = () => {
       const demoAccounts = ['admin@buildright.cm', 'contact@btpcameroun.cm', 'dev@buildright.cm'];
       if (demoAccounts.includes(loginEmail)) password = 'password';
       else {
-        setLoginError('Enter your password to continue.');
+        setLoginError(t('auth.enterPassword'));
         return;
       }
     }
@@ -58,18 +60,18 @@ export const Login = () => {
     setRegError('');
 
     if (regPassword !== regConfirmPassword) {
-      setRegError('The two passwords do not match.');
+      setRegError(t('auth.passwordMismatch'));
       return;
     }
     // Must match MIN_PASSWORD_LENGTH in Backend/controllers/authController.js. The server
     // is the real gate; this only spares the user a round trip.
     if (regPassword.length < 8) {
-      setRegError('Use at least 8 characters for your password.');
+      setRegError(t('auth.passwordTooShort'));
       return;
     }
 
     const success = await register(regName, regEmail, regCode, regPassword);
-    if (!success) setRegError('Registration failed. Check your access code and email address.');
+    if (!success) setRegError(t('auth.registrationFailed'));
   };
 
   return (
@@ -78,11 +80,11 @@ export const Login = () => {
         <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-accent-fill text-accent-fg">
           <i className="fas fa-helmet-safety text-h3" aria-hidden="true" />
         </span>
-        <h1 className="text-h1 text-fg">{isRegistering ? 'Create your account' : 'Staff sign in'}</h1>
+        <h1 className="text-h1 text-fg">{t(isRegistering ? 'auth.createAccount' : 'auth.staffSignIn')}</h1>
         <p className="mt-2 text-body text-fg-secondary">
           {isRegistering
-            ? 'You need an access code from a platform administrator.'
-            : 'For government administrators, contractors, and platform staff.'}
+            ? t('auth.createAccountLead')
+            : t('auth.staffSignInLead')}
         </p>
       </div>
 
@@ -99,14 +101,14 @@ export const Login = () => {
         {isRegistering ? (
           <form onSubmit={handleRegister} className="flex flex-col gap-4">
             <Input
-              label="Full name"
+              label={t('auth.fullName')}
               required
               autoComplete="name"
               value={regName}
               onChange={(e) => setRegName(e.target.value)}
             />
             <Input
-              label="Email address"
+              label={t('auth.email')}
               type="email"
               required
               autoComplete="email"
@@ -114,27 +116,27 @@ export const Login = () => {
               onChange={(e) => setRegEmail(e.target.value)}
             />
             <Input
-              label="Password"
+              label={t('auth.password')}
               type="password"
               required
               autoComplete="new-password"
-              hint="At least 8 characters."
+              hint={t('auth.passwordHint')}
               value={regPassword}
               onChange={(e) => setRegPassword(e.target.value)}
             />
             <Input
-              label="Confirm password"
+              label={t('auth.confirmPassword')}
               type="password"
               required
               autoComplete="new-password"
-              error={regConfirmPassword && regPassword !== regConfirmPassword ? 'The two passwords do not match.' : ''}
+              error={regConfirmPassword && regPassword !== regConfirmPassword ? t('auth.passwordMismatch') : ''}
               value={regConfirmPassword}
               onChange={(e) => setRegConfirmPassword(e.target.value)}
             />
             <Input
-              label="Access code"
+              label={t('auth.accessCode')}
               required
-              hint="Provided by a platform administrator. It works once."
+              hint={t('auth.accessCodeHint')}
               className="font-mono tracking-wider"
               value={regCode}
               onChange={(e) => setRegCode(e.target.value.toUpperCase())}
@@ -147,23 +149,23 @@ export const Login = () => {
             )}
 
             <Button type="submit" variant="primary" size="lg" fullWidth loading={loading} className="mt-2">
-              Create account
+              {t('auth.createAccount')}
             </Button>
             <Button type="button" variant="link" size="sm" onClick={() => setIsRegistering(false)}>
-              Back to sign in
+              {t('auth.backToSignIn')}
             </Button>
           </form>
         ) : (
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <Input
-              label="Email address"
+              label={t('auth.email')}
               type="email"
               autoComplete="email"
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
             />
 
-            <Field label="Password" htmlFor="login-password">
+            <Field label={t('auth.password')} htmlFor="login-password">
               <div className="relative">
                 <input
                   id="login-password"
@@ -176,7 +178,7 @@ export const Login = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={t(showPassword ? 'auth.hidePassword' : 'auth.showPassword')}
                   aria-pressed={showPassword}
                   className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-xs text-fg-tertiary hover:text-fg"
                 >
@@ -186,10 +188,10 @@ export const Login = () => {
             </Field>
 
             <Button type="submit" variant="primary" size="lg" fullWidth loading={loading} className="mt-2">
-              Sign in
+              {t('auth.signIn')}
             </Button>
             <Button type="button" variant="link" size="sm" onClick={() => setIsRegistering(true)}>
-              I have an access code
+              {t('auth.haveCode')}
             </Button>
           </form>
         )}
@@ -197,7 +199,7 @@ export const Login = () => {
 
       <details className="mt-6 rounded-lg border border-line bg-surface p-4">
         <summary className="cursor-pointer text-caption font-medium text-fg-secondary">
-          Demo accounts
+          {t('auth.demoAccounts')}
         </summary>
         <ul className="mt-3 flex flex-col gap-1 text-caption text-fg-tertiary">
           <li>Administrator: admin@buildright.cm</li>
@@ -208,9 +210,9 @@ export const Login = () => {
       </details>
 
       <p className="mt-8 text-center text-caption text-fg-tertiary">
-        Looking for project information?{' '}
+        {t('auth.lookingForInfo')}{' '}
         <Link to="/projects" className="text-accent hover:underline">
-          Browse projects without signing in
+          {t('auth.browseWithoutAccount')}
         </Link>
       </p>
     </div>
