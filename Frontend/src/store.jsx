@@ -348,6 +348,34 @@ export const AppProvider = ({ children }) => {
         } catch (err) {console.error(err);}
     };
 
+    /**
+     * fetchProject
+     * Loads one project in full: images, narrative updates AND the change log.
+     *
+     * The list endpoint returns neither `updates` nor `changes`, so a detail page rendered
+     * purely from the boot fetch shows an empty history. It also only ever held the first
+     * 100 projects, so a deep link to anything beyond that rendered "Project not found".
+     * Fetching by id fixes both.
+     */
+    const fetchProject = async (projectId) => {
+        try {
+            const res = await api.getProjectById(projectId);
+            if (!res.success) return { success: false, error: res.error };
+
+            setProjects(prev => {
+                const exists = prev.some(p => p.id === res.data.id);
+                return exists
+                    ? prev.map(p => (p.id === res.data.id ? { ...p, ...res.data } : p))
+                    : [res.data, ...prev];
+            });
+
+            return { success: true };
+        } catch (err) {
+            console.error('Project detail fetch failed', err);
+            return { success: false, error: err.message };
+        }
+    };
+
     const fetchProjectComments = async (projectId) => {
         const res = await api.getComments(projectId);
         if (res.success) {
@@ -386,7 +414,7 @@ export const AppProvider = ({ children }) => {
             loading, error, authChecked,
             login, logout, register, changePassword,
             updateProject, updateTeamMember, addProject, deleteProject, addProjectUpdate,
-            addComment, deleteComment, generateAccessCode, fetchProjectComments,
+            addComment, deleteComment, generateAccessCode, fetchProjectComments, fetchProject,
             fetchContractors, fetchContractorStats
         }}>
             {children}
