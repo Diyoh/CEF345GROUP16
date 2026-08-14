@@ -1,18 +1,28 @@
 import React, { useState } from 'react';
+import { Navigate, Link } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
 import { UserRole } from '../types';
-import { Navigate } from 'react-router-dom';
+import { Button, Card, Input, Field } from '../components/ui';
+import { useT } from '../i18n';
 
+/**
+ * Staff sign in. Spec: docs/design/03-components.md section 2.
+ *
+ * Behaviour is unchanged: same login/register calls, same demo-password fallback, same
+ * role redirects. What changed is that every input now has a visible label, errors are
+ * wired with aria-invalid and aria-describedby, the error region is announced, and the
+ * password toggle no longer removes its own focus ring.
+ */
 export const Login = () => {
+  const t = useT();
   const { login, register, user, loading, error } = useAppStore();
   const [isRegistering, setIsRegistering] = useState(false);
-  
-  // Login State
+
   const [loginEmail, setLoginEmail] = useState('admin@buildright.cm');
   const [loginPassword, setLoginPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // [NEW] Toggle state
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
-  // Register State
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regCode, setRegCode] = useState('');
@@ -28,154 +38,183 @@ export const Login = () => {
   }
 
   const handleLogin = async (e) => {
-    // ... (unchanged)
     e.preventDefault();
-    /* 
-       Demo Auto-fill Logic:
-       If password field is empty, we inject the demo password for known emails.
-       In a real app, users would type the password. 
-    */
+    setLoginError('');
+
+    // Demo fallback, unchanged: known demo accounts sign in without typing the password.
     let password = loginPassword;
     if (!password) {
-        if (loginEmail === 'admin@buildright.cm') password = 'password'; 
-        else if (loginEmail === 'contact@btpcameroun.cm') password = 'password';
-        else if (loginEmail === 'dev@buildright.cm') password = 'password';
-        else {
-             alert("Please enter a password.");
-             return;
-        }
+      const demoAccounts = ['admin@buildright.cm', 'contact@btpcameroun.cm', 'dev@buildright.cm'];
+      if (demoAccounts.includes(loginEmail)) password = 'password';
+      else {
+        setLoginError(t('auth.enterPassword'));
+        return;
+      }
     }
-    
+
     await login(loginEmail, password);
   };
 
   const handleRegister = async (e) => {
-      e.preventDefault();
-      setRegError('');
+    e.preventDefault();
+    setRegError('');
 
-      if (regPassword !== regConfirmPassword) {
-          setRegError('Passwords do not match');
-          return;
-      }
+    if (regPassword !== regConfirmPassword) {
+      setRegError(t('auth.passwordMismatch'));
+      return;
+    }
+    // Must match MIN_PASSWORD_LENGTH in Backend/controllers/authController.js. The server
+    // is the real gate; this only spares the user a round trip.
+    if (regPassword.length < 8) {
+      setRegError(t('auth.passwordTooShort'));
+      return;
+    }
 
-      if (regPassword.length < 6) {
-          setRegError('Password must be at least 6 characters');
-          return;
-      }
-
-      const success = await register(regName, regEmail, regCode, regPassword);
-      if (!success) {
-          setRegError('Registration failed. Check your code or email.');
-      }
+    const success = await register(regName, regEmail, regCode, regPassword);
+    if (!success) setRegError(t('auth.registrationFailed'));
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-        <div className="text-center mb-6">
-          <i className="fas fa-hard-hat text-4xl text-secondary mb-2"></i>
-          <h1 className="text-2xl font-bold text-dark">{isRegistering ? 'Create Account' : 'Portal Login'}</h1>
-          <p className="text-gray-500 text-sm">{isRegistering ? 'Enter your invite code' : 'Access your dashboard'}</p>
-        </div>
-        
-        {error && (
-            <div className="bg-red-50 text-red-500 p-3 rounded mb-4 text-sm text-center">
-                {error}
-            </div>
+    <div className="mx-auto flex max-w-md flex-col justify-center px-4 py-12 md:py-20">
+      <div className="mb-8 text-center">
+        <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-accent-fill text-accent-fg">
+          <i className="fas fa-helmet-safety text-h3" aria-hidden="true" />
+        </span>
+        <h1 className="text-h1 text-fg">{t(isRegistering ? 'auth.createAccount' : 'auth.staffSignIn')}</h1>
+        <p className="mt-2 text-body text-fg-secondary">
+          {isRegistering
+            ? t('auth.createAccountLead')
+            : t('auth.staffSignInLead')}
+        </p>
+      </div>
+
+      <Card padding="lg">
+        {(error || loginError) && !isRegistering && (
+          <div
+            role="alert"
+            className="mb-5 rounded-sm border border-over-line bg-over-bg px-3 py-2.5 text-caption text-over-fg"
+          >
+            {loginError || error}
+          </div>
         )}
 
         {isRegistering ? (
-            <form onSubmit={handleRegister} className="space-y-4">
-                <input 
-                    type="text" 
-                    placeholder="Full Name" 
-                    required 
-                    className="w-full border p-3 rounded-lg"
-                    value={regName}
-                    onChange={(e) => setRegName(e.target.value)}
-                />
-                <input 
-                    type="email" 
-                    placeholder="Email Address" 
-                    required 
-                    className="w-full border p-3 rounded-lg"
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                />
-                
-                <input 
-                  type="password" 
-                  placeholder="Create Password" 
-                  required 
-                  className="w-full border p-3 rounded-lg"
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                />
-                <input 
-                  type="password" 
-                  placeholder="Confirm Password" 
-                  required 
-                  className="w-full border p-3 rounded-lg"
-                  value={regConfirmPassword}
-                  onChange={(e) => setRegConfirmPassword(e.target.value)}
-                />
+          <form onSubmit={handleRegister} className="flex flex-col gap-4">
+            <Input
+              label={t('auth.fullName')}
+              required
+              autoComplete="name"
+              value={regName}
+              onChange={(e) => setRegName(e.target.value)}
+            />
+            <Input
+              label={t('auth.email')}
+              type="email"
+              required
+              autoComplete="email"
+              value={regEmail}
+              onChange={(e) => setRegEmail(e.target.value)}
+            />
+            <Input
+              label={t('auth.password')}
+              type="password"
+              required
+              autoComplete="new-password"
+              hint={t('auth.passwordHint')}
+              value={regPassword}
+              onChange={(e) => setRegPassword(e.target.value)}
+            />
+            <Input
+              label={t('auth.confirmPassword')}
+              type="password"
+              required
+              autoComplete="new-password"
+              error={regConfirmPassword && regPassword !== regConfirmPassword ? t('auth.passwordMismatch') : ''}
+              value={regConfirmPassword}
+              onChange={(e) => setRegConfirmPassword(e.target.value)}
+            />
+            <Input
+              label={t('auth.accessCode')}
+              required
+              hint={t('auth.accessCodeHint')}
+              className="font-mono tracking-wider"
+              value={regCode}
+              onChange={(e) => setRegCode(e.target.value.toUpperCase())}
+            />
 
-                <input 
-                    type="text" 
-                    placeholder="Access Code (Provided by Developers)" 
-                    required 
-                    className="w-full border p-3 rounded-lg bg-gray-50"
-                    value={regCode}
-                    onChange={(e) => setRegCode(e.target.value)}
-                />
-                {regError && <p className="text-red-500 text-sm">{regError}</p>}
-                <button type="submit" disabled={loading} className="w-full bg-secondary hover:bg-amber-600 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50">
-                    {loading ? 'Creating...' : 'Create Account'}
-                </button>
-                <div className="text-center mt-4">
-                    <button type="button" onClick={() => setIsRegistering(false)} className="text-primary text-sm hover:underline">Back to Login</button>
-                </div>
-            </form>
+            {regError && (
+              <p role="alert" className="text-caption text-danger">
+                {regError}
+              </p>
+            )}
+
+            <Button type="submit" variant="primary" size="lg" fullWidth loading={loading} className="mt-2">
+              {t('auth.createAccount')}
+            </Button>
+            <Button type="button" variant="link" size="sm" onClick={() => setIsRegistering(false)}>
+              {t('auth.backToSignIn')}
+            </Button>
+          </form>
         ) : (
-            <form onSubmit={handleLogin} className="space-y-4">
-                <div className="text-sm text-gray-500 mb-2 bg-blue-50 p-2 rounded">
-                    <p className="font-bold">Demo Credentials (Password: "password"):</p>
-                    <p>Admin: admin@buildright.cm</p>
-                    <p>Contractor: contact@btpcameroun.cm</p>
-                    <p>Dev: dev@buildright.cm</p>
-                </div>
-                <input 
-                    type="email" 
-                    placeholder="Email" 
-                    className="w-full border p-3 rounded-lg" 
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <Input
+              label={t('auth.email')}
+              type="email"
+              autoComplete="email"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+            />
+
+            <Field label={t('auth.password')} htmlFor="login-password">
+              <div className="relative">
+                <input
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="h-10 w-full rounded-sm border border-input bg-canvas px-3 pr-10 text-body text-fg dark:bg-sunken"
                 />
-                <div className="relative">
-                    <input 
-                        type={showPassword ? "text" : "password"} 
-                        placeholder="Password" 
-                        className="w-full border p-3 rounded-lg pr-10" 
-                        value={loginPassword}
-                        onChange={(e) => setLoginPassword(e.target.value)}
-                    />
-                    <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-                    >
-                        <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                    </button>
-                </div>
-                <button type="submit" disabled={loading} className="w-full bg-primary hover:bg-sky-600 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50">
-                    {loading ? 'Signing In...' : 'Sign In'}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={t(showPassword ? 'auth.hidePassword' : 'auth.showPassword')}
+                  aria-pressed={showPassword}
+                  className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-xs text-fg-tertiary hover:text-fg"
+                >
+                  <i className={showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'} aria-hidden="true" />
                 </button>
-                <div className="text-center mt-4">
-                    <button type="button" onClick={() => setIsRegistering(true)} className="text-primary text-sm hover:underline">I have an access code</button>
-                </div>
-            </form>
+              </div>
+            </Field>
+
+            <Button type="submit" variant="primary" size="lg" fullWidth loading={loading} className="mt-2">
+              {t('auth.signIn')}
+            </Button>
+            <Button type="button" variant="link" size="sm" onClick={() => setIsRegistering(true)}>
+              {t('auth.haveCode')}
+            </Button>
+          </form>
         )}
-      </div>
+      </Card>
+
+      <details className="mt-6 rounded-lg border border-line bg-surface p-4">
+        <summary className="cursor-pointer text-caption font-medium text-fg-secondary">
+          {t('auth.demoAccounts')}
+        </summary>
+        <ul className="mt-3 flex flex-col gap-1 text-caption text-fg-tertiary">
+          <li>Administrator: admin@buildright.cm</li>
+          <li>Contractor: contact@btpcameroun.cm</li>
+          <li>Developer: dev@buildright.cm</li>
+          <li className="mt-1">Password for all three: password</li>
+        </ul>
+      </details>
+
+      <p className="mt-8 text-center text-caption text-fg-tertiary">
+        {t('auth.lookingForInfo')}{' '}
+        <Link to="/projects" className="text-accent hover:underline">
+          {t('auth.browseWithoutAccount')}
+        </Link>
+      </p>
     </div>
   );
 };

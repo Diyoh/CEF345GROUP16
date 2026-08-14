@@ -1,4 +1,6 @@
+import { randomUUID } from 'crypto';
 import pool from '../config/db.js';
+import { saveBase64Image } from '../utils/fileHandler.js';
 
 export const getTeam = async (req, res) => {
     try {
@@ -9,12 +11,17 @@ export const getTeam = async (req, res) => {
     }
 };
 
-import { saveBase64Image } from '../utils/fileHandler.js';
-
 export const createTeamMember = async (req, res) => {
     try {
         const { name, role, bio } = req.body;
-        
+
+        if (!String(name || '').trim()) {
+            return res.status(400).json({ success: false, error: 'Name is required' });
+        }
+        if (!String(role || '').trim()) {
+            return res.status(400).json({ success: false, error: 'Role is required' });
+        }
+
         let imageUrl = '';
         if (req.file) {
             imageUrl = req.file.path;
@@ -22,18 +29,17 @@ export const createTeamMember = async (req, res) => {
             imageUrl = await saveBase64Image(req.body.imageUrl, 'team');
         }
 
-        const [result] = await pool.query(
-            'INSERT INTO team_members (id, name, role, bio, image_url) VALUES (UUID(), ?, ?, ?, ?)',
-            [name, role, bio, imageUrl]
+        // Generating the id here removes the old read-back query, which sorted by a
+        // `created_at` column that team_members does not have.
+        const id = randomUUID();
+
+        await pool.query(
+            'INSERT INTO team_members (id, name, role, bio, image_url) VALUES (?, ?, ?, ?, ?)',
+            [id, name, role, bio || null, imageUrl]
         );
-        
-        // Fetch the created member to return
-        const [rows] = await pool.query('SELECT * FROM team_members WHERE name = ? ORDER BY created_at DESC LIMIT 1', [name]); // Ideally user ID or UUID if we had it from insert (MySQL UUID() makes this tricky without a stored function or querying back)
-        // Actually, for UUID(), we often generate it in JS or just query back. 
-        // Simple fix: just return success, client re-fetches. OR generate UUID in JS.
-        // Let's rely on client re-fetch or optimistically add.
-        
-        res.status(201).json({ success: true, message: 'Team member added' });
+
+        const [rows] = await pool.query('SELECT * FROM team_members WHERE id = ?', [id]);
+        res.status(201).json({ success: true, data: rows[0] });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, error: 'Server Error' });

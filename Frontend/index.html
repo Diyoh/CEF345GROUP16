@@ -4,26 +4,34 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BuildRight - Infrastructure Transparency</title>
+    <meta
+      name="description"
+      content="Track public infrastructure projects across Cameroon: progress, budget spent, status, photos and citizen reports."
+    />
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0E1613" media="(prefers-color-scheme: dark)" />
+
+    <!-- Applies the stored theme before first paint so the page never flashes the
+         wrong background. Must stay inline and blocking for that reason. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('br-theme');
+          var dark = stored ? stored === 'dark'
+            : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- TODO(phase5): replaced by the local SVG sprite once every icon call site is
+         migrated. Kept until then so the 31 icons currently in use keep rendering. -->
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
-    <script type="importmap">
-      {
-        "imports": {
-          "react": "https://aistudiocdn.com/react@^19.2.0",
-          "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-          "react/": "https://aistudiocdn.com/react@^19.2.0/",
-          "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.6",
-          "vite": "https://aistudiocdn.com/vite@^7.2.6",
-          "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-          "recharts": "https://aistudiocdn.com/recharts@^3.5.1"
-        }
-      }
-    </script>
-    <link rel="stylesheet" href="/index.css" />
   </head>
-  <body class="bg-gray-50 text-gray-900 font-sans antialiased">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/index.jsx"></script>
   </body>

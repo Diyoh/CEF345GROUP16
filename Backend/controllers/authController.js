@@ -3,9 +3,10 @@
  * Handles logic for user registration, login, and profile fetching.
  */
 
-import pool from '../config/db.js';
+import pool, { withTransaction } from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { AppError, sendError } from '../utils/AppError.js';
 
 /**
  * Helper function to generate a JSON Web Token (JWT)
@@ -51,61 +52,81 @@ export const register = async (req, res) => {
     }
 
     try {
-        const [codes] = await pool.query('SELECT * FROM access_codes WHERE code = ? AND is_used = FALSE', [accessCode]);
-        
-        if (codes.length === 0) {
-            return res.status(400).json({ success: false, error: 'Invalid or used access code' });
-        }
+        /**
+         * Claiming a code, creating the user and burning the code are ONE unit.
+         *
+         * Two problems this closes:
+         *  1. Non-atomic writes — a failure between INSERT user and UPDATE access_codes left
+         *     a spent code still marked available, so the same grant could be claimed twice.
+         *  2. A check-then-act race — two people submitting the same code at once both saw
+         *     is_used = FALSE and both registered. SELECT ... FOR UPDATE holds a row lock for
+         *     the length of the transaction, so the second request waits and then correctly
+         *     sees the code as used.
+         *
+         * The id counter has the same shape of race, and the same lock serialises it.
+         */
+        const newUser = await withTransaction(async (tx) => {
+            const [codes] = await tx.query(
+                'SELECT * FROM access_codes WHERE code = ? AND is_used = FALSE FOR UPDATE',
+                [accessCode]
+            );
 
-        const role = codes[0].role;
-        const [users] = await pool.query('SELECT email FROM users WHERE email = ?', [email]);
-        if (users.length > 0) {
-            return res.status(400).json({ success: false, error: 'User already exists' });
-        }
-
-        const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash(password, salt);
-
-        // [CUSTOM ID GENERATION]
-        // Format: dev1, con1, adm1
-        let prefix = 'user';
-        if (role === 'DEVELOPER_ADMIN') prefix = 'dev';
-        else if (role === 'CONTRACTOR') prefix = 'con';
-        else if (role === 'ADMIN') prefix = 'adm';
-
-        // Find the latest ID with this prefix to determine the next number
-        // We look for IDs starting with the prefix and order by length (to handle dev9 vs dev10) and then value
-        const [lastUser] = await pool.query(
-            `SELECT id FROM users WHERE id LIKE ? ORDER BY LENGTH(id) DESC, id DESC LIMIT 1`, 
-            [`${prefix}%`]
-        );
-
-        let nextId = `${prefix}1`; // Default if none exist
-
-        if (lastUser.length > 0) {
-            const lastId = lastUser[0].id;
-            // Extract the number part: 'dev12' -> 12
-            const numberPart = parseInt(lastId.replace(prefix, ''));
-            if (!isNaN(numberPart)) {
-                nextId = `${prefix}${numberPart + 1}`;
+            if (codes.length === 0) {
+                throw new AppError('Invalid or used access code', 400);
             }
-        }
 
-        await pool.query(
-            'INSERT INTO users (id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)',
-            [nextId, name, email, passwordHash, role]
-        );
+            const role = codes[0].role;
 
-        await pool.query('UPDATE access_codes SET is_used = TRUE WHERE code = ?', [accessCode]);
+            const [users] = await tx.query('SELECT email FROM users WHERE email = ?', [email]);
+            if (users.length > 0) {
+                throw new AppError('User already exists', 400);
+            }
 
-        const [newUser] = await pool.query('SELECT id, name, email, role FROM users WHERE email = ?', [email]);
-        
+            assertPasswordAcceptable(password);
+
+            const salt = await bcrypt.genSalt(10);
+            const passwordHash = await bcrypt.hash(password, salt);
+
+            // [CUSTOM ID GENERATION]
+            // Format: dev1, con1, adm1
+            let prefix = 'user';
+            if (role === 'DEVELOPER_ADMIN') prefix = 'dev';
+            else if (role === 'CONTRACTOR') prefix = 'con';
+            else if (role === 'ADMIN') prefix = 'adm';
+
+            // Find the latest ID with this prefix to determine the next number.
+            // Ordered by length first so dev10 sorts after dev9 rather than before it.
+            const [lastUser] = await tx.query(
+                `SELECT id FROM users WHERE id LIKE ? ORDER BY LENGTH(id) DESC, id DESC LIMIT 1`,
+                [`${prefix}%`]
+            );
+
+            let nextId = `${prefix}1`; // Default if none exist
+
+            if (lastUser.length > 0) {
+                const lastId = lastUser[0].id;
+                // Extract the number part: 'dev12' -> 12
+                const numberPart = parseInt(lastId.replace(prefix, ''));
+                if (!isNaN(numberPart)) {
+                    nextId = `${prefix}${numberPart + 1}`;
+                }
+            }
+
+            await tx.query(
+                'INSERT INTO users (id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)',
+                [nextId, name, email, passwordHash, role]
+            );
+
+            await tx.query('UPDATE access_codes SET is_used = TRUE WHERE code = ?', [accessCode]);
+
+            return { id: nextId, name, email, role };
+        });
+
         // Return Cookie
-        sendTokenResponse(newUser[0], 201, res);
+        sendTokenResponse(newUser, 201, res);
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, error: 'Server Error' });
+        sendError(res, error);
     }
 };
 
@@ -161,10 +182,35 @@ export const getMe = async (req, res) => {
     });
 };
 
+/**
+ * Minimum password policy, enforced server-side.
+ *
+ * The frontend checked 6 characters on the registration form only, and the API checked
+ * nothing at all — so the change-password endpoint accepted a single character, and any
+ * non-browser client could set anything. These accounts can alter the public spending
+ * record, so the floor belongs on the server where it cannot be bypassed.
+ *
+ * Length over composition rules: mandatory symbol classes push people toward predictable
+ * substitutions, while length is what actually resists guessing.
+ */
+const MIN_PASSWORD_LENGTH = 8;
+
+const assertPasswordAcceptable = (password) => {
+    const value = String(password || '');
+    if (value.length < MIN_PASSWORD_LENGTH) {
+        throw new AppError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`, 400);
+    }
+    if (/^\s+$/.test(value)) {
+        throw new AppError('Password cannot be only spaces', 400);
+    }
+};
+
 export const changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
-        
+
+        assertPasswordAcceptable(newPassword);
+
         // 1. Get user with password hash
         const [users] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
         if (users.length === 0) return res.status(404).json({ success: false, error: 'User not found' });
@@ -187,7 +233,8 @@ export const changePassword = async (req, res) => {
         res.json({ success: true, message: 'Password updated successfully' });
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, error: 'Server Error' });
+        // sendError maps AppError (the policy rejection above) to its own status; anything
+        // unexpected still becomes a logged 500.
+        sendError(res, error);
     }
 };

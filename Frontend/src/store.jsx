@@ -15,7 +15,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api } from './api';
+import { api, SOCKET_URL } from './api';
 
 export const AppContext = createContext(undefined);
 
@@ -39,7 +39,9 @@ export const AppProvider = ({ children }) => {
 
         // Import dynamically to avoid SSR issues if we were using Next.js (good practice)
         import('socket.io-client').then(({ io }) => {
-            socket = io('http://localhost:5000', {
+            // Derived from the same env var as the REST API, so real-time keeps
+            // working in deployed builds instead of pointing at the developer's machine.
+            socket = io(SOCKET_URL, {
                 withCredentials: true,
             });
 
@@ -191,16 +193,30 @@ export const AppProvider = ({ children }) => {
     };
 
     const updateProject = async (optimisticProject, apiData = null) => {
+        // Keep the pre-update row so a rejected request can be rolled back. Without this
+        // the UI kept showing values the server refused to store — the most damaging
+        // failure mode in a product whose only job is to display trustworthy figures.
+        const previous = projects.find(p => p.id === optimisticProject.id);
+
         try {
             setProjects(prev => prev.map(p => p.id === optimisticProject.id ? optimisticProject : p));
             // Use apiData (FormData) if provided, otherwise JSON object
             const res = await api.updateProject(optimisticProject.id, apiData || optimisticProject);
-            
-            if (res.success) return { success: true };
-            else return { success: false, error: res.error };
 
-        } catch (err) { 
-            console.error("Update failed", err); 
+            if (res.success) {
+                // Replace the optimistic guess with what the server actually stored.
+                if (res.data) {
+                    setProjects(prev => prev.map(p => p.id === res.data.id ? { ...p, ...res.data } : p));
+                }
+                return { success: true };
+            }
+
+            if (previous) setProjects(prev => prev.map(p => p.id === previous.id ? previous : p));
+            return { success: false, error: res.error };
+
+        } catch (err) {
+            console.error("Update failed", err);
+            if (previous) setProjects(prev => prev.map(p => p.id === previous.id ? previous : p));
             return { success: false, error: err.message };
         }
     };
@@ -242,11 +258,64 @@ export const AppProvider = ({ children }) => {
         }
     };
 
+    /**
+     * addProjectUpdate
+     * Appends a dated note to a project's public timeline (project_updates).
+     *
+     * This is the audit trail — the record of how a project reached its current numbers,
+     * which is the part a citizen or auditor can actually argue with. The endpoint and the
+     * table existed from the start; nothing ever called them, so the history rendered on
+     * every project page was only ever seed data.
+     */
+    const addProjectUpdate = async (projectId, message, date) => {
+        try {
+            const res = await api.addGlobalUpdate(projectId, { message, date });
+
+            if (res.success) {
+                // The server returns the full project including its updates, so the
+                // timeline is correct without a refetch.
+                if (res.data) {
+                    setProjects(prev => prev.map(p => p.id === res.data.id ? { ...p, ...res.data } : p));
+                }
+                return { success: true };
+            }
+            return { success: false, error: res.error };
+
+        } catch (err) {
+            console.error('Timeline update failed', err);
+            return { success: false, error: err.message };
+        }
+    };
+
     const deleteProject = async (id) => {
+        // Restore the row if the server refuses. Previously the project vanished from the
+        // UI and survived in the database, so it reappeared on the next reload.
+        const previous = projects.find(p => p.id === id);
+        const index = projects.findIndex(p => p.id === id);
+
         try {
             setProjects(prev => prev.filter(p => p.id !== id));
-            await api.deleteProject(id);
-        } catch (err) {console.error(err);}
+            const res = await api.deleteProject(id);
+
+            if (!res?.success) {
+                if (previous) setProjects(prev => {
+                    const next = [...prev];
+                    next.splice(Math.max(index, 0), 0, previous);
+                    return next;
+                });
+                return { success: false, error: res?.error || 'Delete failed' };
+            }
+            return { success: true };
+
+        } catch (err) {
+            console.error(err);
+            if (previous) setProjects(prev => {
+                const next = [...prev];
+                next.splice(Math.max(index, 0), 0, previous);
+                return next;
+            });
+            return { success: false, error: err.message };
+        }
     };
 
     const updateTeamMember = async (updatedMember) => {
@@ -277,6 +346,34 @@ export const AppProvider = ({ children }) => {
                 setAccessCodes(prev => [...prev, { ...res.data, isUsed: false, generatedBy: user.name }]);
             }
         } catch (err) {console.error(err);}
+    };
+
+    /**
+     * fetchProject
+     * Loads one project in full: images, narrative updates AND the change log.
+     *
+     * The list endpoint returns neither `updates` nor `changes`, so a detail page rendered
+     * purely from the boot fetch shows an empty history. It also only ever held the first
+     * 100 projects, so a deep link to anything beyond that rendered "Project not found".
+     * Fetching by id fixes both.
+     */
+    const fetchProject = async (projectId) => {
+        try {
+            const res = await api.getProjectById(projectId);
+            if (!res.success) return { success: false, error: res.error };
+
+            setProjects(prev => {
+                const exists = prev.some(p => p.id === res.data.id);
+                return exists
+                    ? prev.map(p => (p.id === res.data.id ? { ...p, ...res.data } : p))
+                    : [res.data, ...prev];
+            });
+
+            return { success: true };
+        } catch (err) {
+            console.error('Project detail fetch failed', err);
+            return { success: false, error: err.message };
+        }
     };
 
     const fetchProjectComments = async (projectId) => {
@@ -316,8 +413,8 @@ export const AppProvider = ({ children }) => {
             user, projects, teamMembers, comments, accessCodes, contractors,
             loading, error, authChecked,
             login, logout, register, changePassword,
-            updateProject, updateTeamMember, addProject, deleteProject,
-            addComment, deleteComment, generateAccessCode, fetchProjectComments,
+            updateProject, updateTeamMember, addProject, deleteProject, addProjectUpdate,
+            addComment, deleteComment, generateAccessCode, fetchProjectComments, fetchProject,
             fetchContractors, fetchContractorStats
         }}>
             {children}

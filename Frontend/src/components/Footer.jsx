@@ -1,40 +1,103 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useAppStore } from '../useAppStore';
+import { formatDate } from '../utils/helpers';
+import { useT } from '../i18n';
 
+/**
+ * Footer. Spec: docs/design/03-components.md section 13.
+ *
+ * The provenance block answers "where does this data come from and how current is it" in
+ * the same place on every page, which buys more trust than any visual treatment.
+ *
+ * Corrections after seeing it rendered:
+ *  - "Last updated" now reads the newest project timestamp instead of printing today's
+ *    date. Rendering new Date() there claimed the record was updated today whether or not
+ *    anything changed, which is exactly the kind of small overstatement a transparency
+ *    product cannot afford in the block whose entire job is provenance.
+ *  - The label/value pairs were justify-between across a 480px column, which stranded the
+ *    value at the far right with a void in the middle and broke the association between
+ *    them. They are stacked now.
+ *  - The three columns were equal thirds while the content was nothing like equal, so the
+ *    short link list held as much width as the provenance table. The grid is now weighted
+ *    to the content.
+ */
 export const Footer = () => {
-    return (
-        <footer className="bg-primary text-white py-12 mt-auto border-t-8 border-accent relative">
-            <div className="container mx-auto px-4 text-center">
-                <div className="flex justify-center items-center gap-2 mb-6">
-                    <div className="bg-white p-2 rounded-full shadow-lg">
-                        <i className="fas fa-building text-2xl text-primary"></i>
-                    </div>
-                    <span className="text-2xl font-extrabold text-white tracking-wide">
-                        BuildRight<span className="text-accent">.cm</span>
-                    </span>
-                </div>
+  const t = useT();
+  const { projects } = useAppStore();
 
-                <p className="mb-8 text-sm text-green-50 max-w-lg mx-auto leading-relaxed">
-                    Promoting transparency, accountability, and citizen engagement in public infrastructure across Cameroon.
-                </p>
+  const lastUpdated = useMemo(() => {
+    const stamps = (projects || [])
+      .map((p) => p.updatedAt || p.updated_at)
+      .filter(Boolean)
+      .map((d) => new Date(d).getTime())
+      .filter((t) => !Number.isNaN(t));
+    return stamps.length > 0 ? new Date(Math.max(...stamps)) : null;
+  }, [projects]);
 
-                <div className="flex flex-wrap justify-center gap-8 mb-10 text-sm font-bold tracking-wide">
-                    <Link to="/" className="hover:text-accent transition-colors">PROJECTS</Link>
-                    <Link to="/developers" className="hover:text-accent transition-colors">OUR TEAM</Link>
-                    <Link to="/login" className="hover:text-accent transition-colors">PORTAL LOGIN</Link>
-                    <a href="#" className="hover:text-accent transition-colors">PRIVACY</a>
-                </div>
+  return (
+    <footer className="mt-auto border-t border-line bg-surface">
+      <div className="mx-auto grid max-w-content gap-10 px-4 py-12 md:grid-cols-[1.3fr_0.7fr_1fr] md:gap-12 md:px-8">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent-fill text-accent-fg">
+              <i className="fas fa-helmet-safety" aria-hidden="true" />
+            </span>
+            <span className="text-body font-semibold text-fg">BuildRight Cameroon</span>
+          </div>
+          <p className="mt-4 max-w-[42ch] text-caption leading-relaxed text-fg-tertiary">
+            {t('footerX.blurb')}
+          </p>
+        </div>
 
-                <div className="border-t border-white/20 pt-8 text-xs text-green-100 flex flex-col items-center gap-2">
-                    <div className="flex gap-4 mb-2">
-                        <i className="fab fa-facebook hover:text-accent cursor-pointer text-lg"></i>
-                        <i className="fab fa-twitter hover:text-accent cursor-pointer text-lg"></i>
-                        <i className="fab fa-linkedin hover:text-accent cursor-pointer text-lg"></i>
-                    </div>
-                    <p>&copy; 2025 BuildRight Group 16. All rights reserved.</p>
-                    <p className="font-medium">Building the Future of <span className="text-accent">Cameroon</span>.</p>
-                </div>
+        <nav aria-label={t('footerX.browse')}>
+          <h2 className="text-overline uppercase text-fg-tertiary">{t('footerX.browse')}</h2>
+          <ul className="mt-4 flex flex-col gap-2.5 text-caption">
+            <li>
+              <Link to="/projects" className="text-fg-secondary hover:text-fg">
+                {t('footerX.allProjects')}
+              </Link>
+            </li>
+            <li>
+              <Link to="/developers" className="text-fg-secondary hover:text-fg">
+                {t('footerX.aboutTeam')}
+              </Link>
+            </li>
+            <li>
+              <Link to="/login" className="text-fg-secondary hover:text-fg">
+                {t('auth.staffSignIn')}
+              </Link>
+            </li>
+          </ul>
+        </nav>
+
+        <div>
+          <h2 className="text-overline uppercase text-fg-tertiary">{t('footerX.provenance')}</h2>
+          <dl className="mt-4 flex flex-col gap-3 text-caption">
+            <div>
+              <dt className="text-fg-tertiary">{t('footerX.source')}</dt>
+              <dd className="mt-0.5 text-fg-secondary">{t('footerX.sourceValue')}</dd>
             </div>
-        </footer>
-    );
+            <div>
+              <dt className="text-fg-tertiary">{t('footerX.lastUpdated')}</dt>
+              <dd className="tabular mt-0.5 text-fg-secondary">
+                {lastUpdated ? formatDate(lastUpdated) : t('footerX.notRecorded')}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-fg-tertiary">{t('footerX.figuresIn')}</dt>
+              <dd className="mt-0.5 text-fg-secondary">FCFA</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <div className="border-t border-line-subtle">
+        <div className="mx-auto flex max-w-content flex-col gap-2 px-4 py-5 text-caption text-fg-tertiary sm:flex-row sm:items-center sm:justify-between md:px-8">
+          <p>{t('footerX.rights', { year: new Date().getFullYear() })}</p>
+          <p>{t('footerX.published')}</p>
+        </div>
+      </div>
+    </footer>
+  );
 };

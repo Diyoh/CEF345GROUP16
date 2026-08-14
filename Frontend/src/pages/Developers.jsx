@@ -1,30 +1,55 @@
 import React from 'react';
 import { useAppStore } from '../useAppStore';
+import { Card, EmptyState } from '../components/ui';
+import { useT } from '../i18n';
 
+/**
+ * About. Renamed from "Developers" in the navigation: to a citizen that word reads as an
+ * API portal and to a contractor it reads as a construction firm, while the page is a
+ * team page. The route is unchanged so no existing link breaks.
+ */
 export const Developers = () => {
-    const { teamMembers } = useAppStore();
+  const t = useT();
+  const { teamMembers } = useAppStore();
 
-    return (
-        <div className="container mx-auto px-4 py-12">
-            <div className="text-center mb-12">
-                <h1 className="text-4xl font-bold text-dark mb-4">Meet the Team</h1>
-                <p className="text-gray-500 max-w-2xl mx-auto">
-                    The dedicated individuals behind BuildRight, working to bring transparency to infrastructure development.
-                </p>
-            </div>
+  return (
+    <div className="mx-auto max-w-content px-4 py-12 md:px-8 md:py-16">
+      <header className="max-w-prose border-b border-line pb-8">
+        <p className="text-overline uppercase text-fg-tertiary">{t('project.aboutTitle')}</p>
+        <h1 className="mt-3 font-serif text-h1 text-fg">{t('project.aboutLead')}</h1>
+        <p className="mt-4 text-body-lg text-fg-secondary">
+          BuildRight publishes what public infrastructure projects cost, who is building them, and how far
+          along they are, so that anyone can check the record for themselves.
+        </p>
+      </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {teamMembers.map(member => (
-                    <div key={member.id} className="bg-white rounded-xl shadow-sm p-6 text-center border border-gray-100 hover:shadow-md transition-all">
-                        <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden border-4 border-gray-50">
-                            <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-900">{member.name}</h3>
-                        <span className="text-primary text-sm font-medium block mb-3">{member.role}</span>
-                        <p className="text-gray-600 text-sm">{member.bio}</p>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
+      {teamMembers.length === 0 ? (
+        <EmptyState className="mt-12" icon="fa-users" title={t('project.noTeam')} />
+      ) : (
+        <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {teamMembers.map((member) => (
+            <li key={member.id}>
+              <Card padding="lg" className="h-full">
+                <div className="flex items-center gap-4">
+                  <img
+                    src={member.imageUrl}
+                    alt=""
+                    width="64"
+                    height="64"
+                    loading="lazy"
+                    className="h-16 w-16 shrink-0 rounded-full border border-line object-cover"
+                  />
+                  <div className="min-w-0">
+                    <h2 className="text-h3 text-fg">{member.name}</h2>
+                    <p className="text-caption text-accent">{member.role}</p>
+                  </div>
+                </div>
+                {member.bio && <p className="mt-4 text-body text-fg-secondary">{member.bio}</p>}
+              </Card>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 };

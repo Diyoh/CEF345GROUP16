@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import pool from '../config/db.js';
 import { saveBase64Image } from '../utils/fileHandler.js';
 
@@ -6,9 +7,21 @@ export const getComments = async (req, res) => {
         const projectId = req.params.id;
         const [comments] = await pool.query('SELECT * FROM comments WHERE project_id = ? ORDER BY created_at DESC', [projectId]);
 
-        for (let c of comments) {
-            const [images] = await pool.query('SELECT image_url FROM comment_images WHERE comment_id = ?', [c.id]);
-            c.images = images.map(img => img.image_url);
+        // Load every comment's images in ONE query rather than one query per comment.
+        if (comments.length > 0) {
+            const ids = comments.map(c => c.id);
+            const [rows] = await pool.query(
+                `SELECT comment_id, image_url FROM comment_images WHERE comment_id IN (${ids.map(() => '?').join(',')})`,
+                ids
+            );
+
+            const imagesByComment = new Map();
+            for (const row of rows) {
+                if (!imagesByComment.has(row.comment_id)) imagesByComment.set(row.comment_id, []);
+                imagesByComment.get(row.comment_id).push(row.image_url);
+            }
+
+            for (const c of comments) c.images = imagesByComment.get(c.id) || [];
         }
 
         res.json({ success: true, data: comments });
@@ -21,35 +34,46 @@ export const getComments = async (req, res) => {
 export const createComment = async (req, res) => {
     try {
         const projectId = req.params.id;
-        const { authorName, authorType, text, images } = req.body;
+        // authorName is deliberately NOT read from the request. Citizen reports are
+        // anonymous: collecting no name means there is none to leak, and it removes the
+        // impersonation vector where an unauthenticated caller could file a report under
+        // anyone's name. See Database/migrations/002_anonymous_citizen_reports.sql.
+        const { authorType, text, images } = req.body;
 
-        // 1. Insert Comment
-        // Note: Using UUID() in SQL means we need to fetch the ID back.
-        // Alternate: Generate UUID in Node.
-        // For now, insert and fetch latest by author/time is approximation or just trust the flow.
+        if (!String(text || '').trim()) {
+            return res.status(400).json({ success: false, error: 'Comment text is required' });
+        }
+
+        const [projects] = await pool.query('SELECT id FROM projects WHERE id = ?', [projectId]);
+        if (projects.length === 0) {
+            return res.status(404).json({ success: false, error: 'Project not found' });
+        }
+
+        // Generate the id in Node instead of with SQL UUID(). The old code inserted the
+        // row and then re-SELECTed "the newest comment by this author" to learn its id,
+        // which attaches images to the WRONG comment whenever two people post under the
+        // same name at the same time — and comments are unauthenticated, so names repeat.
+        const commentId = randomUUID();
+
         await pool.query(
-            'INSERT INTO comments (id, project_id, author_name, author_type, text) VALUES (UUID(), ?, ?, ?, ?)',
-            [projectId, authorName, authorType, text]
+            'INSERT INTO comments (id, project_id, author_name, author_type, text) VALUES (?, ?, ?, ?, ?)',
+            [commentId, projectId, null, authorType === 'NGO' ? 'NGO' : 'Citizen', text]
         );
 
-        // Fetch back the new ID
-        const [result] = await pool.query('SELECT id FROM comments WHERE project_id = ? AND author_name = ? ORDER BY created_at DESC LIMIT 1', [projectId, authorName]);
-        const commentId = result[0].id;
-
-        // 2. Handle Images
-        if (images && images.length > 0) {
+        if (Array.isArray(images) && images.length > 0) {
             for (const imgBase64 of images) {
                 const imageUrl = await saveBase64Image(imgBase64, 'comments');
                 if (imageUrl) {
                     await pool.query(
-                        'INSERT INTO comment_images (comment_id, image_url) VALUES (?, ?)',
-                        [commentId, imageUrl]
+                        'INSERT INTO comment_images (id, comment_id, image_url) VALUES (?, ?, ?)',
+                        [randomUUID(), commentId, imageUrl]
                     );
                 }
             }
         }
 
-        res.status(201).json({ success: true, message: 'Comment added' });
+        const [rows] = await pool.query('SELECT * FROM comments WHERE id = ?', [commentId]);
+        res.status(201).json({ success: true, data: rows[0] });
 
     } catch (error) {
         console.error(error);

@@ -14,6 +14,37 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
+/**
+ * SOCKET_URL
+ * Socket.io connects to the server ROOT, not to the /api/v1 prefix, so we strip the
+ * API path off BASE_URL. Deriving it means there is one URL to configure, and the
+ * real-time connection can never be left pointing at localhost in a deployed build.
+ * Override explicitly with VITE_SOCKET_URL if the socket lives elsewhere.
+ */
+export const SOCKET_URL =
+    import.meta.env.VITE_SOCKET_URL || BASE_URL.replace(/\/api\/v1\/?$/, '');
+
+/**
+ * PUBLIC_API_URL
+ * The open, uncredentialed dataset. Separate from the app API because it is a published
+ * contract other people's code depends on — snake_case fields, no auth, any origin.
+ */
+export const PUBLIC_API_URL = `${BASE_URL}/public`;
+
+/**
+ * csvExportUrl
+ * Builds a download link carrying the user's current filters, so what they export is what
+ * they were looking at rather than the whole register.
+ */
+export const csvExportUrl = (filters = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+        if (value && value !== 'All') params.set(key, value);
+    });
+    const query = params.toString();
+    return `${PUBLIC_API_URL}/projects.csv${query ? `?${query}` : ''}`;
+};
+
 // Standard headers for sending JSON data
 const DEFAULT_HEADERS = {
     'Content-Type': 'application/json'
@@ -90,6 +121,11 @@ export const api = {
 
     updateProject: async (id, data) => {
         const res = await fetch(`${BASE_URL}/projects/${id}`, getOptions('PATCH', data));
+        return await res.json();
+    },
+
+    deleteProject: async (id) => {
+        const res = await fetch(`${BASE_URL}/projects/${id}`, getOptions('DELETE'));
         return await res.json();
     },
 

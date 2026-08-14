@@ -1,123 +1,179 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
 import { UserRole } from '../types';
+import { Button, cn } from './ui';
+import { ThemeToggle } from './ThemeToggle';
+import { LanguageToggle } from './LanguageToggle';
+import { useT } from '../i18n';
+
+/**
+ * Navbar. Spec: docs/design/03-components.md section 11.
+ *
+ * The saturated green bar and 4px yellow border are gone. A saturated bar across the top
+ * of every page spends the loudest colour in the system on chrome, which leaves nothing
+ * louder for the data. Green now lives in the wordmark and the accent; yellow is retired
+ * from chrome entirely and reserved for the "delayed" status.
+ *
+ * Login is demoted from a yellow filled button to a quiet link: roughly one visitor in a
+ * thousand signs in, and the strongest affordance on the page belongs to the primary task.
+ *
+ * The mobile menu gains what it did not have: focus trap, aria-expanded, Escape to close,
+ * scroll lock, and focus returned to the trigger.
+ */
+
+const DASHBOARD_BY_ROLE = {
+  [UserRole.ADMIN]: { to: '/admin', labelKey: 'nav.adminDashboard' },
+  [UserRole.CONTRACTOR]: { to: '/contractor', labelKey: 'nav.myProjects' },
+  [UserRole.DEVELOPER_ADMIN]: { to: '/dev-admin', labelKey: 'nav.developerPanel' },
+};
+
+const linkClass = ({ isActive }) =>
+  cn(
+    'relative py-1 text-body font-medium transition-colors duration-instant',
+    isActive
+      ? 'text-fg after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:rounded-full after:bg-accent'
+      : 'text-fg-secondary hover:text-fg'
+  );
 
 export const Navbar = () => {
-    const { user, logout } = useAppStore();
-    const navigate = useNavigate();
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const t = useT();
+  const { user, logout } = useAppStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  const triggerRef = useRef(null);
 
-    const handleLogout = () => {
-        logout();
-        setIsMobileMenuOpen(false);
-        navigate('/');
+  const dashboard = user ? DASHBOARD_BY_ROLE[user.role] : null;
+
+  // Route change closes the menu, so back/forward never leaves it hanging open.
+  useEffect(() => setIsMenuOpen(false), [location.pathname]);
+
+  useEffect(() => {
+    if (!isMenuOpen) return undefined;
+    const { overflow } = document.body.style;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setIsMenuOpen(false);
+        triggerRef.current?.focus();
+      }
     };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = overflow;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isMenuOpen]);
 
-    return (
-        <nav className="bg-primary text-white shadow-md sticky top-0 z-50 border-b-4 border-accent">
-            <div className="container mx-auto px-4 py-3">
-                <div className="flex justify-between items-center">
-                    <Link to="/" className="flex items-center gap-2 group">
-                        {/* Logo Icon using the Yellow Accent */}
-                        <div className="bg-white p-2 rounded-lg group-hover:bg-accent transition-colors text-primary border-2 border-primary">
-                            <i className="fas fa-hard-hat text-xl"></i>
-                        </div>
-                        <div className="flex flex-col leading-none">
-                            <span className="text-xl font-bold tracking-tight text-white">
-                                BuildRight
-                            </span>
-                            <span className="text-xs text-accent font-bold tracking-widest">CAMEROON</span>
-                        </div>
-                    </Link>
+  const handleLogout = () => {
+    logout();
+    setIsMenuOpen(false);
+    navigate('/');
+  };
 
-                    {/* Desktop Menu */}
-                    <div className="hidden md:flex items-center gap-6">
-                        <Link to="/projects" className="hover:text-accent transition-colors font-medium">Projects</Link>
-                        <Link to="/developers" className="hover:text-accent transition-colors font-medium">Developers</Link>
+  return (
+    <header className="sticky top-0 z-40 border-b border-line bg-canvas/95 backdrop-blur supports-[backdrop-filter]:bg-canvas/80">
+      <a href="#main" className="skip-link">
+        {t('nav.skipToContent')}
+      </a>
 
-                        {user ? (
-                            <div className="flex items-center gap-4">
-                                <span className="text-sm bg-white/10 px-3 py-1 rounded-full text-white border border-white/20">
-                                    <i className="fas fa-user-circle mr-2 text-accent"></i>
-                                    {user.name}
-                                </span>
+      <nav aria-label="Primary" className="mx-auto flex h-14 max-w-content items-center justify-between gap-4 px-4 md:h-16 md:px-8">
+        <Link to="/" className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent-fill text-accent-fg">
+            <i className="fas fa-helmet-safety" aria-hidden="true" />
+          </span>
+          <span className="flex flex-col leading-none">
+            <span className="text-body font-semibold tracking-tight text-fg">BuildRight</span>
+            <span className="text-overline uppercase text-fg-tertiary">Cameroon</span>
+          </span>
+        </Link>
 
-                                {user.role === UserRole.ADMIN && (
-                                    <Link to="/admin" className="text-sm hover:text-accent font-medium">Dashboard</Link>
-                                )}
-                                {user.role === UserRole.CONTRACTOR && (
-                                    <Link to="/contractor" className="text-sm hover:text-accent font-medium">Dashboard</Link>
-                                )}
-                                {user.role === UserRole.DEVELOPER_ADMIN && (
-                                    <Link to="/dev-admin" className="text-sm hover:text-accent font-medium">Dashboard</Link>
-                                )}
+        <div className="hidden items-center gap-7 md:flex">
+          <NavLink to="/projects" className={linkClass}>
+            {t('nav.projects')}
+          </NavLink>
+          <NavLink to="/developers" className={linkClass}>
+            {t('nav.about')}
+          </NavLink>
 
-                                <button
-                                    onClick={handleLogout}
-                                    className="text-sm bg-secondary hover:bg-red-700 text-white px-4 py-1.5 rounded-md font-bold shadow-sm transition-colors border border-red-700"
-                                >
-                                    Logout
-                                </button>
-                            </div>
-                        ) : (
-                            <Link
-                                to="/login"
-                                className="bg-accent hover:bg-yellow-400 text-primary px-5 py-2 rounded-md font-bold transition-colors shadow-sm"
-                            >
-                                Login
-                            </Link>
-                        )}
-                    </div>
-
-                    {/* Mobile Menu Button */}
-                    <button
-                        className="md:hidden text-2xl focus:outline-none text-white hover:text-accent"
-                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    >
-                        <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'}`}></i>
-                    </button>
-                </div>
-
-                {/* Mobile Menu Dropdown */}
-                {isMobileMenuOpen && (
-                    <div className="md:hidden mt-4 pb-4 border-t border-white/20 flex flex-col gap-4 pt-4 animate-fade-in">
-                        <Link to="/projects" className="hover:text-accent transition-colors font-medium" onClick={() => setIsMobileMenuOpen(false)}>Projects</Link>
-                        <Link to="/developers" className="hover:text-accent transition-colors font-medium" onClick={() => setIsMobileMenuOpen(false)}>Developers</Link>
-
-                        {user ? (
-                            <>
-                                <div className="text-sm text-gray-200 border-l-2 border-accent pl-3">
-                                    Signed in as: <span className="text-white font-bold">{user.name}</span>
-                                </div>
-                                {user.role === UserRole.ADMIN && (
-                                    <Link to="/admin" className="hover:text-accent font-medium" onClick={() => setIsMobileMenuOpen(false)}>Admin Dashboard</Link>
-                                )}
-                                {user.role === UserRole.CONTRACTOR && (
-                                    <Link to="/contractor" className="hover:text-accent font-medium" onClick={() => setIsMobileMenuOpen(false)}>Contractor Dashboard</Link>
-                                )}
-                                {user.role === UserRole.DEVELOPER_ADMIN && (
-                                    <Link to="/dev-admin" className="hover:text-accent font-medium" onClick={() => setIsMobileMenuOpen(false)}>Developer Dashboard</Link>
-                                )}
-                                <button
-                                    onClick={handleLogout}
-                                    className="bg-secondary hover:bg-red-700 text-white px-4 py-2 rounded text-left w-full font-bold"
-                                >
-                                    Logout
-                                </button>
-                            </>
-                        ) : (
-                            <Link
-                                to="/login"
-                                className="bg-accent hover:bg-yellow-400 text-primary px-4 py-2 rounded-md font-bold text-center"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                            >
-                                Login
-                            </Link>
-                        )}
-                    </div>
+          <div className="ml-1 flex items-center gap-2 border-l border-line pl-5">
+            <LanguageToggle className="mr-1" />
+          <ThemeToggle />
+            {user ? (
+              <>
+                {dashboard && (
+                  <Button as={Link} to={dashboard.to} variant="secondary" size="sm">
+                    {t(dashboard.labelKey)}
+                  </Button>
                 )}
-            </div>
-        </nav>
-    );
+                <Button variant="ghost" size="sm" onClick={handleLogout}>
+                  {t('nav.signOut')}
+                </Button>
+              </>
+            ) : (
+              <Button as={Link} to="/login" variant="ghost" size="sm">
+                Staff sign in
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 md:hidden">
+          <ThemeToggle />
+          <Button
+            ref={triggerRef}
+            variant="ghost"
+            size="md"
+            iconOnly
+            onClick={() => setIsMenuOpen((v) => !v)}
+            aria-expanded={isMenuOpen}
+            aria-controls="mobile-menu"
+            aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+            leadingIcon={<i className={isMenuOpen ? 'fas fa-xmark' : 'fas fa-bars'} aria-hidden="true" />}
+          />
+        </div>
+      </nav>
+
+      {isMenuOpen && (
+        <div
+          id="mobile-menu"
+          ref={menuRef}
+          className="animate-fade-in border-t border-line bg-canvas px-4 py-4 md:hidden"
+        >
+          <div className="flex flex-col gap-1">
+            <NavLink to="/projects" className="rounded-sm px-2 py-3 text-body font-medium text-fg hover:bg-sunken">
+              {t('nav.projects')}
+            </NavLink>
+            <NavLink to="/developers" className="rounded-sm px-2 py-3 text-body font-medium text-fg hover:bg-sunken">
+              {t('nav.about')}
+            </NavLink>
+          </div>
+
+          <div className="mt-4 border-t border-line pt-4">
+            {user ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-caption text-fg-tertiary">
+                  Signed in as <span className="font-medium text-fg">{user.name}</span>
+                </p>
+                {dashboard && (
+                  <Button as={Link} to={dashboard.to} variant="secondary" size="lg" fullWidth>
+                    {t(dashboard.labelKey)}
+                  </Button>
+                )}
+                <Button variant="ghost" size="lg" fullWidth onClick={handleLogout}>
+                  {t('nav.signOut')}
+                </Button>
+              </div>
+            ) : (
+              <Button as={Link} to="/login" variant="secondary" size="lg" fullWidth>
+                Staff sign in
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </header>
+  );
 };

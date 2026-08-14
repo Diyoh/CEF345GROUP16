@@ -47,4 +47,45 @@ pool.getConnection()
         console.error('Database connection failed:', err.message);
     });
 
+/**
+ * withTransaction
+ *
+ * Runs `work` against a single dedicated connection inside a transaction, committing on
+ * success and rolling back on any thrown error. The connection is always released.
+ *
+ * WHY THIS MATTERS HERE:
+ * Several operations write more than one row and are only correct as a unit:
+ *
+ *  - Registration inserts a user AND marks the access code used. A failure between the two
+ *    leaves a spent code still marked available — a second person could claim the same
+ *    ADMIN grant.
+ *  - Creating a project inserts the project AND its images. A Cloudinary or network failure
+ *    mid-loop leaves a published project with a partial photo set, which in a transparency
+ *    product means the public record shows less evidence than was actually submitted.
+ *
+ * Usage:
+ *   await withTransaction(async (tx) => {
+ *       await tx.query('INSERT ...');
+ *       await tx.query('UPDATE ...');
+ *   });
+ *
+ * Pass `tx` down to any helper that writes; a helper that closes over `pool` instead runs
+ * OUTSIDE the transaction and silently defeats it.
+ */
+export const withTransaction = async (work) => {
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.beginTransaction();
+        const result = await work(connection);
+        await connection.commit();
+        return result;
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
+};
+
 export default pool; // Export the pool to be used in controllers

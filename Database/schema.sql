@@ -42,7 +42,14 @@ CREATE TABLE IF NOT EXISTS projects (
     completion_date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (contractor_id) REFERENCES users(id)
+    FOREIGN KEY (contractor_id) REFERENCES users(id),
+
+    -- Query indexes. Mirrored by Database/migrations/001_add_query_indexes.sql for
+    -- databases that already exist. Keep the two in sync.
+    INDEX idx_projects_created_at (created_at DESC),   -- ORDER BY of the main list query
+    INDEX idx_projects_status (status),                 -- status filter + stats counts
+    INDEX idx_projects_region (region),                 -- region filter, public browse
+    INDEX idx_projects_status_created (status, created_at DESC) -- "filtered, newest first"
 );
 
 -- 4. PROJECT IMAGES
@@ -69,7 +76,9 @@ CREATE TABLE IF NOT EXISTS project_updates (
 CREATE TABLE IF NOT EXISTS comments (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     project_id CHAR(36) NOT NULL,
-    author_name VARCHAR(255) NOT NULL,
+    -- Nullable: citizen reports are anonymous. New rows store NULL; rows filed before
+    -- migration 002 keep the name they were submitted under.
+    author_name VARCHAR(255) NULL,
     author_type ENUM('Citizen', 'NGO') DEFAULT 'Citizen',
     text TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -84,7 +93,47 @@ CREATE TABLE IF NOT EXISTS comment_images (
     FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
 );
 
--- 8. TEAM MEMBERS
+-- 8. PROJECT CHANGES (immutable audit log)
+-- Written by the system on every figure change, inside the same transaction as the
+-- change itself. Never updated, never deleted. See migrations/003_project_change_log.sql.
+CREATE TABLE IF NOT EXISTS project_changes (
+    id CHAR(36) PRIMARY KEY,
+    project_id CHAR(36) NOT NULL,
+    -- Denormalised so history still reads correctly after a user is renamed or removed.
+    actor_id CHAR(36),
+    actor_name VARCHAR(255) NOT NULL,
+    actor_role VARCHAR(50) NOT NULL,
+    field VARCHAR(50) NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Deliberately NO foreign key to projects. An ON DELETE CASCADE here meant deleting a
+    -- project erased its entire history, which is the cheapest way to make an inconvenient
+    -- record disappear. Audit rows outlive the project they describe; the deletion itself
+    -- is logged as the final entry. See migrations/004.
+    INDEX idx_changes_project (project_id),
+    INDEX idx_changes_project_time (project_id, changed_at DESC),
+    INDEX idx_changes_actor (actor_id)
+);
+
+-- Append-only enforcement. An audit log that CAN be edited is worse than none: readers
+-- trust it precisely because they assume it cannot be. Written without BEGIN...END so each
+-- trigger is a single statement (see Backend/scripts/migrate.js).
+DROP TRIGGER IF EXISTS project_changes_no_update;
+CREATE TRIGGER project_changes_no_update
+BEFORE UPDATE ON project_changes
+FOR EACH ROW
+SIGNAL SQLSTATE '45000'
+SET MESSAGE_TEXT = 'project_changes is an append-only audit log: rows cannot be modified';
+
+DROP TRIGGER IF EXISTS project_changes_no_delete;
+CREATE TRIGGER project_changes_no_delete
+BEFORE DELETE ON project_changes
+FOR EACH ROW
+SIGNAL SQLSTATE '45000'
+SET MESSAGE_TEXT = 'project_changes is an append-only audit log: rows cannot be deleted';
+
+-- 9. TEAM MEMBERS
 CREATE TABLE IF NOT EXISTS team_members (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     name VARCHAR(255) NOT NULL,

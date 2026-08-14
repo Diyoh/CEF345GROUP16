@@ -1,47 +1,145 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { StatusBadge } from '../StatusBadge';
-import { formatCurrency } from '../../utils/helpers';
+import { Table, THead, TBody, TH, TR, TD, TableEmpty, Button, Meter, Card } from '../ui';
+import { formatMoney, formatRelative } from '../../utils/helpers';
+import { projectHealth } from '../../utils/projectHealth';
+import { useT } from '../../i18n';
 
+/**
+ * Project table. Spec: docs/design/02-ia-ux.md section 7.
+ *
+ * Column priority: Project and Status always; Build vs Spend and Budget from md;
+ * Contractor from lg; Updated from xl. Below md the table becomes a stacked list rather
+ * than a horizontal scroll, because scrolling sideways hides the columns that matter and
+ * destroys the row as a readable unit.
+ */
 export const ProjectTable = ({ projects, onEdit }) => {
+  const t = useT();
+  if (projects.length === 0) {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">
-                        <tr>
-                            <th className="px-6 py-4">Project Title</th>
-                            <th className="px-6 py-4">Contractor</th>
-                            <th className="px-6 py-4">Budget</th>
-                            <th className="px-6 py-4">Status</th>
-                            <th className="px-6 py-4 text-center">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {projects.length === 0 ? (
-                            <tr>
-                                <td colSpan={5} className="text-center py-8 text-gray-500">No projects found.</td>
-                            </tr>
-                        ) : (
-                            projects.map(p => (
-                                <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4 font-medium text-gray-900">{p.title}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">{p.contractorName}</td>
-                                    <td className="px-6 py-4 text-sm font-mono">{formatCurrency(p.budget)}</td>
-                                    <td className="px-6 py-4"><StatusBadge status={p.status} /></td>
-                                    <td className="px-6 py-4 text-center">
-                                        <button
-                                            onClick={() => onEdit(p)}
-                                            className="text-primary hover:text-white hover:bg-primary border border-primary px-3 py-1 rounded text-sm font-medium transition-colors"
-                                        >
-                                            <i className="fas fa-edit mr-1"></i> Edit
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+      <Table caption={t('admin.projects')}>
+        <THead>
+          <TR>
+            <TH>{t('project.tableProject')}</TH>
+          </TR>
+        </THead>
+        <TBody>
+          <TableEmpty colSpan={1}>{t('project.tableNoProjects')}</TableEmpty>
+        </TBody>
+      </Table>
     );
+  }
+
+  return (
+    <>
+      {/* Desktop and tablet */}
+      <div className="hidden md:block">
+        <Table caption={t('project.tableCaption')}>
+          <THead>
+            <TR>
+              <TH width="32%">{t('project.tableProject')}</TH>
+              <TH width="150px">{t('projects.status')}</TH>
+              <TH width="200px">{t('project.tableBuildVsSpend')}</TH>
+              <TH align="right" width="140px">
+                Budget
+              </TH>
+              <TH className="hidden lg:table-cell">{t('projects.contractor')}</TH>
+              <TH className="hidden xl:table-cell">Updated</TH>
+              <TH align="right" width="80px">
+                <span className="sr-only">Actions</span>
+              </TH>
+            </TR>
+          </THead>
+          <TBody>
+            {projects.map((p) => {
+              const health = projectHealth(p);
+              const updatedAt = p.updatedAt || p.updated_at;
+              return (
+                <TR key={p.id}>
+                  <TD className="text-fg">
+                    <Link to={`/project/${p.id}`} className="font-medium text-fg hover:underline">
+                      {p.title}
+                    </Link>
+                    <span className="mt-0.5 block text-caption text-fg-tertiary">
+                      {p.location}
+                      {p.region ? `, ${p.region}` : ''}
+                    </span>
+                  </TD>
+                  <TD>
+                    <StatusBadge project={p} size="sm" />
+                  </TD>
+                  <TD>
+                    <Meter health={health} variant="compact" size="sm" />
+                  </TD>
+                  <TD align="right">
+                    <span className="block text-fg" title={formatMoney(health.budget, 'full')}>
+                      {formatMoney(health.budget, 'compact')}
+                    </span>
+                    <span className="block text-caption text-fg-tertiary">
+                      {formatMoney(health.spent, 'compact')} spent
+                    </span>
+                  </TD>
+                  <TD className="hidden max-w-[180px] truncate lg:table-cell" title={p.contractorName}>
+                    {p.contractorName || 'Unassigned'}
+                  </TD>
+                  <TD className="hidden text-caption text-fg-tertiary xl:table-cell">
+                    {updatedAt ? formatRelative(updatedAt) : 'Not recorded'}
+                  </TD>
+                  <TD align="right">
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      iconOnly
+                      onClick={() => onEdit(p)}
+                      aria-label={`Edit ${p.title}`}
+                      leadingIcon={<i className="fas fa-pen" aria-hidden="true" />}
+                    />
+                  </TD>
+                </TR>
+              );
+            })}
+          </TBody>
+        </Table>
+      </div>
+
+      {/* Mobile: the same hierarchy as a stacked list */}
+      <ul className="flex flex-col gap-3 md:hidden">
+        {projects.map((p) => {
+          const health = projectHealth(p);
+          return (
+            <li key={p.id}>
+              <Card padding="sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link to={`/project/${p.id}`} className="text-body font-medium text-fg hover:underline">
+                      {p.title}
+                    </Link>
+                    <p className="mt-0.5 text-caption text-fg-tertiary">{p.location}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    iconOnly
+                    onClick={() => onEdit(p)}
+                    aria-label={`Edit ${p.title}`}
+                    leadingIcon={<i className="fas fa-pen" aria-hidden="true" />}
+                  />
+                </div>
+                <div className="mt-3">
+                  <StatusBadge project={p} size="sm" />
+                </div>
+                <div className="mt-3">
+                  <Meter health={health} variant="compact" size="md" />
+                </div>
+                <p className="tabular mt-3 border-t border-line-subtle pt-2 text-caption text-fg-tertiary">
+                  {formatMoney(health.spent, 'compact')} of {formatMoney(health.budget, 'compact')}
+                </p>
+              </Card>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
 };
