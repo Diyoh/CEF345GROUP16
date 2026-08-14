@@ -258,6 +258,35 @@ export const AppProvider = ({ children }) => {
         }
     };
 
+    /**
+     * addProjectUpdate
+     * Appends a dated note to a project's public timeline (project_updates).
+     *
+     * This is the audit trail — the record of how a project reached its current numbers,
+     * which is the part a citizen or auditor can actually argue with. The endpoint and the
+     * table existed from the start; nothing ever called them, so the history rendered on
+     * every project page was only ever seed data.
+     */
+    const addProjectUpdate = async (projectId, message, date) => {
+        try {
+            const res = await api.addGlobalUpdate(projectId, { message, date });
+
+            if (res.success) {
+                // The server returns the full project including its updates, so the
+                // timeline is correct without a refetch.
+                if (res.data) {
+                    setProjects(prev => prev.map(p => p.id === res.data.id ? { ...p, ...res.data } : p));
+                }
+                return { success: true };
+            }
+            return { success: false, error: res.error };
+
+        } catch (err) {
+            console.error('Timeline update failed', err);
+            return { success: false, error: err.message };
+        }
+    };
+
     const deleteProject = async (id) => {
         // Restore the row if the server refuses. Previously the project vanished from the
         // UI and survived in the database, so it reappeared on the next reload.
@@ -356,7 +385,7 @@ export const AppProvider = ({ children }) => {
             user, projects, teamMembers, comments, accessCodes, contractors,
             loading, error, authChecked,
             login, logout, register, changePassword,
-            updateProject, updateTeamMember, addProject, deleteProject,
+            updateProject, updateTeamMember, addProject, deleteProject, addProjectUpdate,
             addComment, deleteComment, generateAccessCode, fetchProjectComments,
             fetchContractors, fetchContractorStats
         }}>

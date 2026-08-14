@@ -153,6 +153,17 @@ export const ContractorProjectCard = ({ project, isEditing, onEditClick, onCance
             hint="This is published on the public project page."
           />
 
+          {/* Appends to the project's public timeline. The description above is the
+              project's CURRENT state and is overwritten each time; this is the dated
+              record of what changed, which is what an auditor reads back. */}
+          <Textarea
+            name="timelineNote"
+            label="Add to update history"
+            rows={2}
+            placeholder="What changed since your last update?"
+            hint="Optional. Posted with today's date and kept permanently — earlier entries are never overwritten."
+          />
+
           <div>
             <label htmlFor={`photos-${project.id}`} className="mb-1.5 block text-caption font-medium text-fg-secondary">
               Site photos

@@ -4,6 +4,7 @@ import { useAppStore } from '../../useAppStore';
 import { Button, cn } from '../ui';
 import { ThemeToggle } from '../ThemeToggle';
 import { ChangePasswordModal } from '../ChangePasswordModal';
+import { AuthPending } from '../AuthPending';
 
 /**
  * Admin and developer shell. Spec: docs/design/02-ia-ux.md section 3.3.
@@ -97,13 +98,16 @@ const SECTIONS = {
 };
 
 export const AdminLayout = ({ role, variant = 'admin', title = 'Admin' }) => {
-  const { user, logout } = useAppStore();
+  const { user, logout, authChecked } = useAppStore();
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
 
   useEffect(() => setDrawerOpen(false), [location.pathname]);
 
+  // Decide only once the session check has finished. Reading `user` before then reports
+  // every visitor as logged out, including one holding a perfectly valid cookie.
+  if (!authChecked) return <AuthPending />;
   if (!user || user.role !== role) return <Navigate to="/login" replace />;
 
   return (

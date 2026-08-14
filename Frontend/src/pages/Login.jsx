@@ -61,8 +61,10 @@ export const Login = () => {
       setRegError('The two passwords do not match.');
       return;
     }
-    if (regPassword.length < 6) {
-      setRegError('Use at least 6 characters for your password.');
+    // Must match MIN_PASSWORD_LENGTH in Backend/controllers/authController.js. The server
+    // is the real gate; this only spares the user a round trip.
+    if (regPassword.length < 8) {
+      setRegError('Use at least 8 characters for your password.');
       return;
     }
 
@@ -116,7 +118,7 @@ export const Login = () => {
               type="password"
               required
               autoComplete="new-password"
-              hint="At least 6 characters."
+              hint="At least 8 characters."
               value={regPassword}
               onChange={(e) => setRegPassword(e.target.value)}
             />
