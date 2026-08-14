@@ -1,0 +1,169 @@
+import React, { useEffect, useState } from 'react';
+import { NavLink, Outlet, Navigate, Link, useLocation } from 'react-router-dom';
+import { useAppStore } from '../../useAppStore';
+import { Button, cn } from '../ui';
+import { ThemeToggle } from '../ThemeToggle';
+import { ChangePasswordModal } from '../ChangePasswordModal';
+
+/**
+ * Admin and developer shell. Spec: docs/design/02-ia-ux.md section 3.3.
+ *
+ * Replaces the single long scroll where the project table, the admin's primary work
+ * object, sat below a chart, a comment feed and a contractor list. Each section is now a
+ * route, so moving between them is one click instead of a full-page scroll, and each
+ * section keeps its own scroll position.
+ *
+ * The role guard lives here rather than being repeated in every section component.
+ */
+
+export const Sidebar = ({ sections, title, open, onClose }) => (
+  <>
+    {/* Mobile drawer scrim */}
+    {open && (
+      <div
+        className="fixed inset-0 z-40 bg-[rgb(var(--overlay)/0.55)] lg:hidden"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+    )}
+
+    <aside
+      className={cn(
+        'fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-line bg-surface',
+        'transition-transform duration-base ease-standard lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
+        open ? 'translate-x-0' : '-translate-x-full'
+      )}
+    >
+      <div className="flex h-14 items-center gap-2.5 border-b border-line px-4 md:h-16">
+        <Link to="/" className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent-fill text-accent-fg">
+            <i className="fas fa-helmet-safety" aria-hidden="true" />
+          </span>
+          <span className="flex flex-col leading-none">
+            <span className="text-body font-semibold text-fg">BuildRight</span>
+            <span className="text-overline uppercase text-fg-tertiary">{title}</span>
+          </span>
+        </Link>
+      </div>
+
+      <nav aria-label={`${title} sections`} className="flex-1 overflow-y-auto p-3">
+        <ul className="flex flex-col gap-0.5">
+          {sections.map((s) => (
+            <li key={s.to}>
+              <NavLink
+                to={s.to}
+                onClick={onClose}
+                className={({ isActive }) =>
+                  cn(
+                    'relative flex items-center gap-3 rounded-sm px-3 py-2.5 text-body transition-colors duration-instant',
+                    isActive
+                      ? 'bg-canvas font-medium text-fg before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-accent'
+                      : 'text-fg-secondary hover:bg-sunken hover:text-fg'
+                  )
+                }
+              >
+                <i className={cn('fas w-4 text-center text-fg-tertiary', s.icon)} aria-hidden="true" />
+                {s.label}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <div className="border-t border-line p-3">
+        <Link
+          to="/"
+          className="flex items-center gap-3 rounded-sm px-3 py-2.5 text-caption text-fg-tertiary hover:bg-sunken hover:text-fg"
+        >
+          <i className="fas fa-arrow-up-right-from-square w-4 text-center" aria-hidden="true" />
+          View public site
+        </Link>
+      </div>
+    </aside>
+  </>
+);
+
+const SECTIONS = {
+  admin: [
+    { to: '/admin/overview', label: 'Overview', icon: 'fa-chart-simple' },
+    { to: '/admin/projects', label: 'Projects', icon: 'fa-diagram-project' },
+    { to: '/admin/contractors', label: 'Contractors', icon: 'fa-people-group' },
+    { to: '/admin/reports', label: 'Citizen reports', icon: 'fa-comments' },
+  ],
+  dev: [
+    { to: '/dev-admin/access', label: 'Access codes', icon: 'fa-key' },
+    { to: '/dev-admin/team', label: 'Team', icon: 'fa-users' },
+  ],
+};
+
+export const AdminLayout = ({ role, variant = 'admin', title = 'Admin' }) => {
+  const { user, logout } = useAppStore();
+  const location = useLocation();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+
+  useEffect(() => setDrawerOpen(false), [location.pathname]);
+
+  if (!user || user.role !== role) return <Navigate to="/login" replace />;
+
+  return (
+    <div className="flex min-h-screen bg-canvas">
+      <Sidebar
+        sections={SECTIONS[variant]}
+        title={title}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-line bg-canvas px-4 md:h-16 md:px-6">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="md"
+              iconOnly
+              className="lg:hidden"
+              onClick={() => setDrawerOpen(true)}
+              aria-expanded={drawerOpen}
+              aria-label="Open sections menu"
+              leadingIcon={<i className="fas fa-bars" aria-hidden="true" />}
+            />
+            <a href="#admin-main" className="skip-link">
+              Skip to main content
+            </a>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <span className="hidden text-caption text-fg-tertiary sm:inline">{user.name}</span>
+            <Button variant="ghost" size="sm" onClick={() => setPasswordOpen(true)}>
+              Change password
+            </Button>
+            <Button variant="ghost" size="sm" onClick={logout}>
+              Sign out
+            </Button>
+          </div>
+        </header>
+
+        <main id="admin-main" tabIndex={-1} className="min-w-0 flex-1 outline-none">
+          <div className="mx-auto max-w-admin px-4 py-6 md:px-6 md:py-8">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+
+      <ChangePasswordModal isOpen={passwordOpen} onClose={() => setPasswordOpen(false)} />
+    </div>
+  );
+};
+
+/** Page header used by every admin section, so the surfaces cannot drift apart. */
+export const PageHeader = ({ title, description, actions }) => (
+  <div className="mb-6 flex flex-col gap-4 border-b border-line pb-5 md:flex-row md:items-end md:justify-between">
+    <div>
+      <h1 className="text-h1 text-fg">{title}</h1>
+      {description && <p className="mt-1.5 text-body text-fg-secondary">{description}</p>}
+    </div>
+    {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+  </div>
+);

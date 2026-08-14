@@ -1,230 +1,217 @@
 import React, { useState, useEffect } from 'react';
 import { ProjectStatus } from '../../types';
-import { fileToBase64 } from '../../utils/helpers';
+import { Modal, Button, Input, Textarea, Select, DateField, Card } from '../ui';
+
+/**
+ * Create and edit a project. Spec: docs/design/03-components.md sections 2 and 8.
+ *
+ * The save contract is unchanged: onSave(event, selectedFiles), with the form read via
+ * FormData in the parent, so every field keeps its exact `name`.
+ *
+ * Two fixes:
+ *  1. The old markup called makeMainImage(idx) from an onClick, but that function was
+ *     never defined. Clicking "Set Main" threw a ReferenceError. Rather than invent a
+ *     reordering contract the API does not support, the control is gone and the rule is
+ *     stated instead: the first photo is the cover.
+ *  2. removeImage dropped the preview but left the File in selectedFiles, so a removed
+ *     photo still uploaded. Previews and files are now removed together.
+ */
+
+const REGIONS = [
+  'Adamaoua', 'Centre', 'East', 'Far North', 'Littoral',
+  'North', 'North West', 'South', 'South West', 'West',
+];
+
+const toDateInput = (value) => {
+  if (!value) return '';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+};
 
 export const ProjectModal = ({ isOpen, onClose, onSave, editingProject, contractors }) => {
-    const [currentImages, setCurrentImages] = useState([]); // Previews (Strings or URLs)
-    const [selectedFiles, setSelectedFiles] = useState([]); // Actual File objects for upload
+  const [existingImages, setExistingImages] = useState([]);
+  const [newPreviews, setNewPreviews] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [saving, setSaving] = useState(false);
 
-    useEffect(() => {
-        if (isOpen && editingProject) {
-            setCurrentImages(editingProject.images || []);
-            setSelectedFiles([]);
-        } else if (isOpen) {
-            setCurrentImages([]);
-            setSelectedFiles([]);
-        }
-    }, [isOpen, editingProject]);
+  useEffect(() => {
+    if (!isOpen) return;
+    setExistingImages(editingProject?.images || []);
+    setNewPreviews([]);
+    setSelectedFiles([]);
+    setSaving(false);
+  }, [isOpen, editingProject]);
 
-    const handleImageUpload = (e) => {
-        if (e.target.files) {
-            const files = Array.from(e.target.files);
-            const newPreviews = files.map(file => URL.createObjectURL(file));
-            
-            // Append new files and previews
-            setSelectedFiles(prev => [...prev, ...files]);
-            setCurrentImages(prev => [...prev, ...newPreviews]);
-        }
-    };
+  // Object URLs are revoked on unmount so previews do not leak memory across opens.
+  useEffect(() => () => newPreviews.forEach((url) => URL.revokeObjectURL(url)), [newPreviews]);
 
-    const removeImage = (index) => {
-        setCurrentImages(prev => prev.filter((_, i) => i !== index));
-        // Note: Logic for removing existing server images vs new files is complex.
-        // For simplicity, we just remove from the list. 
-        // If it was a new file, we remove it from selectedFiles logic would need to map indices.
-        // Given the short timeline, we'll implement a simple "clear all" or just handle new uploads correctly.
-        // Basic: if index >= original length, it's a new file.
-        // For now, let's just clear the specific index.
-    };
+  const handleImageUpload = (e) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+    setSelectedFiles((prev) => [...prev, ...files]);
+    setNewPreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
+  };
 
-    // ... makeMainImage ... (Visual only for now)
+  const removeNewImage = (index) => {
+    URL.revokeObjectURL(newPreviews[index]);
+    setNewPreviews((prev) => prev.filter((_, i) => i !== index));
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onSave(e, selectedFiles); // Pass FILES instead of Base64 strings
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    await onSave(e, selectedFiles);
+    setSaving(false);
+  };
 
-    if (!isOpen) return null;
+  const allPreviews = [
+    ...existingImages.map((src) => ({ src, isNew: false })),
+    ...newPreviews.map((src) => ({ src, isNew: true })),
+  ];
 
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
-                <div className="flex justify-between items-center mb-6 border-b pb-4">
-                    <h2 className="text-xl font-bold text-gray-800">
-                        {editingProject ? 'Edit Project Details' : 'Create New Project'}
-                    </h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                        <i className="fas fa-times text-xl"></i>
-                    </button>
-                </div>
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="md"
+      title={editingProject ? 'Edit project' : 'New project'}
+      description={
+        editingProject ? 'Changes are published immediately.' : 'This project becomes public once created.'
+      }
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" form="project-form" variant="primary" loading={saving}>
+            {editingProject ? 'Save changes' : 'Create project'}
+          </Button>
+        </>
+      }
+    >
+      <form id="project-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <Input
+          name="title"
+          label="Project title"
+          required
+          defaultValue={editingProject?.title}
+          placeholder="Regional highway construction"
+        />
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Project Title <span className="text-red-500">*</span></label>
-                        <input
-                            name="title"
-                            required
-                            defaultValue={editingProject?.title}
-                            placeholder="e.g., Regional Highway Construction"
-                            className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                        />
-                    </div>
+        <Textarea
+          name="description"
+          label="Description"
+          required
+          defaultValue={editingProject?.description}
+          placeholder="What is being built, and what does it cover?"
+        />
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Description <span className="text-red-500">*</span></label>
-                        <textarea
-                            name="description"
-                            required
-                            defaultValue={editingProject?.description}
-                            placeholder="Detailed description of the project scope..."
-                            className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none h-24"
-                        />
-                    </div>
-
-                    {/* Image Upload Section */}
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Project Photos</label>
-                        <input
-                            type="file"
-                            multiple
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white file:text-primary hover:file:bg-gray-100"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">First image will be the main cover.</p>
-
-                        {currentImages.length > 0 && (
-                            <div className="grid grid-cols-3 gap-2 mt-4">
-                                {currentImages.map((img, idx) => (
-                                    <div key={idx} className="relative group aspect-square rounded overflow-hidden border border-gray-300">
-                                        <img src={img} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
-                                        {idx === 0 && <span className="absolute top-0 left-0 bg-primary text-white text-[10px] px-1.5 py-0.5 rounded-br font-bold z-10">Main</span>}
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
-                                            {idx !== 0 && (
-                                                <button type="button" onClick={() => makeMainImage(idx)} className="text-white text-xs hover:text-secondary underline">Set Main</button>
-                                            )}
-                                            <button type="button" onClick={() => removeImage(idx)} className="text-red-400 text-xs hover:text-red-200 underline">Remove</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Location <span className="text-red-500">*</span></label>
-                            <input
-                                name="location"
-                                required
-                                defaultValue={editingProject?.location}
-                                placeholder="City/Town"
-                                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Region <span className="text-red-500">*</span></label>
-                            <select
-                                name="region"
-                                required
-                                defaultValue={editingProject?.region || ""}
-                                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white"
-                            >
-                                <option value="" disabled>Select Region</option>
-                                <option value="Adamaoua">Adamaoua</option>
-                                <option value="Centre">Centre</option>
-                                <option value="East">East</option>
-                                <option value="Far North">Far North</option>
-                                <option value="Littoral">Littoral</option>
-                                <option value="North">North</option>
-                                <option value="North West">North West</option>
-                                <option value="South">South</option>
-                                <option value="South West">South West</option>
-                                <option value="West">West</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                            <input
-                                type="date"
-                                name="startDate"
-                                defaultValue={editingProject?.startDate ? new Date(editingProject.startDate).toISOString().split('T')[0] : ''}
-                                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Completion Date</label>
-                            <input
-                                type="date"
-                                name="completionDate"
-                                defaultValue={editingProject?.completionDate ? new Date(editingProject.completionDate).toISOString().split('T')[0] : ''}
-                                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Contractor <span className="text-red-500">*</span></label>
-                            <select
-                                name="contractorId"
-                                required
-                                defaultValue={editingProject?.contractorId || ""}
-                                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white"
-                            >
-                                <option value="" disabled>Select a Contractor</option>
-                                <option value="eafddc30-f6f3-11f0-900e-f875a4049563">Tech Solutions Ltd</option> {/* Fallback/Mock */}
-                                {contractors && contractors.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Budget (XAF)</label>
-                            <input
-                                type="number"
-                                name="budget"
-                                required
-                                defaultValue={editingProject?.budget}
-                                placeholder="0"
-                                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Current Status</label>
-                            <select
-                                name="status"
-                                defaultValue={editingProject?.status || ProjectStatus.PLANNED}
-                                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white"
-                            >
-                                {Object.values(ProjectStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-3 mt-8 pt-4 border-t">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-5 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-5 py-2 bg-primary hover:bg-sky-600 text-white font-bold rounded-lg shadow-sm transition-colors"
-                        >
-                            {editingProject ? 'Save Changes' : 'Create Project'}
-                        </button>
-                    </div>
-                </form>
-            </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input name="location" label="Town or city" required defaultValue={editingProject?.location} />
+          <Select name="region" label="Region" required defaultValue={editingProject?.region || ''}>
+            <option value="" disabled>
+              Select a region
+            </option>
+            {REGIONS.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </Select>
         </div>
-    );
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <DateField
+            name="startDate"
+            label="Start date"
+            defaultValue={toDateInput(editingProject?.startDate)}
+          />
+          <DateField
+            name="completionDate"
+            label="Expected completion"
+            defaultValue={toDateInput(editingProject?.completionDate)}
+            hint="Used to flag a project as delayed."
+          />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Select
+            name="contractorId"
+            label="Contractor"
+            required
+            defaultValue={editingProject?.contractorId || ''}
+          >
+            <option value="" disabled>
+              Select a contractor
+            </option>
+            {contractors?.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+          <Select name="status" label="Status" defaultValue={editingProject?.status || ProjectStatus.PLANNED}>
+            {Object.values(ProjectStatus).map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <Input
+          name="budget"
+          type="number"
+          min="0"
+          label="Budget (FCFA)"
+          required
+          defaultValue={editingProject?.budget}
+          placeholder="0"
+          className="tabular"
+          hint="The full allocated amount, not the amount spent."
+        />
+
+        <Card variant="inset" padding="sm">
+          <label htmlFor="project-photos" className="text-caption font-medium text-fg-secondary">
+            Project photos
+          </label>
+          <p className="mt-1 text-caption text-fg-tertiary">The first photo is used as the cover.</p>
+          <input
+            id="project-photos"
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="mt-3 block w-full text-caption text-fg-tertiary file:mr-3 file:rounded-sm file:border file:border-input file:bg-canvas file:px-3 file:py-1.5 file:text-caption file:font-medium file:text-fg"
+          />
+
+          {allPreviews.length > 0 && (
+            <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {allPreviews.map((img, idx) => (
+                <li key={`${img.src}-${idx}`} className="relative aspect-photo overflow-hidden rounded-sm border border-line">
+                  <img src={img.src} alt="" className="h-full w-full object-cover" />
+                  {idx === 0 && (
+                    <span className="absolute left-1 top-1 rounded-xs bg-[rgb(var(--overlay)/0.65)] px-1.5 py-0.5 text-overline uppercase text-white">
+                      Cover
+                    </span>
+                  )}
+                  {img.isNew && (
+                    <button
+                      type="button"
+                      onClick={() => removeNewImage(idx - existingImages.length)}
+                      aria-label={`Remove photo ${idx + 1}`}
+                      className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger-fill text-caption text-danger-fg"
+                    >
+                      <i className="fas fa-xmark" aria-hidden="true" />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </form>
+    </Modal>
+  );
 };

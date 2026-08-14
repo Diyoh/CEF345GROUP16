@@ -15,7 +15,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api } from './api';
+import { api, SOCKET_URL } from './api';
 
 export const AppContext = createContext(undefined);
 
@@ -39,7 +39,9 @@ export const AppProvider = ({ children }) => {
 
         // Import dynamically to avoid SSR issues if we were using Next.js (good practice)
         import('socket.io-client').then(({ io }) => {
-            socket = io('http://localhost:5000', {
+            // Derived from the same env var as the REST API, so real-time keeps
+            // working in deployed builds instead of pointing at the developer's machine.
+            socket = io(SOCKET_URL, {
                 withCredentials: true,
             });
 
@@ -191,16 +193,30 @@ export const AppProvider = ({ children }) => {
     };
 
     const updateProject = async (optimisticProject, apiData = null) => {
+        // Keep the pre-update row so a rejected request can be rolled back. Without this
+        // the UI kept showing values the server refused to store — the most damaging
+        // failure mode in a product whose only job is to display trustworthy figures.
+        const previous = projects.find(p => p.id === optimisticProject.id);
+
         try {
             setProjects(prev => prev.map(p => p.id === optimisticProject.id ? optimisticProject : p));
             // Use apiData (FormData) if provided, otherwise JSON object
             const res = await api.updateProject(optimisticProject.id, apiData || optimisticProject);
-            
-            if (res.success) return { success: true };
-            else return { success: false, error: res.error };
 
-        } catch (err) { 
-            console.error("Update failed", err); 
+            if (res.success) {
+                // Replace the optimistic guess with what the server actually stored.
+                if (res.data) {
+                    setProjects(prev => prev.map(p => p.id === res.data.id ? { ...p, ...res.data } : p));
+                }
+                return { success: true };
+            }
+
+            if (previous) setProjects(prev => prev.map(p => p.id === previous.id ? previous : p));
+            return { success: false, error: res.error };
+
+        } catch (err) {
+            console.error("Update failed", err);
+            if (previous) setProjects(prev => prev.map(p => p.id === previous.id ? previous : p));
             return { success: false, error: err.message };
         }
     };
@@ -243,10 +259,34 @@ export const AppProvider = ({ children }) => {
     };
 
     const deleteProject = async (id) => {
+        // Restore the row if the server refuses. Previously the project vanished from the
+        // UI and survived in the database, so it reappeared on the next reload.
+        const previous = projects.find(p => p.id === id);
+        const index = projects.findIndex(p => p.id === id);
+
         try {
             setProjects(prev => prev.filter(p => p.id !== id));
-            await api.deleteProject(id);
-        } catch (err) {console.error(err);}
+            const res = await api.deleteProject(id);
+
+            if (!res?.success) {
+                if (previous) setProjects(prev => {
+                    const next = [...prev];
+                    next.splice(Math.max(index, 0), 0, previous);
+                    return next;
+                });
+                return { success: false, error: res?.error || 'Delete failed' };
+            }
+            return { success: true };
+
+        } catch (err) {
+            console.error(err);
+            if (previous) setProjects(prev => {
+                const next = [...prev];
+                next.splice(Math.max(index, 0), 0, previous);
+                return next;
+            });
+            return { success: false, error: err.message };
+        }
     };
 
     const updateTeamMember = async (updatedMember) => {

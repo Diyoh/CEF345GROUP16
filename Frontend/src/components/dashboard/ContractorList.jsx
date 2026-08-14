@@ -1,51 +1,81 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useAppStore } from '../../useAppStore';
+import { Table, THead, TBody, TH, TR, TD, TableEmpty, Button } from '../ui';
+import { formatMoney } from '../../utils/helpers';
+import { projectHealth } from '../../utils/projectHealth';
 
+/**
+ * Registered contractors. Adds the portfolio figures the admin needed the analytics modal
+ * to answer: how many projects, how much money, and how many of them are in trouble.
+ */
 export const ContractorList = ({ onSelect }) => {
-    const { contractors, fetchContractors } = useAppStore();
+  const { contractors, fetchContractors, projects } = useAppStore();
 
-    useEffect(() => {
-        fetchContractors();
-    }, []);
+  useEffect(() => {
+    fetchContractors();
+  }, []);
 
-    return (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Registered Contractors</h3>
-            <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="bg-gray-50 border-b">
-                            <th className="p-3 text-sm font-semibold text-gray-600">Name</th>
-                            <th className="p-3 text-sm font-semibold text-gray-600">Email</th>
-                            <th className="p-3 text-sm font-semibold text-gray-600">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {contractors.length > 0 ? (
-                            contractors.map(contractor => (
-                                <tr key={contractor.id} className="border-b hover:bg-gray-50">
-                                    <td className="p-3 font-medium text-gray-800">{contractor.name}</td>
-                                    <td className="p-3 text-gray-600">{contractor.email}</td>
-                                    <td className="p-3">
-                                        <button
-                                            onClick={() => onSelect(contractor.id)}
-                                            className="bg-primary hover:bg-sky-600 text-white px-3 py-1 rounded text-sm transition-colors"
-                                        >
-                                            View Analytics
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan="3" className="p-4 text-center text-gray-500">
-                                    No contractors found.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
+  const stats = useMemo(() => {
+    const map = new Map();
+    projects.forEach((p) => {
+      const id = p.contractorId || p.contractor_id;
+      if (!id) return;
+      const current = map.get(id) || { count: 0, budget: 0, atRisk: 0 };
+      const h = projectHealth(p);
+      current.count += 1;
+      current.budget += h.budget;
+      if (h.overBudget || h.band === 'critical') current.atRisk += 1;
+      map.set(id, current);
+    });
+    return map;
+  }, [projects]);
+
+  return (
+    <Table caption="Registered contractors and their portfolios">
+      <THead>
+        <TR>
+          <TH>Contractor</TH>
+          <TH className="hidden md:table-cell">Email</TH>
+          <TH align="right">Projects</TH>
+          <TH align="right" className="hidden sm:table-cell">
+            Portfolio value
+          </TH>
+          <TH align="right">
+            <span className="sr-only">Actions</span>
+          </TH>
+        </TR>
+      </THead>
+      <TBody>
+        {contractors.length === 0 ? (
+          <TableEmpty colSpan={5}>No contractors registered yet.</TableEmpty>
+        ) : (
+          contractors.map((contractor) => {
+            const s = stats.get(contractor.id) || { count: 0, budget: 0, atRisk: 0 };
+            return (
+              <TR key={contractor.id}>
+                <TD className="font-medium text-fg">
+                  {contractor.name}
+                  {s.atRisk > 0 && (
+                    <span className="mt-0.5 block text-caption text-over-fg">
+                      {s.atRisk} project{s.atRisk > 1 ? 's' : ''} at risk
+                    </span>
+                  )}
+                </TD>
+                <TD className="hidden md:table-cell">{contractor.email}</TD>
+                <TD align="right">{s.count}</TD>
+                <TD align="right" className="hidden sm:table-cell" title={formatMoney(s.budget, 'full')}>
+                  {formatMoney(s.budget, 'compact')}
+                </TD>
+                <TD align="right">
+                  <Button variant="ghost" size="xs" onClick={() => onSelect(contractor.id)}>
+                    Analytics
+                  </Button>
+                </TD>
+              </TR>
+            );
+          })
+        )}
+      </TBody>
+    </Table>
+  );
 };
