@@ -1,0 +1,225 @@
+/**
+ * French strings. Mirrors the shape of en.js exactly.
+ *
+ * Register: this is a public accountability record read by citizens, so it uses standard
+ * administrative French as used in Cameroonian public communication — "vous", no slang, and
+ * the vocabulary a ministry publication would use ("marché", "décaissé", "maître d'ouvrage"
+ * avoided in favour of plainer terms citizens actually use).
+ *
+ * Two deliberate choices:
+ *  - "FCFA" is kept, not translated. It is what the currency is called in daily written use
+ *    in both languages in Cameroon.
+ *  - Percentages keep the space before "%" that French typography requires (a narrow no-break
+ *    space is applied by the formatter, not typed here).
+ */
+export const fr = {
+    common: {
+        appName: 'BuildRight',
+        tagline: 'Registre des infrastructures publiques',
+        loading: 'Chargement',
+        cancel: 'Annuler',
+        save: 'Enregistrer',
+        close: 'Fermer',
+        delete: 'Supprimer',
+        edit: 'Modifier',
+        search: 'Rechercher',
+        filters: 'Filtres',
+        clearAll: 'Tout effacer',
+        showAll: 'Tout afficher',
+        notSet: 'Non renseigné',
+        notAssigned: 'Non attribué',
+        export: 'Exporter',
+        exportTitle: 'Télécharger ces projets au format tableur',
+        checkingSession: 'Vérification de votre session',
+        language: 'Langue',
+    },
+
+    nav: {
+        home: 'Accueil',
+        projects: 'Projets',
+        about: 'À propos',
+        signIn: 'Se connecter',
+        signOut: 'Se déconnecter',
+        adminDashboard: 'Tableau de bord administrateur',
+        myProjects: 'Mes projets',
+        developerPanel: 'Panneau développeur',
+        skipToContent: 'Aller au contenu principal',
+        openMenu: 'Ouvrir le menu',
+        viewPublicSite: 'Voir le site public',
+    },
+
+    home: {
+        heroTitle: 'Chaque projet, chaque franc, consigné.',
+        heroLead:
+            '{count} projets de construction publics à travers le Cameroun, avec le budget prévu, les montants dépensés et l’avancement réel des travaux.',
+        searchLabel: 'Rechercher un projet par nom ou par ville',
+        searchPlaceholder: 'Rechercher par projet ou par ville',
+        findProjects: 'Trouver des projets',
+        nationalTotals: 'Totaux nationaux',
+        projectsTracked: 'Projets suivis',
+        acrossRegions: 'Dans les dix régions',
+        totalBudget: 'Budget total',
+        totalSpent: 'Total dépensé',
+        percentOfBudget: '{percent} % du budget',
+        needsAttention: 'À surveiller',
+        needsAttentionLead:
+            'Projets à l’arrêt, en retard, ou dont les dépenses avancent plus vite que les travaux.',
+        seeAll: 'Voir tout',
+        recentlyUpdated: 'Mis à jour récemment',
+        browseAll: 'Parcourir tous les projets',
+        noProjects: 'Aucun projet publié pour le moment',
+        noProjectsBody: 'Dès qu’un projet est créé, il apparaît ici et devient consultable par tous.',
+    },
+
+    projects: {
+        title: 'Projets d’infrastructures publiques',
+        lead: '{count} projets à travers le Cameroun.',
+        attentionNote: ' {count} dépensent plus vite qu’ils ne construisent.',
+        sortLabel: 'Trier les projets',
+        sortAttention: 'À surveiller en priorité',
+        sortBudget: 'Budget le plus élevé',
+        sortProgress: 'Les plus avancés',
+        status: 'Statut',
+        region: 'Région',
+        allRegions: 'Toutes les régions',
+        contractor: 'Entreprise',
+        allContractors: 'Toutes les entreprises',
+        searchPlaceholder: 'Nom du projet ou ville',
+        countOf: '{shown} projets sur {total}',
+        showCount: 'Afficher {count} projets',
+        removeFilter: 'Retirer le filtre {label}',
+        noMatch: 'Aucun projet ne correspond à ces filtres',
+        noMatchBody: 'Élargissez votre recherche ou effacez les filtres pour tout afficher.',
+        clearFilters: 'Effacer les filtres',
+        photoCount_one: '{count} photo',
+        photoCount_other: '{count} photos',
+        updatedAgo: 'Mis à jour {when}',
+    },
+
+    project: {
+        buildAgainstSpend: 'Travaux réalisés et dépenses',
+        budget: 'Budget',
+        spent: 'Dépensé',
+        remaining: 'Restant',
+        budgetExhausted: 'Budget épuisé',
+        ofAllocated: 'Du budget alloué',
+        sourceNote:
+            'L’avancement est déclaré par l’entreprise. Les montants proviennent des documents officiels. Les vérifications ci-dessous sont calculées à partir de ces chiffres et ne sont déclarées par personne.',
+        automaticChecks: 'Vérifications automatiques',
+        noFlags: 'Aucune anomalie n’est signalée sur ce projet.',
+        sitePhotos: 'Photos du chantier',
+        about: 'À propos de ce projet',
+        updateHistory: 'Journal des comptes rendus',
+        recordOfChanges: 'Registre des modifications',
+        recordOfChangesLead:
+            'Chaque modification des chiffres de ce projet est enregistrée automatiquement. Ces entrées ne peuvent être ni modifiées ni supprimées, y compris par l’entreprise qui les a faites.',
+        noChanges: 'Aucune modification enregistrée',
+        noChangesBody:
+            'Chaque modification des chiffres de ce projet sera listée ici, avec son auteur et la valeur précédente.',
+        showAllChanges: 'Afficher les {count} modifications',
+        showFewerChanges: 'Afficher moins de modifications',
+        changedTo: 'devient',
+        progressReduced: 'Avancement déclaré revu à la baisse',
+        details: 'Informations sur le projet',
+        started: 'Début',
+        due: 'Échéance',
+        notFound: 'Projet introuvable',
+        notFoundBody: 'S’il vient d’être créé, il peut mettre un instant à apparaître.',
+        backToProjects: 'Retour aux projets',
+    },
+
+    reports: {
+        heading: 'Signalements citoyens',
+        addReport: 'Ajouter un signalement',
+        addReportLead: 'Si vous êtes passé sur ce chantier, dites à tous ce que vous avez constaté.',
+        reportingAs: 'Vous signalez en tant que',
+        citizen: 'Citoyen',
+        ngo: 'ONG',
+        anonymousNote:
+            'Les signalements sont anonymes. Nous ne demandons pas votre nom et ne l’enregistrons pas.',
+        observation: 'Qu’avez-vous constaté sur le chantier ?',
+        observationPlaceholder: 'Décrivez ce que vous avez vu et à quelle date.',
+        attachPhotos: 'Joindre des photos ({count} sur 4)',
+        maxPhotos: 'Maximum de 4 photos atteint',
+        tooManyPhotos: 'Vous pouvez joindre jusqu’à 4 photos par signalement.',
+        removePhoto: 'Retirer la photo {number}',
+        post: 'Publier le signalement',
+        none: 'Aucun signalement pour le moment',
+        noneBody: 'Si vous êtes passé sur ce chantier, vous pouvez être le premier à témoigner.',
+        anonymousReport: 'Signalement anonyme',
+        anonymousOrg: 'Organisation anonyme',
+        evidence: 'Photo jointe à ce signalement',
+        showFewerPhotos: 'Afficher moins de photos',
+    },
+
+    status: {
+        Planned: 'Prévu',
+        Ongoing: 'En cours',
+        Stalled: 'À l’arrêt',
+        Completed: 'Achevé',
+    },
+
+    flags: {
+        over_budget: 'Budget dépassé',
+        over_budget_detail: '{burn} % du budget a été dépensé.',
+        spending_ahead_of_build: 'Dépenses très en avance sur les travaux',
+        spending_ahead_of_build_detail:
+            '{burn} % du budget est dépensé alors que seulement {progress} % des travaux sont réalisés.',
+        spending_ahead_watch: 'Dépenses en avance sur les travaux',
+        spending_ahead_watch_detail: '{burn} % dépensé pour {progress} % réalisé.',
+        past_due: 'Échéance dépassée',
+        past_due_detail_one: '{days} jour après la date de livraison prévue.',
+        past_due_detail_other: '{days} jours après la date de livraison prévue.',
+        stalled: 'Déclaré à l’arrêt',
+        stalled_detail: 'L’entreprise a déclaré ce projet à l’arrêt.',
+        dormant: 'Aucune mise à jour récente',
+        dormant_detail_one: 'Aucune mise à jour depuis {days} jour.',
+        dormant_detail_other: 'Aucune mise à jour depuis {days} jours.',
+        no_evidence: 'Avancement déclaré sans photos',
+        no_evidence_detail: '{progress} % des travaux déclarés sans aucune photo de chantier.',
+        delayed: 'En retard',
+        overBudgetShort: 'Budget dépassé',
+    },
+
+    meter: {
+        built: 'Réalisé',
+        spent: 'Dépensé',
+        sentence: '{burn} % du budget est dépensé et {progress} % des travaux sont réalisés.',
+        noBudget: 'Aucun budget n’a encore été enregistré pour ce projet.',
+        points: '{value} pts',
+    },
+
+    auth: {
+        staffSignIn: 'Connexion du personnel',
+        staffSignInLead: 'Pour les administrateurs, les entreprises et le personnel de la plateforme.',
+        createAccount: 'Créer votre compte',
+        createAccountLead: 'Vous avez besoin d’un code d’accès fourni par un administrateur.',
+        fullName: 'Nom complet',
+        email: 'Adresse e-mail',
+        password: 'Mot de passe',
+        confirmPassword: 'Confirmer le mot de passe',
+        accessCode: 'Code d’accès',
+        accessCodeHint: 'Fourni par un administrateur. Il ne fonctionne qu’une seule fois.',
+        passwordHint: 'Au moins 8 caractères.',
+        passwordMismatch: 'Les deux mots de passe ne correspondent pas.',
+        passwordTooShort: 'Utilisez au moins 8 caractères pour votre mot de passe.',
+        enterPassword: 'Saisissez votre mot de passe pour continuer.',
+        signIn: 'Se connecter',
+        haveCode: 'J’ai un code d’accès',
+        backToSignIn: 'Retour à la connexion',
+        registrationFailed: 'Échec de l’inscription. Vérifiez votre code d’accès et votre adresse e-mail.',
+        showPassword: 'Afficher le mot de passe',
+        hidePassword: 'Masquer le mot de passe',
+        lookingForInfo: 'Vous cherchez des informations sur un projet ?',
+        browseWithoutAccount: 'Consulter les projets sans se connecter',
+        demoAccounts: 'Comptes de démonstration',
+    },
+
+    footer: {
+        about: 'Un registre public des dépenses d’infrastructures de l’État au Cameroun.',
+        openData: 'Données ouvertes',
+        downloadCsv: 'Télécharger tous les projets (CSV)',
+        apiDocs: 'API développeur',
+        lastUpdated: 'Données mises à jour {when}',
+    },
+};

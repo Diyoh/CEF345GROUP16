@@ -18,10 +18,32 @@
 
 const NNBSP = ' '; // narrow no-break space, escaped so no editor can flatten it
 
+/**
+ * The active locale, kept as module state and synced by I18nProvider.
+ *
+ * Deliberate trade-off: threading a locale argument through every existing call site of
+ * formatMoney/formatDate would touch most components for a value that is global anyway. The
+ * cost is that these functions are not pure — acceptable because they are display-only, and
+ * components re-render on locale change through the i18n context regardless.
+ */
+let activeLocale = 'en';
+
+export const setFormatLocale = (locale) => {
+  activeLocale = locale === 'fr' ? 'fr' : 'en';
+};
+
+export const getFormatLocale = () => activeLocale;
+
+/** en-GB and fr-FR agree on the group separator (NNBSP) but not the decimal mark. */
+const decimalMark = () => (activeLocale === 'fr' ? ',' : '.');
+
+/** French typography requires a narrow no-break space before %; English does not. */
+export const percentSuffix = () => (activeLocale === 'fr' ? `${NNBSP}%` : '%');
+
 const group = (n, decimals = 0) => {
   const [int, frac] = Math.abs(n).toFixed(decimals).split('.');
   const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, NNBSP);
-  return `${n < 0 ? '-' : ''}${grouped}${frac ? `.${frac}` : ''}`;
+  return `${n < 0 ? '-' : ''}${grouped}${frac ? `${decimalMark()}${frac}` : ''}`;
 };
 
 /**
@@ -61,7 +83,8 @@ export const formatDate = (value) => {
   if (!value) return 'Not set';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return 'Not set';
-  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+  const tag = activeLocale === 'fr' ? 'fr-FR' : 'en-GB';
+  return new Intl.DateTimeFormat(tag, { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
 };
 
 /** "3 days ago". The absolute date always travels alongside it in a title attribute. */
@@ -78,14 +101,14 @@ export const formatRelative = (value) => {
     ['hour', 3600],
     ['minute', 60],
   ];
-  const rtf = new Intl.RelativeTimeFormat('en-GB', { numeric: 'auto' });
+  const rtf = new Intl.RelativeTimeFormat(activeLocale === 'fr' ? 'fr-FR' : 'en-GB', { numeric: 'auto' });
   for (const [unit, secs] of units) {
     if (Math.abs(seconds) >= secs) return rtf.format(-Math.round(seconds / secs), unit);
   }
   return 'just now';
 };
 
-export const formatPercent = (value) => `${Math.round(Number(value) || 0)}%`;
+export const formatPercent = (value) => `${Math.round(Number(value) || 0)}${percentSuffix()}`;
 
 /**
  * @deprecated Use formatMoney(value, 'full'). Kept so unmigrated call sites keep working

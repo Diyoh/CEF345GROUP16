@@ -14,6 +14,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { AppProvider } from '../store';
 import { useAppStore } from '../useAppStore';
 import { api } from '../api';
+import { I18nProvider } from '../i18n';
 
 vi.mock('../api', async () => {
   const actual = await vi.importActual('../api');

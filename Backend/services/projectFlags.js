@@ -100,7 +100,8 @@ const DEFINITIONS = [
         severity: 'critical',
         label: 'Over budget',
         test: (h) => h.overBudget,
-        detail: (h) => `${h.burn}% of the budget has been spent.`
+        detail: (h) => `${h.burn}% of the budget has been spent.`,
+        params: (h) => ({ burn: h.burn })
     },
     {
         code: 'spending_ahead_of_build',
@@ -109,14 +110,16 @@ const DEFINITIONS = [
         // Deliberately excludes projects already flagged over budget: two flags for the same
         // money would read as two problems.
         test: (h) => !h.overBudget && h.variance < VARIANCE_CRITICAL,
-        detail: (h) => `${h.burn}% of the budget is spent but only ${h.progress}% of the work is done.`
+        detail: (h) => `${h.burn}% of the budget is spent but only ${h.progress}% of the work is done.`,
+        params: (h) => ({ burn: h.burn, progress: h.progress })
     },
     {
         code: 'spending_ahead_watch',
         severity: 'warning',
         label: 'Spending ahead of building',
         test: (h) => !h.overBudget && h.variance < VARIANCE_WATCH && h.variance >= VARIANCE_CRITICAL,
-        detail: (h) => `${h.burn}% spent against ${h.progress}% built.`
+        detail: (h) => `${h.burn}% spent against ${h.progress}% built.`,
+        params: (h) => ({ burn: h.burn, progress: h.progress })
     },
     {
         code: 'past_due',
@@ -126,14 +129,16 @@ const DEFINITIONS = [
         detail: (h, p, now) => {
             const over = daysSince(h.completionDate, now);
             return over === null ? 'The completion date has passed.' : `${over} days past the expected completion date.`;
-        }
+        },
+        params: (h, p, now) => ({ days: daysSince(h.completionDate, now) })
     },
     {
         code: 'stalled',
         severity: 'warning',
         label: 'Reported as stalled',
         test: (h, p) => p.status === 'Stalled',
-        detail: () => 'The contractor has reported this project as stalled.'
+        detail: () => 'The contractor has reported this project as stalled.',
+        params: () => ({})
     },
     {
         code: 'dormant',
@@ -157,7 +162,8 @@ const DEFINITIONS = [
             const age = daysSince(p.updated_at || p.updatedAt, now);
             return age !== null && age >= DORMANT_DAYS;
         },
-        detail: (h, p, now) => `No update for ${daysSince(p.updated_at || p.updatedAt, now)} days.`
+        detail: (h, p, now) => `No update for ${daysSince(p.updated_at || p.updatedAt, now)} days.`,
+        params: (h, p, now) => ({ days: daysSince(p.updated_at || p.updatedAt, now) })
     },
     {
         code: 'no_evidence',
@@ -167,7 +173,8 @@ const DEFINITIONS = [
         // substantial work with none is worth surfacing, though it is often just an
         // administrative omission — hence warning, not critical.
         test: (h, p) => h.progress >= 25 && Array.isArray(p.images) && p.images.length === 0,
-        detail: (h) => `${h.progress}% of work reported with no site photographs.`
+        detail: (h) => `${h.progress}% of work reported with no site photographs.`,
+        params: (h) => ({ progress: h.progress })
     }
 ];
 
@@ -189,8 +196,15 @@ export const computeFlags = (project = {}, now = Date.now()) => {
         .map((def) => ({
             code: def.code,
             severity: def.severity,
+            // English prose, for the public API and any non-browser consumer. Documented as
+            // English in the open-data contract.
             label: def.label,
-            detail: def.detail(health, project, now)
+            detail: def.detail(health, project, now),
+            // The same facts as data, so the interface can render them in the reader's
+            // language. Cameroon is officially bilingual and the francophone regions are the
+            // majority, so a flag that can only be phrased in English is a flag most of the
+            // country cannot read. The UI renders from `code` + `params`, never from `detail`.
+            params: def.params ? def.params(health, project, now) : {}
         }))
         .sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'critical' ? -1 : 1));
 };

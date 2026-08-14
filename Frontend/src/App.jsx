@@ -12,6 +12,7 @@ import { AppProvider } from './store';
 import { Layout } from './components/Layout';
 import { AdminLayout } from './components/layout/AdminLayout';
 import { ToastProvider } from './components/ui';
+import { I18nProvider } from './i18n';
 import { UserRole } from './types';
 
 import { Home } from './pages/Home';
@@ -30,10 +31,13 @@ import { DevTeam } from './pages/admin/DevTeam';
 
 const App = () => {
   return (
-    <AppProvider>
-      {/* Toasts replace the blocking "saved successfully" modal, so the live regions have
-          to exist from mount rather than being inserted at announcement time. */}
-      <ToastProvider>
+    /* I18nProvider is outermost: it sets <html lang> and the number/date formatters, which
+       every other provider's children depend on being correct from the first paint. */
+    <I18nProvider>
+      <AppProvider>
+        {/* Toasts replace the blocking "saved successfully" modal, so the live regions have
+            to exist from mount rather than being inserted at announcement time. */}
+        <ToastProvider>
         <HashRouter>
           <Routes>
             {/* Public portal and the contractor surface share the public shell. */}
@@ -68,8 +72,9 @@ const App = () => {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </HashRouter>
-      </ToastProvider>
-    </AppProvider>
+        </ToastProvider>
+      </AppProvider>
+    </I18nProvider>
   );
 };
 
