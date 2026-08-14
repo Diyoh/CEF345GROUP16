@@ -3,6 +3,7 @@ import { NavLink, Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAppStore } from '../../useAppStore';
 import { Button, cn } from '../ui';
 import { ThemeToggle } from '../ThemeToggle';
+import { LanguageToggle } from '../LanguageToggle';
 import { ChangePasswordModal } from '../ChangePasswordModal';
 import { AuthPending } from '../AuthPending';
 import { useT } from '../../i18n';
@@ -146,6 +147,10 @@ export const AdminLayout = ({ role, variant = 'admin', title = 'Admin' }) => {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Staff switch language too: a francophone administrator should not have to
+                work in English, and the toggle living in only one shell meant crossing to
+                the public site to change it. */}
+            <LanguageToggle className="mr-1" />
             <ThemeToggle />
             <span className="hidden text-caption text-fg-tertiary sm:inline">{user.name}</span>
             <Button variant="ghost" size="sm" onClick={() => setPasswordOpen(true)}>

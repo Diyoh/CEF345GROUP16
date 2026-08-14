@@ -240,7 +240,7 @@ const seedDatabase = async () => {
 
         // 7. SEED TEAM
         const team = [
-            { id: 't1', name: 'Diyoh shiloh', role: 'Lead Engineer', bio: 'SOFTWARE engineer with 15 years experience in public works monitoring.', imageUrl: '/pictures/Doc 2.png' },
+            { id: 't1', name: 'Diyoh Shiloh', role: 'Lead Engineer', bio: 'Full stack engineer based in Buea, Cameroon, with 5 years building reliable web and mobile products front to back. Cares most about correctness where it is hard.', imageUrl: '/pictures/Doc 2.png' },
             { id: 't2', name: 'ASOBO JOYCE', role: 'Data Scientist', bio: 'Specialist in detecting financial anomalies in public datasets.', imageUrl: '/pictures/Doc 2.png' },
             { id: 't3', name: 'SHOTS FO REAL', role: 'Development Team', bio: 'The brilliant minds behind the BuildRight platform.', imageUrl: '/pictures/Doc 2.png' },
             { id: 't4', name: 'soh marrious', role: 'Development Team', bio: 'The brilliant minds behind the BuildRight platform.', imageUrl: '/pictures/Doc 2.png' },

@@ -100,7 +100,7 @@ export const Navbar = () => {
 
           <div className="ml-1 flex items-center gap-2 border-l border-line pl-5">
             <LanguageToggle className="mr-1" />
-          <ThemeToggle />
+            <ThemeToggle />
             {user ? (
               <>
                 {dashboard && (
@@ -114,13 +114,16 @@ export const Navbar = () => {
               </>
             ) : (
               <Button as={Link} to="/login" variant="ghost" size="sm">
-                Staff sign in
+                {t('auth.staffSignIn')}
               </Button>
             )}
           </div>
         </div>
 
         <div className="flex items-center gap-1 md:hidden">
+          {/* Mobile is the primary device for this audience, so the language switch has to
+              be reachable here without opening the menu. */}
+          <LanguageToggle className="mr-1" />
           <ThemeToggle />
           <Button
             ref={triggerRef}
@@ -168,7 +171,7 @@ export const Navbar = () => {
               </div>
             ) : (
               <Button as={Link} to="/login" variant="secondary" size="lg" fullWidth>
-                Staff sign in
+                {t('auth.staffSignIn')}
               </Button>
             )}
           </div>
