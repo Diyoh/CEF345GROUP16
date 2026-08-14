@@ -96,9 +96,9 @@ export const MOCK_PROJECTS = [
 export const MOCK_TEAM = [
   {
     id: 't1',
-    name: 'Diyoh shiloh',
+    name: 'Diyoh Shiloh',
     role: 'Lead Engineer',
-    bio: 'SOFTWARE engineer with 15 years experience in public works monitoring.',
+    bio: 'Full stack engineer based in Buea, Cameroon, with 5 years building reliable web and mobile products front to back. Cares most about correctness where it is hard.',
     imageUrl: '/pictures/Doc 2.png'
   },
   {
