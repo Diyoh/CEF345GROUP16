@@ -8,6 +8,7 @@
 export { cn } from './cn';
 export { Button } from './Button';
 export { Card, CardHeader } from './Card';
+export { CardRail } from './CardRail';
 export { Badge } from './Badge';
 export { Field, Input, Textarea, Select, DateField } from './Field';
 export { Meter } from './Meter';
@@ -17,6 +18,7 @@ export { Tabs, TabPanel } from './Tabs';
 export { Table, THead, TBody, TH, TR, TD, TableEmpty } from './Table';
 export { Skeleton, SkeletonText, SkeletonRegion } from './Skeleton';
 export { EmptyState } from './EmptyState';
+export { Pagination } from './Pagination';
 export { StatTile } from './StatTile';
 export { ChartShell } from './ChartShell';
 export { VisuallyHidden } from './VisuallyHidden';

@@ -79,3 +79,87 @@ describe('ProjectCard stretched link', () => {
     expect(screen.getAllByRole('link')).toHaveLength(1);
   });
 });
+
+/**
+ * BADGE READABILITY OVER PHOTOGRAPHS
+ *
+ * Contractors upload whatever they photograph, so the pixels behind a card badge may be
+ * white sky, dark tarmac or a bright jacket. The outlined flag rank uses a transparent
+ * background, which is correct on a known surface and invisible over an image — amber text
+ * on a bright photo disappeared entirely.
+ *
+ * A gradient scrim would not fix this: it fades, so a badge landing in its light end is
+ * still unreadable. Only an opaque fill gives the same contrast over every photo.
+ */
+describe('badges over media', () => {
+  const flagged = {
+    ...project,
+    flags: [
+      { code: 'past_due', severity: 'warning', label: 'Past its completion date', detail: '60 days past.', params: { days: 60 } },
+      { code: 'stalled', severity: 'warning', label: 'Reported as stalled', detail: 'Stalled.', params: {} },
+    ],
+  };
+
+  const renderCard = (p = flagged) =>
+    render(
+      <I18nProvider>
+        <MemoryRouter>
+          <ProjectCard project={p} />
+        </MemoryRouter>
+      </I18nProvider>
+    );
+
+  test('no badge over the photo is transparent', () => {
+    const { container } = renderCard();
+    const overlay = container.querySelector('.absolute.inset-x-2');
+    expect(overlay).not.toBeNull();
+
+    const badges = overlay.querySelectorAll('span.rounded-full');
+    expect(badges.length).toBeGreaterThan(0);
+    badges.forEach((b) => {
+      expect(b.className).not.toContain('bg-transparent');
+    });
+  });
+
+  test('every overlay badge carries an opaque tone fill', () => {
+    const { container } = renderCard();
+    const overlay = container.querySelector('.absolute.inset-x-2');
+    const badges = [...overlay.querySelectorAll('span.rounded-full')];
+    // bg-*-bg is the opaque token fill; ring separates the chip from the image.
+    badges.forEach((b) => {
+      expect(b.className).toMatch(/bg-\w+-bg/);
+      expect(b.className).toContain('ring-1');
+    });
+  });
+
+  test('card flags use the short label so two do not collide', () => {
+    renderCard();
+    expect(screen.getByText(/^Overdue$/i)).toBeInTheDocument();
+    expect(screen.queryByText(/past its completion date/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('card badges do not repeat themselves', () => {
+  const stalled = {
+    ...project,
+    status: 'Stalled',
+    flags: [
+      { code: 'past_due', severity: 'warning', label: 'Past its completion date', detail: '60 days past.', params: { days: 60 } },
+      { code: 'stalled', severity: 'warning', label: 'Reported as stalled', detail: 'Stalled.', params: {} },
+    ],
+  };
+
+  test('a stalled project does not show STALLED twice', () => {
+    render(
+      <I18nProvider>
+        <MemoryRouter>
+          <ProjectCard project={stalled} />
+        </MemoryRouter>
+      </I18nProvider>
+    );
+    // The lifecycle badge already says it; the flag beside it is pure repetition.
+    expect(screen.getAllByText(/^Stalled$/i)).toHaveLength(1);
+    // The non-redundant flag survives.
+    expect(screen.getByText(/^Overdue$/i)).toBeInTheDocument();
+  });
+});

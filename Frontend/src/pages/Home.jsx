@@ -2,11 +2,12 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
 import { ProjectCard } from '../components/ProjectCard';
-import { Button, Card, StatTile, EmptyState } from '../components/ui';
+import { Button, Card, CardRail, StatTile, EmptyState } from '../components/ui';
 import { formatMoney } from '../utils/helpers';
 import { projectHealth, byVarianceAsc } from '../utils/projectHealth';
 import { ProjectStatus } from '../types';
 import { useT } from '../i18n';
+import { imageSrc, imageSrcSet, HERO_WIDTHS, SIZES } from '../utils/images';
 
 /**
  * Public homepage. Spec: docs/design/02-ia-ux.md section 3.1.
@@ -64,7 +65,12 @@ export const Home = () => {
     [projects]
   );
 
-  const recent = useMemo(() => [...projects].reverse().slice(0, 6), [projects]);
+  /**
+   * Capped at 8 — two full rows of four. The home page is an editorial front page, not a
+   * second project browser: past a couple of rows a visitor is scrolling a list they should
+   * be filtering instead, and /projects does that properly.
+   */
+  const recent = useMemo(() => [...projects].reverse().slice(0, 8), [projects]);
 
   const heroSlides = HERO_SLIDES;
 
@@ -101,7 +107,10 @@ export const Home = () => {
   }, [outgoing, slide]);
 
   return (
-    <div className="pb-20">
+    // No page-level bottom padding on phones: the last section's own padding is already
+    // enough separation from the footer, and stacking both left a dead band of empty
+    // canvas the height of a thumb.
+    <div className="pb-0 md:pb-20">
       {/* ---------- Hero ---------- */}
       <section className="relative isolate overflow-hidden border-b border-line bg-surface">
         <div className="absolute inset-0" aria-hidden="true">
@@ -114,7 +123,9 @@ export const Home = () => {
               }`}
             >
               <img
-                src={s.image}
+                src={imageSrc(s.image, 1024)}
+                srcSet={imageSrcSet(s.image, HERO_WIDTHS)}
+                sizes={SIZES.hero}
                 alt=""
                 loading={i === 0 ? 'eager' : 'lazy'}
                 decoding="async"
@@ -211,7 +222,7 @@ export const Home = () => {
 
       {/* ---------- Needs attention ---------- */}
       {needsAttention.length > 0 && (
-        <section className="mx-auto max-w-content px-4 pb-16 md:px-8">
+        <section className="mx-auto max-w-content px-4 pb-10 md:px-8 md:pb-16">
           <div className="mb-6 flex items-end justify-between gap-4 border-l-2 border-over-line pl-4">
             <div>
               <h2 className="text-h2 text-fg">{t('home.needsAttention')}</h2>
@@ -223,16 +234,16 @@ export const Home = () => {
               {t('home.seeAll')}
             </Button>
           </div>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <CardRail label={t('home.needsAttention')} className="sm:grid-cols-2 lg:grid-cols-4">
             {needsAttention.map((p) => (
               <ProjectCard key={p.id} project={p} />
             ))}
-          </div>
+          </CardRail>
         </section>
       )}
 
       {/* ---------- Recently updated ---------- */}
-      <section className="mx-auto max-w-content px-4 pb-16 md:px-8">
+      <section className="mx-auto max-w-content px-4 pb-10 md:px-8 md:pb-16">
         <div className="mb-6 flex items-end justify-between gap-4">
           <h2 className="text-h2 text-fg">{t('home.recentlyUpdated')}</h2>
           <Button as={Link} to="/projects" variant="ghost" size="sm">
@@ -249,11 +260,13 @@ export const Home = () => {
             />
           </Card>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          // Four across from lg, matching "Needs attention" above: two card sections at
+          // different widths read as two different kinds of thing.
+          <CardRail label={t('home.recentlyUpdated')} className="sm:grid-cols-2 lg:grid-cols-4">
             {recent.map((p) => (
               <ProjectCard key={p.id} project={p} />
             ))}
-          </div>
+          </CardRail>
         )}
       </section>
     </div>

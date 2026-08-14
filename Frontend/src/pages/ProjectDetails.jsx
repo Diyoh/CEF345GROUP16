@@ -9,6 +9,7 @@ import { Button, Card, Meter, Input, Select, Textarea, Badge, EmptyState } from 
 import { formatMoney, formatDate, formatRelative, fileToBase64 } from '../utils/helpers';
 import { projectHealth } from '../utils/projectHealth';
 import { useT } from '../i18n';
+import { imageSrc, imageSrcSet, CARD_WIDTHS } from '../utils/images';
 
 /**
  * Project detail. Spec: docs/design/02-ia-ux.md section 4.3.
@@ -295,7 +296,7 @@ export const ProjectDetails = () => {
                   <ul className="mt-4 flex flex-wrap gap-2">
                     {commentImages.map((img, idx) => (
                       <li key={idx} className="relative h-16 w-16">
-                        <img src={img} alt="" className="h-full w-full rounded-sm object-cover" />
+                        <img src={imageSrc(img, 128)} alt="" className="h-full w-full rounded-sm object-cover" />
                         <button
                           type="button"
                           onClick={() => setCommentImages((prev) => prev.filter((_, i) => i !== idx))}
@@ -402,7 +403,9 @@ export const ProjectDetails = () => {
                                 {images.map((img, idx) => (
                                   <img
                                     key={idx}
-                                    src={img}
+                                    src={imageSrc(img, 480)}
+                                    srcSet={imageSrcSet(img, CARD_WIDTHS)}
+                                    sizes="(min-width: 640px) 33vw, 50vw"
                                     alt={t('reports.evidence')}
                                     loading="lazy"
                                     className="aspect-photo w-full rounded-md object-cover"
@@ -425,7 +428,9 @@ export const ProjectDetails = () => {
                                 className="relative block h-32 w-48 overflow-hidden rounded-md"
                               >
                                 <img
-                                  src={images[0]}
+                                  src={imageSrc(images[0], 384)}
+                                  srcSet={imageSrcSet(images[0], CARD_WIDTHS)}
+                                  sizes="192px"
                                   alt={t('reports.evidence')}
                                   loading="lazy"
                                   className="h-full w-full object-cover"

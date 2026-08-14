@@ -18,7 +18,7 @@ import { useT } from '../i18n';
  * Props are backwards compatible: <StatusBadge status={...} /> still works everywhere.
  * Pass `project` as well to get the derived risk flags.
  */
-export const StatusBadge = ({ status, project = null, size = 'md', showFlags = true }) => {
+export const StatusBadge = ({ status, project = null, size = 'md', showFlags = true, onMedia = false }) => {
   const t = useT();
   const value = status || project?.status;
   const health = project ? projectHealth(project) : null;
@@ -29,7 +29,7 @@ export const StatusBadge = ({ status, project = null, size = 'md', showFlags = t
 
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
-      <Badge tone={statusTone(value)} size={size} icon={<i className={statusIcon(value)} />}>
+      <Badge tone={statusTone(value)} size={size} onMedia={onMedia} icon={<i className={statusIcon(value)} />}>
         {label}
       </Badge>
 

@@ -237,6 +237,23 @@ not also in text.
 
 ---
 
+## Images — `utils/images.js`
+
+**Never render a raw uploaded URL.** Contractors upload phone photos, routinely 3-5MB at
+4000px, and Cloudinary stores the original. Serving one into a 400px card was the single
+largest bandwidth cost in the product, on an audience that pays by the megabyte.
+
+- `imageSrc(url, width)` rewrites a Cloudinary URL to `f_auto,q_auto,c_limit,w_<width>`:
+  modern format, auto quality, and **never upscaled**.
+- `imageSrcSet(url, widths)` builds the candidate list; `SIZES.*` supplies the matching
+  `sizes` value. Without `sizes` the browser assumes `100vw` and picks the largest candidate,
+  which wastes the whole exercise.
+- Non-Cloudinary sources (seeded `/pictures/...`, `data:` URIs, external hosts) pass through
+  untouched, and `imageSrcSet` returns `undefined` for them so the attribute is omitted.
+- Candidate URLs contain commas and `srcset` is comma-separated. That is valid — the parser
+  collects a URL up to whitespace — and it is asserted in `test/images.test.jsx`. Do not
+  "fix" it.
+
 ## Performance
 
 - Recharts is **lazy-loaded** in `AdminOverview.jsx` so it never reaches the public bundle. The
