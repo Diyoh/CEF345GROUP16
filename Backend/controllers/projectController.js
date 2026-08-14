@@ -94,7 +94,10 @@ export const updateProject = async (req, res) => {
  */
 export const deleteProject = async (req, res) => {
     try {
-        const { id } = await projectService.deleteProject(req.params.id);
+        const { id } = await projectService.deleteProject({
+            actor: req.user,
+            projectId: req.params.id
+        });
 
         emit(req, 'project:deleted', { id });
 
