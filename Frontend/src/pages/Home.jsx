@@ -65,7 +65,12 @@ export const Home = () => {
     [projects]
   );
 
-  const recent = useMemo(() => [...projects].reverse().slice(0, 6), [projects]);
+  /**
+   * Capped at 8 — two full rows of four. The home page is an editorial front page, not a
+   * second project browser: past a couple of rows a visitor is scrolling a list they should
+   * be filtering instead, and /projects does that properly.
+   */
+  const recent = useMemo(() => [...projects].reverse().slice(0, 8), [projects]);
 
   const heroSlides = HERO_SLIDES;
 
@@ -252,7 +257,9 @@ export const Home = () => {
             />
           </Card>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Four across, matching "Needs attention" above: two card sections at
+                different widths read as two different kinds of thing. */}
             {recent.map((p) => (
               <ProjectCard key={p.id} project={p} />
             ))}
