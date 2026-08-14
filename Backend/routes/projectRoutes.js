@@ -6,7 +6,12 @@
  * 
  * MIDDLEWARE EXPLAINED:
  * - protect: Verifies that the user is logged in (checks for valid JWT cookie).
- * - authorize('ROLE'): Checks if the logged-in user has the required permission.
+ * - authorize('ROLE'): Checks if the logged-in user has the required ROLE.
+ *
+ * NOTE: authorize() is a coarse gate — it answers "may this KIND of user call this
+ * endpoint at all". It cannot answer "may this SPECIFIC user touch this SPECIFIC
+ * project", because routes have no access to the record. That ownership rule lives
+ * in services/projectService.js (assertCanEditProject).
  */
 
 import express from 'express';
@@ -31,8 +36,8 @@ router.get('/:id', getProjectById); // GET /api/v1/projects/123
 // 1. Create Project: Only ADMINS can create new projects.
 router.post('/', protect, authorize('ADMIN'), upload.array('images', 10), createProject);
 
-// 2. Update Project: Contractors update their progress; Admins can update anything.
-// We allow image uploads on updates too
+// 2. Update Project: Admins can update any project; Contractors ONLY their own
+//    (assignment is verified inside the service).
 router.patch('/:id', protect, authorize('ADMIN', 'CONTRACTOR'), upload.array('images', 10), updateProject);
 
 // 3. Delete Project: Only ADMINS can delete.

@@ -42,7 +42,14 @@ CREATE TABLE IF NOT EXISTS projects (
     completion_date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (contractor_id) REFERENCES users(id)
+    FOREIGN KEY (contractor_id) REFERENCES users(id),
+
+    -- Query indexes. Mirrored by Database/migrations/001_add_query_indexes.sql for
+    -- databases that already exist. Keep the two in sync.
+    INDEX idx_projects_created_at (created_at DESC),   -- ORDER BY of the main list query
+    INDEX idx_projects_status (status),                 -- status filter + stats counts
+    INDEX idx_projects_region (region),                 -- region filter, public browse
+    INDEX idx_projects_status_created (status, created_at DESC) -- "filtered, newest first"
 );
 
 -- 4. PROJECT IMAGES

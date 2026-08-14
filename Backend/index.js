@@ -12,6 +12,8 @@ import { fileURLToPath } from 'url'; // Helpers to handle file paths in ES Modul
 import cookieParser from 'cookie-parser'; // [NEW] Parses cookies attached to the client request object
 import rateLimit from 'express-rate-limit'; // [NEW] Basic rate-limiting middleware
 import helmet from 'helmet'; // [NEW] Secures apps by setting various HTTP headers
+import { corsOptions, allowedOrigins } from './config/allowedOrigins.js'; // Shared CORS allowlist
+import { serializeResponse } from './utils/serialize.js'; // snake_case -> camelCase on the way out
 
 // Route Imports
 import authRoutes from './routes/authRoutes.js';
@@ -50,13 +52,11 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// [SECURITY FIX] Restrict CORS to our Frontend Only
-// credentials: true is REQUIRED for Cookies to work
-app.use(cors({
-    origin: true,                    // [DEV] Allow ANY origin dynamically (reflects request origin)
-    credentials: true,               // Allow Cookies
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
-}));
+// [SECURITY FIX] Restrict CORS to a known allowlist.
+// This MUST be an allowlist rather than `origin: true`: because auth is a cookie and
+// credentials are enabled, reflecting any origin would let any website issue
+// authenticated requests as a logged-in user. Configure via CORS_ORIGINS in .env.
+app.use(cors(corsOptions));
 
 // [SECURITY FIX] Cookie Parser
 app.use(cookieParser());
@@ -64,6 +64,11 @@ app.use(cookieParser());
 // Enable JSON parsing. 
 // We kept the limit high for Base64 images as per project structure, but Rate Limiting helps mitigate DoS.
 app.use(express.json({ limit: '50mb' }));
+
+// [CONTRACT] Everything leaving this API uses camelCase keys.
+// MySQL columns are snake_case; the frontend reads camelCase. Converting once here means
+// no endpoint — present or future — can reintroduce the mismatch. See utils/serialize.js.
+app.use(serializeResponse);
 
 // --- STATIC FILE SERVING ---
 const __filename = fileURLToPath(import.meta.url);
@@ -85,11 +90,21 @@ app.get('/', (req, res) => {
 
 // --- ERROR HANDLING ---
 app.use((err, req, res, next) => {
+    // A blocked cross-origin request is a rejected caller, not a server fault.
+    if (err.message && err.message.includes('not allowed by CORS')) {
+        return res.status(403).json({ success: false, error: 'Origin not allowed' });
+    }
+
+    // Multer rejects oversized or non-image uploads — that is the client's mistake.
+    if (err.name === 'MulterError' || err.message === 'Only image files are allowed!') {
+        return res.status(400).json({ success: false, error: err.message });
+    }
+
     console.error(err.stack);
-    res.status(500).json({ 
-        success: false, 
-        error: 'Something went wrong!', 
-        details: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    res.status(500).json({
+        success: false,
+        error: 'Something went wrong!',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
 });
 
@@ -105,4 +120,5 @@ app.set('io', io);
 
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`Accepting browser requests from: ${allowedOrigins.join(', ') || '(none configured)'}`);
 });
