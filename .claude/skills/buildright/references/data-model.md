@@ -59,9 +59,13 @@ The append-only audit trail. Nothing updates or deletes rows here. Currently onl
 
 ## comments
 
-`id` PK · `project_id` FK CASCADE · `author_name` · `author_type` ENUM(`Citizen`,`NGO`) ·
-`text` TEXT · `created_at`.
-**No `user_id`** — citizen reports are anonymous by design.
+`id` PK · `project_id` FK CASCADE · `author_name` **NULLABLE** (migration 002) ·
+`author_type` ENUM(`Citizen`,`NGO`) · `text` TEXT · `created_at`.
+
+**No `user_id`, and no name.** Reports are anonymous end to end: the API does not read
+`authorName` from the request and writes `NULL`. Rows predating migration 002 keep the name they
+were filed under — history in an accountability record is not rewritten silently, and purging that
+data is an owner decision, not a migration's.
 
 ## comment_images
 

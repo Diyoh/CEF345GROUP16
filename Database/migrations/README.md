@@ -51,5 +51,6 @@ safe to ignore — it means the index is present.
 | # | File | Applied to local | Applied to Aiven | What |
 |---|---|---|---|---|
 | 001 | `001_add_query_indexes.sql` | ☐ | ☐ | Indexes on `projects.created_at`, `status`, `region`, and `(status, created_at)` |
+| 002 | `002_anonymous_citizen_reports.sql` | ☐ | ☐ | `comments.author_name` made nullable; new reports store NULL |
 
 Tick the boxes when applied. This table is the only record of production schema state.

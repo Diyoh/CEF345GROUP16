@@ -96,14 +96,25 @@ Appends to `project_updates`. ⚠️ No frontend caller exists.
 | Method | Path | Guard | Body |
 |---|---|---|---|
 | GET | `/projects/:id/comments` | — | — |
-| POST | `/projects/:id/comments` | **none** | `{authorName,authorType,text,images[]}` |
+| POST | `/projects/:id/comments` | **none** | `{authorType,text,images[]}` |
 | DELETE | `/comments/:commentId` | protect + ADMIN | — |
 
-POST validates non-empty `text` and `authorName`, 404s on unknown project, defaults `authorType`
-to `Citizen`, generates ids with `randomUUID()`, uploads `data:image` entries to Cloudinary, and
-returns the created row. GET batches comment images in one query.
+**Reports are anonymous.** `authorName` is NOT read from the request — the column is written
+`NULL`. Do not "restore" it: collecting no name means there is nothing to leak, and because the
+endpoint is unauthenticated, a client-supplied name was pure impersonation. `authorType` is kept
+(`Citizen`/`NGO`, anything else coerced to `Citizen`) because it is not identifying.
+Guarded by `test/commentAnonymity.test.js`.
+
+Rows created before this change keep the name they were filed under; the UI falls back to
+"Anonymous report" / "Anonymous organisation" when `authorName` is null.
+
+POST validates non-empty `text`, 404s on unknown project, generates ids with `randomUUID()`,
+uploads `data:image` entries to Cloudinary, and returns the created row. GET batches comment
+images in one query.
 
 ⚠️ POST is unauthenticated by design (citizen voice) but has only the global rate limiter.
+Anonymity removes the light social brake that a visible name provided, so the spam surface is
+wider — see P2-04.
 
 ---
 

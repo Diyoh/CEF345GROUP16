@@ -29,7 +29,6 @@ export const ProjectDetails = () => {
   }, [id]);
 
   const [commentText, setCommentText] = useState('');
-  const [authorName, setAuthorName] = useState('');
   const [authorType, setAuthorType] = useState('Citizen');
   const [commentImages, setCommentImages] = useState([]);
   const [expandedCommentId, setExpandedCommentId] = useState(null);
@@ -74,16 +73,15 @@ export const ProjectDetails = () => {
 
   const submitComment = (e) => {
     e.preventDefault();
-    if (!commentText || !authorName) return;
+    if (!commentText) return;
+    // No name is collected or sent. Reports are anonymous by design.
     addComment({
       projectId: project.id,
-      authorName,
       authorType,
       text: commentText,
       images: commentImages,
     });
     setCommentText('');
-    setAuthorName('');
     setCommentImages([]);
   };
 
@@ -235,18 +233,15 @@ export const ProjectDetails = () => {
                   If you have visited this site, tell everyone what you saw.
                 </p>
 
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  <Input
-                    label="Your name"
-                    required
-                    value={authorName}
-                    onChange={(e) => setAuthorName(e.target.value)}
-                    placeholder="Full name"
-                  />
+                <div className="mt-5">
                   <Select label="Reporting as" value={authorType} onChange={(e) => setAuthorType(e.target.value)}>
                     <option value="Citizen">Citizen</option>
                     <option value="NGO">NGO</option>
                   </Select>
+                  <p className="mt-2 text-caption text-fg-tertiary">
+                    <i className="fas fa-user-shield mr-1.5" aria-hidden="true" />
+                    Reports are anonymous. We do not ask for or store your name.
+                  </p>
                 </div>
 
                 <Textarea
@@ -304,7 +299,7 @@ export const ProjectDetails = () => {
                     type="submit"
                     variant="primary"
                     size="lg"
-                    disabled={!commentText || !authorName}
+                    disabled={!commentText}
                     className="sm:w-auto"
                     fullWidth
                   >
@@ -331,16 +326,22 @@ export const ProjectDetails = () => {
                       <article className="border-b border-line-subtle pb-6 last:border-0">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-center gap-3">
+                            {/* No initial: there is no name to take one from, and a letter
+                                would imply an identity the record does not hold. */}
                             <span
-                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-caption font-semibold ${
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
                                 isNGO ? 'bg-planned-bg text-planned-fg' : 'bg-sunken text-fg-secondary'
                               }`}
                               aria-hidden="true"
                             >
-                              {comment.authorName ? comment.authorName.charAt(0).toUpperCase() : '?'}
+                              <i className={isNGO ? 'fas fa-people-group' : 'fas fa-user'} />
                             </span>
                             <div>
-                              <p className="text-body font-medium text-fg">{comment.authorName}</p>
+                              <p className="text-body font-medium text-fg">
+                                {/* Older reports were filed under a name, before reporting
+                                    became anonymous. Those are still shown as submitted. */}
+                                {comment.authorName || (isNGO ? 'Anonymous organisation' : 'Anonymous report')}
+                              </p>
                               <Badge tone={isNGO ? 'planned' : 'neutral'} size="sm">
                                 {comment.authorType}
                               </Badge>
@@ -365,7 +366,7 @@ export const ProjectDetails = () => {
                                   <img
                                     key={idx}
                                     src={img}
-                                    alt={`Evidence ${idx + 1} from ${comment.authorName}`}
+                                    alt={`Evidence photo ${idx + 1} attached to this report`}
                                     loading="lazy"
                                     className="aspect-photo w-full rounded-md object-cover"
                                   />
@@ -388,7 +389,7 @@ export const ProjectDetails = () => {
                               >
                                 <img
                                   src={images[0]}
-                                  alt={`Evidence from ${comment.authorName}`}
+                                  alt="Evidence photo attached to this report"
                                   loading="lazy"
                                   className="h-full w-full object-cover"
                                 />

@@ -34,13 +34,14 @@ export const getComments = async (req, res) => {
 export const createComment = async (req, res) => {
     try {
         const projectId = req.params.id;
-        const { authorName, authorType, text, images } = req.body;
+        // authorName is deliberately NOT read from the request. Citizen reports are
+        // anonymous: collecting no name means there is none to leak, and it removes the
+        // impersonation vector where an unauthenticated caller could file a report under
+        // anyone's name. See Database/migrations/002_anonymous_citizen_reports.sql.
+        const { authorType, text, images } = req.body;
 
         if (!String(text || '').trim()) {
             return res.status(400).json({ success: false, error: 'Comment text is required' });
-        }
-        if (!String(authorName || '').trim()) {
-            return res.status(400).json({ success: false, error: 'Author name is required' });
         }
 
         const [projects] = await pool.query('SELECT id FROM projects WHERE id = ?', [projectId]);
@@ -56,7 +57,7 @@ export const createComment = async (req, res) => {
 
         await pool.query(
             'INSERT INTO comments (id, project_id, author_name, author_type, text) VALUES (?, ?, ?, ?, ?)',
-            [commentId, projectId, authorName, authorType || 'Citizen', text]
+            [commentId, projectId, null, authorType === 'NGO' ? 'NGO' : 'Citizen', text]
         );
 
         if (Array.isArray(images) && images.length > 0) {

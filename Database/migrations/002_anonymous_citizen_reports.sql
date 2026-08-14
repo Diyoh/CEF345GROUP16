@@ -1,0 +1,21 @@
+-- Migration 002 — anonymous citizen reports
+-- Date: 2026-08-14
+--
+-- WHY:
+-- Citizen reports are the platform's check on contractor self-reporting. Requiring a name
+-- to file one is a deterrent in exactly the cases that matter most: a report that a funded
+-- road was never built is a report against someone locally powerful, and the person best
+-- placed to file it is the person most exposed to consequences for doing so.
+--
+-- The column is made nullable rather than dropped:
+--   1. Existing reports keep the names they were filed under. Rewriting history in an
+--      accountability record is worse than leaving it, and deleting data that citizens
+--      submitted under the old terms is the owner's decision, not a migration's.
+--   2. Attributed reporting may return later as an explicit opt-in (an NGO may WANT its
+--      name on a finding). Keeping the column leaves that open without another migration.
+--
+-- New reports store NULL. The API no longer accepts a name from the client at all, so a
+-- name cannot be supplied — which also removes the impersonation vector where anyone could
+-- file a report as any name they liked.
+
+ALTER TABLE comments MODIFY author_name VARCHAR(255) NULL;
