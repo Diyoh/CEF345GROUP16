@@ -6,6 +6,7 @@ import { Button, Card, StatTile, EmptyState } from '../components/ui';
 import { formatMoney } from '../utils/helpers';
 import { projectHealth, byVarianceAsc } from '../utils/projectHealth';
 import { ProjectStatus } from '../types';
+import { useT } from '../i18n';
 
 /**
  * Public homepage. Spec: docs/design/02-ia-ux.md section 3.1.
@@ -41,6 +42,7 @@ const HERO_SLIDES = [
 ];
 
 export const Home = () => {
+  const t = useT();
   const { projects } = useAppStore();
   const [search, setSearch] = useState('');
 
@@ -132,11 +134,10 @@ export const Home = () => {
           <div className="max-w-3xl">
             <p className="text-overline uppercase text-white/70">Public infrastructure record</p>
             <h1 className="mt-3 font-serif text-display text-white">
-              Every project, every franc, on the record.
+              {t('home.heroTitle')}
             </h1>
             <p className="mt-5 max-w-prose text-body-lg text-white/85">
-              {totals.count} public construction projects across Cameroon, with what was budgeted, what has
-              been spent, and how much has actually been built.
+              {t('home.heroLead', { count: totals.count })}
             </p>
 
             <form
@@ -145,12 +146,12 @@ export const Home = () => {
               role="search"
             >
               <label htmlFor="hero-search" className="sr-only">
-                Search projects by name or town
+                {t('home.searchLabel')}
               </label>
               <input
                 id="hero-search"
                 type="search"
-                placeholder="Search by project or town"
+                placeholder={t('home.searchPlaceholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-12 w-full rounded-sm border border-input bg-canvas px-4 text-body text-fg placeholder:text-fg-placeholder"
@@ -161,7 +162,7 @@ export const Home = () => {
                 variant="primary"
                 size="lg"
               >
-                Find projects
+                {t('home.findProjects')}
               </Button>
             </form>
           </div>
@@ -190,19 +191,19 @@ export const Home = () => {
 
       {/* ---------- National totals ---------- */}
       <section className="mx-auto max-w-content px-4 py-12 md:px-8 md:py-16">
-        <h2 className="sr-only">National totals</h2>
+        <h2 className="sr-only">{t('home.nationalTotals')}</h2>
         <div className="grid gap-4 sm:grid-cols-3">
-          <StatTile label="Projects tracked" value={totals.count} hint="Across all ten regions" />
+          <StatTile label={t('home.projectsTracked')} value={totals.count} hint={t('home.acrossRegions')} />
           <StatTile
-            label="Total budget"
+            label={t('home.totalBudget')}
             value={formatMoney(totals.budget, 'compact')}
             exact={formatMoney(totals.budget, 'full')}
           />
           <StatTile
-            label="Total spent"
+            label={t('home.totalSpent')}
             value={formatMoney(totals.spent, 'compact')}
             exact={formatMoney(totals.spent, 'full')}
-            delta={totals.budget > 0 ? `${Math.round((totals.spent / totals.budget) * 100)}% of budget` : undefined}
+            delta={totals.budget > 0 ? t('home.percentOfBudget', { percent: Math.round((totals.spent / totals.budget) * 100) }) : undefined}
             deltaTone="neutral"
           />
         </div>
@@ -213,13 +214,13 @@ export const Home = () => {
         <section className="mx-auto max-w-content px-4 pb-16 md:px-8">
           <div className="mb-6 flex items-end justify-between gap-4 border-l-2 border-over-line pl-4">
             <div>
-              <h2 className="text-h2 text-fg">Needs attention</h2>
+              <h2 className="text-h2 text-fg">{t('home.needsAttention')}</h2>
               <p className="mt-1 text-caption text-fg-tertiary">
-                Stalled, delayed, or spending faster than they are building.
+                {t('home.needsAttentionLead')}
               </p>
             </div>
             <Button as={Link} to="/projects?status=Stalled" variant="ghost" size="sm">
-              See all
+              {t('home.seeAll')}
             </Button>
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -233,9 +234,9 @@ export const Home = () => {
       {/* ---------- Recently updated ---------- */}
       <section className="mx-auto max-w-content px-4 pb-16 md:px-8">
         <div className="mb-6 flex items-end justify-between gap-4">
-          <h2 className="text-h2 text-fg">Recently updated</h2>
+          <h2 className="text-h2 text-fg">{t('home.recentlyUpdated')}</h2>
           <Button as={Link} to="/projects" variant="ghost" size="sm">
-            Browse all projects
+            {t('home.browseAll')}
           </Button>
         </div>
 
@@ -243,8 +244,8 @@ export const Home = () => {
           <Card padding="none">
             <EmptyState
               icon="fa-folder-open"
-              title="No projects published yet"
-              body="Once a project is created it appears here for everyone to follow."
+              title={t('home.noProjects')}
+              body={t('home.noProjectsBody')}
             />
           </Card>
         ) : (

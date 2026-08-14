@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
 import { csvExportUrl } from '../api';
+import { useT } from '../i18n';
 import { ProjectCard } from '../components/ProjectCard';
 import { Button, Card, Select, EmptyState, Badge, Skeleton, SkeletonRegion } from '../components/ui';
 import { ProjectStatus } from '../types';
@@ -16,12 +17,13 @@ import { projectHealth, byVarianceAsc } from '../utils/projectHealth';
  */
 
 const SORTS = {
-  attention: { label: 'Needs attention first', fn: byVarianceAsc },
-  budget: { label: 'Largest budget', fn: (a, b) => (Number(b.budget) || 0) - (Number(a.budget) || 0) },
-  progress: { label: 'Most complete', fn: (a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0) },
+  attention: { labelKey: 'projects.sortAttention', fn: byVarianceAsc },
+  budget: { labelKey: 'projects.sortBudget', fn: (a, b) => (Number(b.budget) || 0) - (Number(a.budget) || 0) },
+  progress: { labelKey: 'projects.sortProgress', fn: (a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0) },
 };
 
 export const ProjectsPage = () => {
+  const t = useT();
   const { projects, loading } = useAppStore();
   const [params, setParams] = useSearchParams();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -75,11 +77,11 @@ export const ProjectsPage = () => {
   }, [projects, search, statusFilter, regionFilter, contractorFilter, sort]);
 
   const activeFilters = [
-    statusFilter !== 'All' && { key: 'status', label: statusFilter },
+    statusFilter !== 'All' && { key: 'status', label: t(`status.${statusFilter}`) },
     regionFilter !== 'All' && { key: 'region', label: regionFilter },
     contractorFilter !== 'All' && {
       key: 'contractor',
-      label: contractors.find((c) => c.id === contractorFilter)?.name || 'Contractor',
+      label: contractors.find((c) => c.id === contractorFilter)?.name || t('projects.contractor'),
     },
     search && { key: 'q', label: `"${search}"` },
   ].filter(Boolean);
@@ -103,20 +105,20 @@ export const ProjectsPage = () => {
     <div className="flex flex-col gap-5">
       <div>
         <label htmlFor="filter-search" className="mb-1.5 block text-caption font-medium text-fg-secondary">
-          Search
+          {t('common.search')}
         </label>
         <input
           id="filter-search"
           type="search"
           value={search}
           onChange={(e) => setParam('q', e.target.value)}
-          placeholder="Project name or town"
+          placeholder={t('projects.searchPlaceholder')}
           className="h-10 w-full rounded-sm border border-input bg-canvas px-3 text-body text-fg placeholder:text-fg-placeholder dark:bg-sunken"
         />
       </div>
 
       <fieldset>
-        <legend className="mb-2 text-caption font-medium text-fg-secondary">Status</legend>
+        <legend className="mb-2 text-caption font-medium text-fg-secondary">{t('projects.status')}</legend>
         <div className="flex flex-col gap-1">
           {['All', ...Object.values(ProjectStatus)].map((status) => (
             <label
@@ -126,33 +128,35 @@ export const ProjectsPage = () => {
               <input
                 type="radio"
                 name="status"
+                // The VALUE stays the stored English enum: it is compared against
+                // statusFilter and sent to the API. Only the visible label is translated.
                 value={status}
                 checked={statusFilter === status}
                 onChange={() => setParam('status', status)}
                 className="h-4 w-4 accent-[rgb(var(--accent))]"
               />
               <span className={statusFilter === status ? 'text-body text-fg' : 'text-body text-fg-secondary'}>
-                {status}
+                {status === 'All' ? t('common.showAll') : t(`status.${status}`)}
               </span>
             </label>
           ))}
         </div>
       </fieldset>
 
-      <Select label="Region" value={regionFilter} onChange={(e) => setParam('region', e.target.value)}>
+      <Select label={t('projects.region')} value={regionFilter} onChange={(e) => setParam('region', e.target.value)}>
         {regions.map((r) => (
           <option key={r} value={r}>
-            {r === 'All' ? 'All regions' : r}
+            {r === 'All' ? t('projects.allRegions') : r}
           </option>
         ))}
       </Select>
 
       <Select
-        label="Contractor"
+        label={t('projects.contractor')}
         value={contractorFilter}
         onChange={(e) => setParam('contractor', e.target.value)}
       >
-        <option value="All">All contractors</option>
+        <option value="All">{t('projects.allContractors')}</option>
         {contractors.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name}
@@ -166,16 +170,16 @@ export const ProjectsPage = () => {
     <div className="mx-auto max-w-content px-4 py-8 md:px-8 md:py-12">
       <div className="mb-8 flex flex-col gap-4 border-b border-line pb-6 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-h1 text-fg">Public infrastructure projects</h1>
+          <h1 className="text-h1 text-fg">{t('projects.title')}</h1>
           <p className="mt-2 max-w-prose text-body text-fg-secondary">
-            {projects.length} projects across Cameroon.
-            {attentionCount > 0 && ` ${attentionCount} are spending faster than they are building.`}
+            {t('projects.lead', { count: projects.length })}
+            {attentionCount > 0 && t('projects.attentionNote', { count: attentionCount })}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <Select
-            aria-label="Sort projects"
+            aria-label={t('projects.sortLabel')}
             size="sm"
             value={sort}
             onChange={(e) => setParam('sort', e.target.value)}
@@ -183,7 +187,7 @@ export const ProjectsPage = () => {
           >
             {Object.entries(SORTS).map(([key, s]) => (
               <option key={key} value={key}>
-                {s.label}
+                {t(s.labelKey)}
               </option>
             ))}
           </Select>
@@ -197,9 +201,9 @@ export const ProjectsPage = () => {
             size="md"
             className="hidden sm:inline-flex"
             leadingIcon={<i className="fas fa-file-csv" aria-hidden="true" />}
-            title="Download these projects as a spreadsheet"
+            title={t('common.exportTitle')}
           >
-            Export
+            {t('common.export')}
           </Button>
 
           <Button
@@ -209,7 +213,7 @@ export const ProjectsPage = () => {
             onClick={() => setIsFilterOpen(true)}
             leadingIcon={<i className="fas fa-sliders" aria-hidden="true" />}
           >
-            Filters
+            {t('common.filters')}
             {activeFilters.length > 0 && <span className="tabular ml-1">({activeFilters.length})</span>}
           </Button>
         </div>
@@ -219,10 +223,10 @@ export const ProjectsPage = () => {
         <aside className="hidden w-64 shrink-0 lg:sticky lg:top-24 lg:block">
           <Card padding="lg">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-h3 text-fg">Filters</h2>
+              <h2 className="text-h3 text-fg">{t('common.filters')}</h2>
               {activeFilters.length > 0 && (
                 <Button variant="link" size="sm" onClick={clearAll}>
-                  Clear all
+                  {t('common.clearAll')}
                 </Button>
               )}
             </div>
@@ -233,14 +237,14 @@ export const ProjectsPage = () => {
         <div className="min-w-0 flex-1">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <p className="tabular text-caption text-fg-tertiary">
-              {filteredProjects.length} of {projects.length} projects
+              {t('projects.countOf', { shown: filteredProjects.length, total: projects.length })}
             </p>
             {activeFilters.map((f) => (
               <button
                 key={f.key}
                 type="button"
                 onClick={() => setParam(f.key, null)}
-                aria-label={`Remove filter ${f.label}`}
+                aria-label={t('projects.removeFilter', { label: f.label })}
                 className="rounded-full"
               >
                 <Badge tone="neutral" size="sm" icon={<i className="fas fa-xmark" />}>
@@ -272,17 +276,17 @@ export const ProjectsPage = () => {
           ) : projects.length === 0 ? (
             <EmptyState
               icon="fa-folder-open"
-              title="No projects published yet"
-              body="Once a project is created it appears here for everyone to follow."
+              title={t('home.noProjects')}
+              body={t('home.noProjectsBody')}
             />
           ) : (
             <EmptyState
               icon="fa-filter-circle-xmark"
-              title="No projects match these filters"
-              body="Try a broader search, or clear the filters to see everything."
+              title={t('projects.noMatch')}
+              body={t('projects.noMatchBody')}
               action={
                 <Button variant="primary" onClick={clearAll}>
-                  Clear filters
+                  {t('projects.clearFilters')}
                 </Button>
               }
             />
@@ -301,27 +305,27 @@ export const ProjectsPage = () => {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Filter projects"
+            aria-label={t('projects.sortLabel')}
             className="relative z-10 max-h-[85vh] overflow-y-auto rounded-t-xl bg-raised p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-e4 animate-sheet-up"
           >
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-h3 text-fg">Filters</h2>
+              <h2 className="text-h3 text-fg">{t('common.filters')}</h2>
               <Button
                 variant="ghost"
                 size="sm"
                 iconOnly
                 onClick={() => setIsFilterOpen(false)}
-                aria-label="Close filters"
+                aria-label={t('common.close')}
                 leadingIcon={<i className="fas fa-xmark" aria-hidden="true" />}
               />
             </div>
             {filterControls}
             <div className="mt-6 flex gap-3">
               <Button variant="ghost" size="lg" fullWidth onClick={clearAll}>
-                Clear all
+                {t('common.clearAll')}
               </Button>
               <Button variant="primary" size="lg" fullWidth onClick={() => setIsFilterOpen(false)}>
-                Show {filteredProjects.length} projects
+                {t('projects.showCount', { count: filteredProjects.length })}
               </Button>
             </div>
           </div>

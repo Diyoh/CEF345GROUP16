@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
 import { formatDate } from '../utils/helpers';
+import { useT } from '../i18n';
 
 /**
  * Footer. Spec: docs/design/03-components.md section 13.
@@ -22,6 +23,7 @@ import { formatDate } from '../utils/helpers';
  *    to the content.
  */
 export const Footer = () => {
+  const t = useT();
   const { projects } = useAppStore();
 
   const lastUpdated = useMemo(() => {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Badge, Button, EmptyState } from './ui';
-import { formatMoney, formatDate, formatRelative } from '../utils/helpers';
+import { useT } from '../i18n';
+import { formatMoney, formatDate, formatRelative, formatPercent } from '../utils/helpers';
 
 /**
  * The system-written record of what changed on a project, who changed it, and what the
@@ -23,29 +24,31 @@ import { formatMoney, formatDate, formatRelative } from '../utils/helpers';
 
 /** Human label per logged field. Keys match projectService COLUMN_BY_FIELD. */
 const FIELD_LABELS = {
-  progress: 'Work completed',
-  spent: 'Amount spent',
-  budget: 'Budget',
-  status: 'Status',
-  description: 'Description',
-  title: 'Project title',
-  location: 'Location',
-  region: 'Region',
-  contractorId: 'Assigned contractor',
-  startDate: 'Start date',
-  completionDate: 'Expected completion',
-  images: 'Site photos',
+  progress: 'project.fieldProgress',
+  spent: 'project.fieldSpent',
+  budget: 'project.budget',
+  status: 'projects.status',
+  description: 'project.fieldDescription',
+  title: 'project.fieldTitle',
+  location: 'project.fieldLocation',
+  region: 'projects.region',
+  contractorId: 'project.fieldContractor',
+  startDate: 'project.fieldStartDate',
+  completionDate: 'project.fieldCompletionDate',
+  images: 'project.sitePhotos',
+  project: 'project.fieldProject',
 };
 
 const MONEY_FIELDS = new Set(['spent', 'budget']);
 const PERCENT_FIELDS = new Set(['progress']);
 const COUNT_FIELDS = new Set(['images']);
 
-const renderValue = (field, value) => {
-  if (value === null || value === undefined || value === '') return 'not set';
+const renderValue = (field, value, t) => {
+  const NOT_SET = t('common.notSetShort');
+  if (value === null || value === undefined || value === '') return NOT_SET;
   if (MONEY_FIELDS.has(field)) return formatMoney(Number(value), 'compact');
-  if (PERCENT_FIELDS.has(field)) return `${value}%`;
-  if (COUNT_FIELDS.has(field)) return `${value} photo${Number(value) === 1 ? '' : 's'}`;
+  if (PERCENT_FIELDS.has(field)) return formatPercent(value);
+  if (COUNT_FIELDS.has(field)) return t('projects.photoCount', { count: Number(value) });
   if (field === 'startDate' || field === 'completionDate') return formatDate(value);
   // Long free text would swamp the row; the field name already says what moved.
   return String(value).length > 60 ? `${String(value).slice(0, 60)}…` : String(value);
@@ -58,14 +61,15 @@ const isDownwardProgress = (change) =>
 const INITIAL_VISIBLE = 8;
 
 export const ChangeHistory = ({ changes = [] }) => {
+  const t = useT();
   const [showAll, setShowAll] = useState(false);
 
   if (!Array.isArray(changes) || changes.length === 0) {
     return (
       <EmptyState
         icon="fa-clock-rotate-left"
-        title="No changes recorded yet"
-        body="Every edit to this project's figures will be listed here, with who made it and what it replaced."
+        title={t('project.noChanges')}
+        body={t('project.noChangesBody')}
       />
     );
   }
@@ -76,7 +80,7 @@ export const ChangeHistory = ({ changes = [] }) => {
     <>
       <ol className="flex flex-col divide-y divide-line-subtle">
         {visible.map((change) => {
-          const label = FIELD_LABELS[change.field] || change.field;
+          const label = FIELD_LABELS[change.field] ? t(FIELD_LABELS[change.field]) : change.field;
           const down = isDownwardProgress(change);
 
           return (
@@ -84,11 +88,11 @@ export const ChangeHistory = ({ changes = [] }) => {
               <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <p className="text-body text-fg">
                   <span className="font-medium">{label}</span>{' '}
-                  <span className="tabular text-fg-tertiary">{renderValue(change.field, change.oldValue)}</span>
-                  <span className="mx-1.5 text-fg-tertiary" aria-label="changed to">
+                  <span className="tabular text-fg-tertiary">{renderValue(change.field, change.oldValue, t)}</span>
+                  <span className="mx-1.5 text-fg-tertiary" aria-label={t('project.changedTo')}>
                     →
                   </span>
-                  <span className="tabular font-medium">{renderValue(change.field, change.newValue)}</span>
+                  <span className="tabular font-medium">{renderValue(change.field, change.newValue, t)}</span>
                 </p>
 
                 <time
@@ -104,13 +108,13 @@ export const ChangeHistory = ({ changes = [] }) => {
                 <p className="text-caption text-fg-tertiary">
                   {change.actorName}
                   <span className="ml-1.5 text-fg-disabled">
-                    {change.actorRole === 'ADMIN' ? 'Administrator' : 'Contractor'}
+                    {t(change.actorRole === 'ADMIN' ? 'project.roleAdmin' : 'project.roleContractor')}
                   </span>
                 </p>
 
                 {down && (
                   <Badge rank="flag" tone="delayed" size="sm" icon={<i className="fas fa-arrow-trend-down" />}>
-                    Reported progress reduced
+                    {t('project.progressReduced')}
                   </Badge>
                 )}
               </div>
@@ -121,7 +125,7 @@ export const ChangeHistory = ({ changes = [] }) => {
 
       {changes.length > INITIAL_VISIBLE && (
         <Button variant="ghost" size="sm" className="mt-4" onClick={() => setShowAll((v) => !v)}>
-          {showAll ? 'Show fewer changes' : `Show all ${changes.length} changes`}
+          {showAll ? t('project.showFewerChanges') : t('project.showAllChanges', { count: changes.length })}
         </Button>
       )}
     </>
