@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, EmptyState } from './ui';
+import { useT } from '../i18n';
 
 /**
  * Photo gallery and lightbox. Spec: docs/design/03-components.md section 16.
@@ -45,8 +46,8 @@ export const PhotoGallery = ({ images = [], title = '' }) => {
     return (
       <EmptyState
         icon="fa-camera"
-        title="No site photos yet"
-        body="Photos are uploaded by the contractor as work progresses."
+        title={t('project.noPhotos')}
+        body={t('project.noPhotosBody')}
       />
     );
   }
@@ -100,7 +101,7 @@ export const PhotoGallery = ({ images = [], title = '' }) => {
               size="lg"
               iconOnly
               onClick={close}
-              aria-label="Close photo viewer"
+              aria-label={t('project.closeViewer')}
               className="text-white hover:bg-white/10"
               leadingIcon={<i className="fas fa-xmark" aria-hidden="true" />}
             />
@@ -121,7 +122,7 @@ export const PhotoGallery = ({ images = [], title = '' }) => {
                 size="lg"
                 iconOnly
                 onClick={() => step(-1)}
-                aria-label="Previous photo"
+                aria-label={t('project.previousPhoto')}
                 className="text-white hover:bg-white/10"
                 leadingIcon={<i className="fas fa-chevron-left" aria-hidden="true" />}
               />
@@ -130,7 +131,7 @@ export const PhotoGallery = ({ images = [], title = '' }) => {
                 size="lg"
                 iconOnly
                 onClick={() => step(1)}
-                aria-label="Next photo"
+                aria-label={t('project.nextPhoto')}
                 className="text-white hover:bg-white/10"
                 leadingIcon={<i className="fas fa-chevron-right" aria-hidden="true" />}
               />

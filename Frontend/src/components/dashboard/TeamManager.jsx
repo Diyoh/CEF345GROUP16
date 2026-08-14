@@ -1,13 +1,15 @@
 import React from 'react';
 import { Card, Button, Input, Textarea, EmptyState } from '../ui';
+import { useT } from '../../i18n';
 
 /**
  * Team management. Same form contract: hidden id field, name, role and bio read from
  * FormData by the parent.
  */
 export const TeamManager = ({ members, editingMember, onEditClick, onCancelEdit, onSave }) => {
+  const t = useT();
   if (!members || members.length === 0) {
-    return <EmptyState icon="fa-users" title="No team members yet" />;
+    return <EmptyState icon="fa-users" title={t('admin.noTeamMembers')} />;
   }
 
   return (
@@ -18,15 +20,15 @@ export const TeamManager = ({ members, editingMember, onEditClick, onCancelEdit,
             {editingMember?.id === m.id ? (
               <form onSubmit={onSave} className="flex flex-col gap-4">
                 <input type="hidden" name="id" value={m.id} />
-                <Input name="name" label="Name" defaultValue={m.name} required />
-                <Input name="role" label="Role" defaultValue={m.role} required />
-                <Textarea name="bio" label="Bio" defaultValue={m.bio} rows={3} />
+                <Input name="name" label={t('admin.name')} defaultValue={m.name} required />
+                <Input name="role" label={t('admin.role')} defaultValue={m.role} required />
+                <Textarea name="bio" label={t('admin.bio')} defaultValue={m.bio} rows={3} />
                 <div className="flex gap-2">
                   <Button type="submit" variant="primary" size="sm">
-                    Save
+                    {t('common.save')}
                   </Button>
                   <Button type="button" variant="ghost" size="sm" onClick={onCancelEdit}>
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                 </div>
               </form>
@@ -54,7 +56,7 @@ export const TeamManager = ({ members, editingMember, onEditClick, onCancelEdit,
                   onClick={() => onEditClick(m)}
                   leadingIcon={<i className="fas fa-pen" aria-hidden="true" />}
                 >
-                  Edit information
+                  {t('admin.editInformation')}
                 </Button>
               </>
             )}
