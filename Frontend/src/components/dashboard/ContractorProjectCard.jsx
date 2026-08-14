@@ -4,6 +4,7 @@ import { StatusBadge } from '../StatusBadge';
 import { Card, Button, Input, Textarea, Select, Meter, Modal } from '../ui';
 import { formatMoney, formatDate, fileToBase64 } from '../../utils/helpers';
 import { projectHealth } from '../../utils/projectHealth';
+import { imageSrc, imageSrcSet, CARD_WIDTHS } from '../../utils/images';
 
 /**
  * Contractor task row. Spec: docs/design/02-ia-ux.md section 3.2.
@@ -47,11 +48,14 @@ export const ContractorProjectCard = ({ project, isEditing, onEditClick, onCance
             <div className="relative aspect-photo overflow-hidden rounded-md bg-sunken">
               {cover ? (
                 <img
-                  src={cover}
+                  src={imageSrc(cover, 480)}
+                  srcSet={imageSrcSet(cover, CARD_WIDTHS)}
+                  sizes="(min-width: 768px) 224px, 100vw"
                   alt=""
                   width="400"
                   height="300"
                   loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover"
                 />
               ) : (

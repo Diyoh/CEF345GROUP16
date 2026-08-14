@@ -6,6 +6,7 @@ import { useT } from '../i18n';
 import { Card, Meter } from './ui';
 import { formatMoney, formatRelative } from '../utils/helpers';
 import { projectHealth } from '../utils/projectHealth';
+import { imageSrc, imageSrcSet, CARD_WIDTHS, SIZES } from '../utils/images';
 
 /**
  * ProjectCard. Spec: docs/design/03-components.md section 4, hierarchy in 02-ia-ux.md 4.1.
@@ -35,7 +36,11 @@ export const ProjectCard = ({ project }) => {
       <div className="relative aspect-cover w-full overflow-hidden bg-sunken">
         {cover ? (
           <img
-            src={cover}
+            /* A card is at most ~480px wide, so asking Cloudinary for the original 4000px
+               phone photo downloaded roughly 100x more bytes than the box could use. */
+            src={imageSrc(cover, 640)}
+            srcSet={imageSrcSet(cover, CARD_WIDTHS)}
+            sizes={SIZES.card}
             alt=""
             width="800"
             height="600"

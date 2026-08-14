@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, EmptyState } from './ui';
 import { useT } from '../i18n';
+import { imageSrc, imageSrcSet, CARD_WIDTHS, FULL_WIDTHS, SIZES } from '../utils/images';
 
 /**
  * Photo gallery and lightbox. Spec: docs/design/03-components.md section 16.
@@ -67,7 +68,9 @@ export const PhotoGallery = ({ images = [], title = '' }) => {
               className="group relative block aspect-photo w-full overflow-hidden rounded-md bg-sunken"
             >
               <img
-                src={img}
+                src={imageSrc(img, 640)}
+                srcSet={imageSrcSet(img, CARD_WIDTHS)}
+                sizes={SIZES.gallery}
                 alt=""
                 width="800"
                 height="600"
@@ -109,7 +112,11 @@ export const PhotoGallery = ({ images = [], title = '' }) => {
 
           <div className="flex min-h-0 flex-1 items-center justify-center px-4 pb-4">
             <img
-              src={images[openIndex]}
+              /* The lightbox is the one place a full-size view is the point, but even here
+                 1600px is beyond any phone screen and a fraction of the original. */
+              src={imageSrc(images[openIndex], 1600)}
+              srcSet={imageSrcSet(images[openIndex], FULL_WIDTHS)}
+              sizes={SIZES.hero}
               alt={title ? `${title}, photo ${openIndex + 1}` : `Photo ${openIndex + 1}`}
               className="max-h-full max-w-full object-contain"
             />

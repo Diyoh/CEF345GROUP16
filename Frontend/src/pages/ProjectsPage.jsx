@@ -16,6 +16,12 @@ import { projectHealth, byVarianceAsc } from '../utils/projectHealth';
  * writes a query string, so any view a citizen finds is a URL they can send to someone.
  */
 
+/**
+ * Projects per page. 12 divides evenly by the 1, 2 and 3 column grids, so no breakpoint
+ * ends on a short row.
+ */
+const PAGE_SIZE = 12;
+
 const SORTS = {
   attention: { labelKey: 'projects.sortAttention', fn: byVarianceAsc },
   budget: { labelKey: 'projects.sortBudget', fn: (a, b) => (Number(b.budget) || 0) - (Number(a.budget) || 0) },
@@ -38,6 +44,9 @@ export const ProjectsPage = () => {
     const next = new URLSearchParams(params);
     if (!value || value === 'All') next.delete(key);
     else next.set(key, value);
+    // Any change to what is being listed invalidates the position within it. Staying on
+    // page 4 while narrowing to 9 results shows an empty grid that reads as "no matches".
+    if (key !== 'page') next.delete('page');
     setParams(next, { replace: true });
   };
 
@@ -75,6 +84,28 @@ export const ProjectsPage = () => {
       })
       .sort(SORTS[sort]?.fn || SORTS.attention.fn);
   }, [projects, search, statusFilter, regionFilter, contractorFilter, sort]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredProjects.length / PAGE_SIZE));
+
+  // Clamped rather than trusted: `page` arrives from the URL, so it can be 0, a word, or
+  // a page that existed before the filters changed under a shared link.
+  const page = Math.min(Math.max(parseInt(params.get('page'), 10) || 1, 1), pageCount);
+
+  const pagedProjects = useMemo(
+    () => filteredProjects.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filteredProjects, page]
+  );
+
+  // Paging replaces the grid in place. Without this the reader is left at the scroll
+  // position of the old page 2 and sees the middle of the new one.
+  const resultsRef = useRef(null);
+  const lastPage = useRef(page);
+  useEffect(() => {
+    if (lastPage.current !== page) {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      lastPage.current = page;
+    }
+  }, [page]);
 
   const activeFilters = [
     statusFilter !== 'All' && { key: 'status', label: t(`status.${statusFilter}`) },
@@ -234,10 +265,18 @@ export const ProjectsPage = () => {
           </Card>
         </aside>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1" ref={resultsRef}>
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <p className="tabular text-caption text-fg-tertiary">
-              {t('projects.countOf', { shown: filteredProjects.length, total: projects.length })}
+              {/* Once the list is split, "24 of 60" beside a grid of 12 is a contradiction
+                  the reader has to resolve. Name the slice instead. */}
+              {pageCount > 1
+                ? t('projects.rangeOf', {
+                    from: (page - 1) * PAGE_SIZE + 1,
+                    to: (page - 1) * PAGE_SIZE + pagedProjects.length,
+                    total: filteredProjects.length,
+                  })
+                : t('projects.countOf', { shown: filteredProjects.length, total: projects.length })}
             </p>
             {activeFilters.map((f) => (
               <button
@@ -255,7 +294,7 @@ export const ProjectsPage = () => {
           </div>
 
           {loading ? (
-            <SkeletonRegion label="Loading projects" className="grid gap-5 sm:grid-cols-2">
+            <SkeletonRegion label="Loading projects" className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <Card key={i} padding="none" className="overflow-hidden">
                   <Skeleton className="aspect-photo w-full rounded-none" />
@@ -268,11 +307,27 @@ export const ProjectsPage = () => {
               ))}
             </SkeletonRegion>
           ) : filteredProjects.length > 0 ? (
-            <div className="grid gap-5 sm:grid-cols-2">
-              {filteredProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-            </div>
+            <>
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {pagedProjects.map((project) => (
+                  <ProjectCard key={project.id} project={project} />
+                ))}
+              </div>
+
+              <Pagination
+                page={page}
+                pageCount={pageCount}
+                onChange={(next) => setParam('page', next === 1 ? null : String(next))}
+                label={t('pagination.label')}
+                labels={{
+                  previous: t('pagination.previous'),
+                  next: t('pagination.next'),
+                  goToPage: (p) => t('pagination.goToPage', { page: p }),
+                  status: (p, total) => t('pagination.status', { page: p, total }),
+                }}
+                className="mt-8 border-t border-line-subtle pt-6"
+              />
+            </>
           ) : projects.length === 0 ? (
             <EmptyState
               icon="fa-folder-open"

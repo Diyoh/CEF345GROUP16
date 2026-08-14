@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, Button, Input, Textarea, EmptyState } from '../ui';
 import { useT } from '../../i18n';
+import { imageSrc, imageSrcSet, THUMB_WIDTHS, SIZES } from '../../utils/images';
 
 /**
  * Team management. Same form contract: hidden id field, name, role and bio read from
@@ -36,7 +37,9 @@ export const TeamManager = ({ members, editingMember, onEditClick, onCancelEdit,
               <>
                 <div className="flex items-center gap-3">
                   <img
-                    src={m.imageUrl}
+                    src={imageSrc(m.imageUrl, 96)}
+                    srcSet={imageSrcSet(m.imageUrl, THUMB_WIDTHS)}
+                    sizes={SIZES.thumb}
                     alt=""
                     width="48"
                     height="48"
