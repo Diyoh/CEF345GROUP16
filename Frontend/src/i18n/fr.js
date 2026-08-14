@@ -87,6 +87,7 @@ export const fr = {
         allContractors: 'Toutes les entreprises',
         searchPlaceholder: 'Nom du projet ou ville',
         countOf: '{shown} projets sur {total}',
+        rangeOf: 'Projets {from} à {to} sur {total}',
         showCount: 'Afficher {count} projets',
         removeFilter: 'Retirer le filtre {label}',
         noMatch: 'Aucun projet ne correspond à ces filtres',
@@ -95,6 +96,14 @@ export const fr = {
         photoCount_one: '{count} photo',
         photoCount_other: '{count} photos',
         updatedAgo: 'Mis à jour {when}',
+    },
+
+    pagination: {
+        label: 'Pages de projets',
+        previous: 'Précédent',
+        next: 'Suivant',
+        goToPage: 'Aller à la page {page}',
+        status: 'Page {page} sur {total}',
     },
 
     project: {

@@ -7,6 +7,7 @@ import { formatMoney } from '../utils/helpers';
 import { projectHealth, byVarianceAsc } from '../utils/projectHealth';
 import { ProjectStatus } from '../types';
 import { useT } from '../i18n';
+import { imageSrc, imageSrcSet, HERO_WIDTHS, SIZES } from '../utils/images';
 
 /**
  * Public homepage. Spec: docs/design/02-ia-ux.md section 3.1.
@@ -114,7 +115,9 @@ export const Home = () => {
               }`}
             >
               <img
-                src={s.image}
+                src={imageSrc(s.image, 1024)}
+                srcSet={imageSrcSet(s.image, HERO_WIDTHS)}
+                sizes={SIZES.hero}
                 alt=""
                 loading={i === 0 ? 'eager' : 'lazy'}
                 decoding="async"

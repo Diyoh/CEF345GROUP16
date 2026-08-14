@@ -2,6 +2,7 @@ import React from 'react';
 import { useAppStore } from '../useAppStore';
 import { Card, EmptyState } from '../components/ui';
 import { useT } from '../i18n';
+import { imageSrc, imageSrcSet, THUMB_WIDTHS } from '../utils/images';
 
 /**
  * About. Renamed from "Developers" in the navigation: to a citizen that word reads as an
@@ -32,7 +33,8 @@ export const Developers = () => {
               <Card padding="lg" className="h-full">
                 <div className="flex items-center gap-4">
                   <img
-                    src={member.imageUrl}
+                    src={imageSrc(member.imageUrl, 192)}
+                    srcSet={imageSrcSet(member.imageUrl, THUMB_WIDTHS)}
                     alt=""
                     width="64"
                     height="64"

@@ -81,6 +81,7 @@ export const en = {
         allContractors: 'All contractors',
         searchPlaceholder: 'Project name or town',
         countOf: '{shown} of {total} projects',
+        rangeOf: '{from} to {to} of {total} projects',
         showCount: 'Show {count} projects',
         removeFilter: 'Remove filter {label}',
         noMatch: 'No projects match these filters',
@@ -89,6 +90,14 @@ export const en = {
         photoCount_one: '{count} photo',
         photoCount_other: '{count} photos',
         updatedAgo: 'Updated {when}',
+    },
+
+    pagination: {
+        label: 'Project pages',
+        previous: 'Previous',
+        next: 'Next',
+        goToPage: 'Go to page {page}',
+        status: 'Page {page} of {total}',
     },
 
     project: {
