@@ -25,12 +25,28 @@ npm run migrate:dry      # print the statements that would run, change nothing
 npm run migrate          # apply pending migrations
 ```
 
-The runner reuses the application's own connection pool (`Backend/config/db.js`), so it
-reaches whatever database the API reaches — same host, port, SSL and credentials, with no
-second config to keep in sync. Point it at another environment by pointing `Backend/.env`
-at that environment.
+The runner reuses the application's connection pool (`Backend/config/db.js`), so it reaches
+whatever database `Backend/.env` points at — same host, port, SSL and credentials as the API,
+with no second config to keep in sync. **To migrate a different environment, point `.env` at
+it and run the same command.**
 
 Always run `migrate:dry` before `migrate` against a database you care about.
+
+### Standing up a fresh database
+
+`Database/schema.sql` describes the CURRENT desired state, including the audit-log triggers,
+so a new database does not need the migrations replayed to be correct:
+
+```bash
+docker compose up -d db                 # or point .env at any MySQL 8 / MariaDB
+cd Backend && npm run migrate           # records baseline; already-present objects are tolerated
+npm run seed                            # optional demo data
+```
+
+Running the migrator against a fresh `schema.sql` install is safe and recommended: statements
+whose effect is already present (index exists, table exists, foreign key already absent,
+trigger already defined) are tolerated and logged, and the run populates `schema_migrations`
+so future migrations apply cleanly.
 
 ## Checking what is already applied
 
@@ -46,17 +62,18 @@ tolerated and logged, so a partially applied file can be re-run safely.
 
 ## Log
 
-| # | File | Local / Docker | Remote (Aiven) | What |
-|---|---|---|---|---|
-| 001 | `001_add_query_indexes.sql` | ☐ | ☑ | Indexes on `projects.created_at`, `status`, `region`, and `(status, created_at)` |
-| 002 | `002_anonymous_citizen_reports.sql` | ☐ | ☑ | `comments.author_name` made nullable; new reports store NULL |
-| 003 | `003_project_change_log.sql` | ☐ | ☑ | `project_changes` immutable audit log of every figure change |
-| 004 | `004_enforce_audit_immutability.sql` | ☐ | ☑ | Drops the audit FK cascade; triggers reject UPDATE/DELETE on `project_changes` |
+| # | File | What |
+|---|---|---|
+| 001 | `001_add_query_indexes.sql` | Indexes on `projects.created_at`, `status`, `region`, and `(status, created_at)` |
+| 002 | `002_anonymous_citizen_reports.sql` | `comments.author_name` made nullable; new reports store NULL |
+| 003 | `003_project_change_log.sql` | `project_changes` immutable audit log of every figure change |
+| 004 | `004_enforce_audit_immutability.sql` | Drops the audit FK cascade; triggers reject UPDATE/DELETE on `project_changes` |
 
-Applied 2026-08-14 to the **remote (Aiven)** database via `npm run migrate`, verified by
-inspecting `information_schema`. Local/Docker databases are unticked because `Backend/.env`
-points at the remote host — anyone running a local database should run `npm run migrate`
-against it with their own `.env`.
+**Per-environment state is NOT tracked in this file.** Each database records its own applied
+migrations in its `schema_migrations` table; run `npm run migrate:status` against an
+environment to ask it directly. A checklist in a markdown file drifts from reality the first
+time someone forgets to tick it.
 
-This table is a convenience summary. `schema_migrations` in each database is the
-authoritative record; run `npm run migrate:status` rather than trusting this file.
+History: 001-004 were applied to the original Aiven instance on 2026-08-14. That instance is
+being retired, so nothing depends on it — any replacement gets the same state from
+`schema.sql` plus a `npm run migrate` run.

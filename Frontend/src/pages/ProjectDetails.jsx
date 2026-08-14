@@ -4,6 +4,7 @@ import { useAppStore } from '../useAppStore';
 import { StatusBadge } from '../components/StatusBadge';
 import { PhotoGallery } from '../components/PhotoGallery';
 import { ChangeHistory } from '../components/ChangeHistory';
+import { FlagList } from '../components/FlagList';
 import { Button, Card, Meter, Input, Select, Textarea, Badge, EmptyState } from '../components/ui';
 import { formatMoney, formatDate, formatRelative, fileToBase64 } from '../utils/helpers';
 import { projectHealth } from '../utils/projectHealth';
@@ -64,6 +65,9 @@ export const ProjectDetails = () => {
   // Only present on rows fetched via getProjectDetail or delivered by a socket event; the
   // list endpoint omits them.
   const changes = Array.isArray(project.changes) ? project.changes : [];
+  // Computed server-side (Backend/services/projectFlags.js) so the API, the export and this
+  // page cannot disagree about what counts as a problem.
+  const flags = Array.isArray(project.flags) ? project.flags : [];
 
   const handleImageUpload = async (e) => {
     if (!e.target.files) return;
@@ -170,9 +174,16 @@ export const ProjectDetails = () => {
                 </div>
               </dl>
 
+              {/* Automatic checks, stated with the figures that triggered them so a reader
+                  can disagree with the arithmetic rather than having to trust us. */}
+              <div className="mt-6 border-t border-line-subtle pt-5">
+                <h3 className="mb-3 text-overline uppercase text-fg-tertiary">Automatic checks</h3>
+                <FlagList flags={flags} />
+              </div>
+
               <p className="mt-5 border-t border-line-subtle pt-4 text-caption text-fg-tertiary">
                 Progress is reported by the contractor. Financial figures are derived from government
-                records.
+                records. Checks above are computed from those figures, not reported by anyone.
               </p>
             </Card>
           </section>
