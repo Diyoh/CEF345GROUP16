@@ -12,6 +12,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, test, expect } from 'vitest';
 
 import { ChangeHistory } from '../components/ChangeHistory';
+import { I18nProvider } from '../i18n';
 
 const change = (over = {}) => ({
   id: Math.random().toString(36).slice(2),

@@ -75,6 +75,7 @@ import { Developers } from '../pages/Developers';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { ProjectCard } from '../components/ProjectCard';
+import { I18nProvider } from '../i18n';
 
 const errors = [];
 beforeEach(() => {
@@ -84,7 +85,7 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 const renderAt = (ui, path = '/') =>
-  render(<MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>);
+  render(<I18nProvider><MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter></I18nProvider>);
 
 describe('page smoke tests', () => {
   it('Home renders the hero and the totals', () => {

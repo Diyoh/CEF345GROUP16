@@ -4,6 +4,8 @@ import { useAppStore } from '../useAppStore';
 import { UserRole } from '../types';
 import { Button, cn } from './ui';
 import { ThemeToggle } from './ThemeToggle';
+import { LanguageToggle } from './LanguageToggle';
+import { useT } from '../i18n';
 
 /**
  * Navbar. Spec: docs/design/03-components.md section 11.
@@ -21,9 +23,9 @@ import { ThemeToggle } from './ThemeToggle';
  */
 
 const DASHBOARD_BY_ROLE = {
-  [UserRole.ADMIN]: { to: '/admin', label: 'Admin dashboard' },
-  [UserRole.CONTRACTOR]: { to: '/contractor', label: 'My projects' },
-  [UserRole.DEVELOPER_ADMIN]: { to: '/dev-admin', label: 'Developer panel' },
+  [UserRole.ADMIN]: { to: '/admin', labelKey: 'nav.adminDashboard' },
+  [UserRole.CONTRACTOR]: { to: '/contractor', labelKey: 'nav.myProjects' },
+  [UserRole.DEVELOPER_ADMIN]: { to: '/dev-admin', labelKey: 'nav.developerPanel' },
 };
 
 const linkClass = ({ isActive }) =>
@@ -35,6 +37,7 @@ const linkClass = ({ isActive }) =>
   );
 
 export const Navbar = () => {
+  const t = useT();
   const { user, logout } = useAppStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -73,7 +76,7 @@ export const Navbar = () => {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-canvas/95 backdrop-blur supports-[backdrop-filter]:bg-canvas/80">
       <a href="#main" className="skip-link">
-        Skip to main content
+        {t('nav.skipToContent')}
       </a>
 
       <nav aria-label="Primary" className="mx-auto flex h-14 max-w-content items-center justify-between gap-4 px-4 md:h-16 md:px-8">
@@ -89,23 +92,24 @@ export const Navbar = () => {
 
         <div className="hidden items-center gap-7 md:flex">
           <NavLink to="/projects" className={linkClass}>
-            Projects
+            {t('nav.projects')}
           </NavLink>
           <NavLink to="/developers" className={linkClass}>
-            About
+            {t('nav.about')}
           </NavLink>
 
           <div className="ml-1 flex items-center gap-2 border-l border-line pl-5">
-            <ThemeToggle />
+            <LanguageToggle className="mr-1" />
+          <ThemeToggle />
             {user ? (
               <>
                 {dashboard && (
                   <Button as={Link} to={dashboard.to} variant="secondary" size="sm">
-                    {dashboard.label}
+                    {t(dashboard.labelKey)}
                   </Button>
                 )}
                 <Button variant="ghost" size="sm" onClick={handleLogout}>
-                  Sign out
+                  {t('nav.signOut')}
                 </Button>
               </>
             ) : (
@@ -140,10 +144,10 @@ export const Navbar = () => {
         >
           <div className="flex flex-col gap-1">
             <NavLink to="/projects" className="rounded-sm px-2 py-3 text-body font-medium text-fg hover:bg-sunken">
-              Projects
+              {t('nav.projects')}
             </NavLink>
             <NavLink to="/developers" className="rounded-sm px-2 py-3 text-body font-medium text-fg hover:bg-sunken">
-              About
+              {t('nav.about')}
             </NavLink>
           </div>
 
@@ -155,11 +159,11 @@ export const Navbar = () => {
                 </p>
                 {dashboard && (
                   <Button as={Link} to={dashboard.to} variant="secondary" size="lg" fullWidth>
-                    {dashboard.label}
+                    {t(dashboard.labelKey)}
                   </Button>
                 )}
                 <Button variant="ghost" size="lg" fullWidth onClick={handleLogout}>
-                  Sign out
+                  {t('nav.signOut')}
                 </Button>
               </div>
             ) : (

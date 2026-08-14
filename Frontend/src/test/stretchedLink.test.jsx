@@ -17,6 +17,7 @@ import { describe, test, expect } from 'vitest';
 
 import { Card } from '../components/ui/Card';
 import { ProjectCard } from '../components/ProjectCard';
+import { I18nProvider } from '../i18n';
 
 const project = {
   id: 'p1',
@@ -48,9 +49,9 @@ describe('Card positioning', () => {
 describe('ProjectCard stretched link', () => {
   const renderCard = () =>
     render(
-      <MemoryRouter>
+      <I18nProvider><MemoryRouter>
         <ProjectCard project={project} />
-      </MemoryRouter>
+      </MemoryRouter></I18nProvider>
     );
 
   test('the overlay link is contained by a positioned ancestor', () => {

@@ -60,6 +60,7 @@ import { ProjectModal } from '../components/dashboard/ProjectModal';
 import { FinancialChart } from '../components/dashboard/FinancialChart';
 import { AccessCodeManager } from '../components/dashboard/AccessCodeManager';
 import { CommentManager } from '../components/dashboard/CommentManager';
+import { I18nProvider } from '../i18n';
 
 const errors = [];
 beforeEach(() => {
@@ -70,9 +71,9 @@ afterEach(() => vi.restoreAllMocks());
 
 const renderApp = (ui) =>
   render(
-    <MemoryRouter>
+    <I18nProvider><MemoryRouter>
       <ToastProvider>{ui}</ToastProvider>
-    </MemoryRouter>
+    </MemoryRouter></I18nProvider>
   );
 
 describe('admin and contractor smoke tests', () => {

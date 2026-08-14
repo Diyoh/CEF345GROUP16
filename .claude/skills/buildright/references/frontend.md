@@ -92,7 +92,41 @@ Legacy aliases kept so unmigrated code renders: `primary`→accent, `secondary`�
 
 ---
 
+## Bilingual EN/FR — `src/i18n/`
+
+Cameroon is officially bilingual and the francophone regions are the majority, so this is a
+correctness requirement, not a feature.
+
+- `I18nProvider` is the **outermost** provider in `App.jsx`: it sets `<html lang>` and the
+  number/date formatters, which everything below depends on from the first paint.
+- `useT()` returns `t(key, params)`. Dot-path keys, `{name}` interpolation, `_one`/`_other`
+  plurals selected by a **`count`** param. Missing keys fall back English → key, never
+  `undefined`.
+- Locale order: stored choice → `navigator.languages` → English. A francophone visitor lands
+  on French without touching anything.
+- **No i18n library.** react-i18next would be ~40KB gzipped for two locales, no runtime
+  loading and trivial plurals; this is under 2KB. Call sites are library-agnostic, so replace
+  wholesale if a third locale or real CLDR plural rules arrive.
+- `en.js` is the source; `fr.js` mirrors its shape. `test/i18n.test.jsx` fails on missing
+  keys, orphan keys, mismatched `{placeholders}`, and untranslated long strings — translation
+  files rot silently otherwise.
+- **Components using `useT` require the provider in tests.** That is deliberate: silently
+  rendering English outside the provider would hide the bug from exactly the users it hurts.
+
+**Server-derived text must be localised from data, not prose.** The API sends flag `label`
+and `detail` as English (documented for open-data consumers) plus `params`. The UI renders
+from `code` + `params` via `flags.<code>` / `flags.<code>_detail`, never from `detail`.
+`FlagList` passes `count` alongside `days` so plurals select correctly. Stored `ProjectStatus`
+values are English enums translated **for display only** — never for storage or comparison.
+
 ## Formatting rules — `utils/helpers.js`
+
+**Locale-aware.** `setFormatLocale()` is module state synced by `I18nProvider` (deliberate:
+threading a locale argument through every call site for a global value). French uses a comma
+decimal (`85,0bn FCFA`) and a narrow no-break space before `%` (`55 %`); English uses a period
+and no space. Dates go through `fr-FR`/`en-GB`. **`FCFA` is never translated** — it is what
+the currency is called in daily written use in both languages.
+
 
 There is exactly **one** money formatter. Two previously disagreed.
 

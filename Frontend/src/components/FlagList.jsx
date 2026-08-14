@@ -1,5 +1,6 @@
 import React from 'react';
 import { Badge } from './ui';
+import { useT } from '../i18n';
 
 /**
  * Server-computed anomaly flags. Source: Backend/services/projectFlags.js.
@@ -25,26 +26,62 @@ const ICON = {
   no_evidence: 'fa-camera',
 };
 
+/**
+ * Renders a flag in the reader's language.
+ *
+ * The API sends `label` and `detail` as English prose for its open-data consumers, but the
+ * interface must NOT use them: Cameroon is officially bilingual and the francophone regions
+ * are the majority, so an English-only flag is unreadable to most of the audience. We render
+ * from `code` + `params` instead, falling back to the server prose only if a translation is
+ * genuinely missing.
+ */
+const useFlagText = () => {
+  const t = useT();
+  return (flag) => {
+    const params = flag.params || {};
+    const label = t(`flags.${flag.code}`);
+    const detailKey = `flags.${flag.code}_detail`;
+
+    // `count` is the plural selector in t(); the time-based flags carry their number as
+    // `days` because that reads better in the API payload. Passing both keeps the message
+    // template readable ("{days} days") while still selecting the right singular form —
+    // "1 jours" is the kind of error that makes a public record look unmaintained.
+    const detail = t(detailKey, {
+      ...params,
+      ...(typeof params.days === 'number' ? { count: params.days } : {}),
+    });
+
+    return {
+      label: label === `flags.${flag.code}` ? flag.label : label,
+      detail: detail === detailKey ? flag.detail : detail,
+    };
+  };
+};
+
 /** Compact row of badges — cards and table rows. */
 export const FlagBadges = ({ flags = [], size = 'sm', max = 2 }) => {
+  const flagText = useFlagText();
   if (!Array.isArray(flags) || flags.length === 0) return null;
   const shown = flags.slice(0, max);
   const hidden = flags.length - shown.length;
 
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
-      {shown.map((flag) => (
+      {shown.map((flag) => {
+        const text = flagText(flag);
+        return (
         <Badge
           key={flag.code}
           rank="flag"
           tone={TONE[flag.severity] || 'neutral'}
           size={size}
           icon={<i className={`fas ${ICON[flag.code] || 'fa-flag'}`} />}
-          title={flag.detail}
+          title={text.detail}
         >
-          {flag.label}
+          {text.label}
         </Badge>
-      ))}
+        );
+      })}
       {hidden > 0 && (
         <span className="text-caption text-fg-tertiary">+{hidden}</span>
       )}
@@ -54,18 +91,23 @@ export const FlagBadges = ({ flags = [], size = 'sm', max = 2 }) => {
 
 /** Full explained list — the project page, where there is room for the reasoning. */
 export const FlagList = ({ flags = [] }) => {
+  const t = useT();
+  const flagText = useFlagText();
+
   if (!Array.isArray(flags) || flags.length === 0) {
     return (
       <p className="text-body text-fg-secondary">
         <i className="fas fa-circle-check mr-2 text-accent" aria-hidden="true" />
-        Nothing on this project is currently flagged.
+        {t('project.noFlags')}
       </p>
     );
   }
 
   return (
     <ul className="flex flex-col gap-3">
-      {flags.map((flag) => (
+      {flags.map((flag) => {
+        const text = flagText(flag);
+        return (
         <li key={flag.code} className="flex items-start gap-3">
           <span
             className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
@@ -76,12 +118,13 @@ export const FlagList = ({ flags = [] }) => {
             <i className={`fas ${ICON[flag.code] || 'fa-flag'} text-caption`} />
           </span>
           <div className="min-w-0">
-            <p className="text-body font-medium text-fg">{flag.label}</p>
+            <p className="text-body font-medium text-fg">{text.label}</p>
             {/* The numbers are the point. Without them this is a rumour. */}
-            <p className="tabular mt-0.5 text-caption text-fg-secondary">{flag.detail}</p>
+            <p className="tabular mt-0.5 text-caption text-fg-secondary">{text.detail}</p>
           </div>
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 };

@@ -42,7 +42,8 @@ purpose: that is the check on contractor self-reporting.
 | Add a route/page | `Frontend/src/App.jsx` (+ `components/layout/AdminLayout.jsx` for admin sections) |
 | Change global state | `Frontend/src/store.jsx` (single Context; `useAppStore.js` is the hook) |
 | Build a UI control | `Frontend/src/components/ui/*` — never raw Tailwind for chrome |
-| Change money/date formatting | `Frontend/src/utils/helpers.js` — the ONLY formatter |
+| Change money/date formatting | `Frontend/src/utils/helpers.js` — the ONLY formatter. Locale-aware: `setFormatLocale` is driven by `I18nProvider` |
+| Add or change UI text | `Frontend/src/i18n/en.js` **and** `fr.js` — a test fails if the two drift |
 | Change the risk/health verdict | `Backend/services/projectFlags.js` is authoritative (thresholds + flag definitions + the SQL predicates). `Frontend/src/utils/projectHealth.js` mirrors the arithmetic for meters — **change both or they disagree** |
 | Change status colours/icons | `Frontend/src/utils/projectHealth.js` (`statusTone`, `statusIcon`) + tokens in `Frontend/src/index.css` |
 | Change theme/design tokens | `Frontend/src/index.css` (CSS vars) + `Frontend/tailwind.config.js` |
