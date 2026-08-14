@@ -172,3 +172,27 @@ describe('change logging', () => {
         expect(logRows()).toHaveLength(0);
     });
 });
+
+describe('deletion logging', () => {
+    test('records the deletion before removing the project', async () => {
+        const { deleteProject } = await import('../services/projectService.js');
+        await deleteProject({ actor: ADMIN, projectId: 'proj-1' });
+
+        const rows = logRows();
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toMatchObject({
+            field: 'project',
+            oldValue: 'Bamenda Ring Road',
+            newValue: 'deleted',
+            actorName: 'Admin User'
+        });
+
+        // The log row must be written BEFORE the row disappears, or the audit trail for a
+        // deleted project would be missing its final and most consequential entry.
+        const order = pool.query.mock.calls.map(([sql]) => sql);
+        const logAt = order.findIndex((sql) => /INSERT INTO project_changes/i.test(sql));
+        const deleteAt = order.findIndex((sql) => /DELETE FROM projects/i.test(sql));
+        expect(logAt).toBeGreaterThanOrEqual(0);
+        expect(deleteAt).toBeGreaterThan(logAt);
+    });
+});

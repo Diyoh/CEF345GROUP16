@@ -82,8 +82,16 @@ progress 60% → 30% and the record showed only "30%".
 
 - Written by `recordChanges()` in `projectService`, **inside the same transaction** as the UPDATE.
   A figure cannot move without a log row landing with it.
-- **Never UPDATEd or DELETEd** by any code path. For a hard guarantee, revoke UPDATE/DELETE on
-  this table from the app DB user (command in `migrations/003`).
+- **UPDATE and DELETE are rejected by the database itself** — triggers `project_changes_no_update`
+  and `project_changes_no_delete` raise SQLSTATE 45000 (migration 004). Verified against the live
+  database: INSERT succeeds, UPDATE and DELETE both fail.
+- **No foreign key to `projects`.** The FK's `ON DELETE CASCADE` meant deleting a project erased
+  its whole history — the cheapest way to make an inconvenient record vanish. Audit rows now
+  outlive the project, and deletion is itself logged as `field='project', new_value='deleted'`.
+- Limit of the guarantee: triggers stop every application path and any casual client, but not
+  someone with DDL rights who deliberately drops the trigger. That escape hatch is documented in
+  migration 004 and leaves a visible gap in the schema. True tamper-proofing needs append-only
+  storage or off-box log shipping.
 - `actor_name` / `actor_role` are **denormalised on purpose** — joining to `users` would let a
   rename or deletion rewrite history retroactively.
 - Only genuinely changed fields are logged (`diffFields` compares rendered values), because a log

@@ -563,11 +563,29 @@ export const updateProject = async ({ actor, projectId, body = {}, files = [] })
  * deleteProject
  * Admin-only. Images, comments and timeline rows cascade via foreign keys.
  */
-export const deleteProject = async (projectId) => {
+export const deleteProject = async ({ actor, projectId }) => {
     const project = await findProjectRow(projectId);
     if (!project) throw notFound('Project not found');
 
-    await pool.query('DELETE FROM projects WHERE id = ?', [projectId]);
+    // The audit log no longer cascades with the project (migration 004), so the history
+    // survives — and the deletion itself is recorded as the final entry. Removing a project
+    // is the most consequential act available to an admin; it should not be the one thing
+    // that leaves no trace.
+    await withTransaction(async (tx) => {
+        await recordChanges({
+            tx,
+            projectId,
+            actor,
+            changes: [{
+                field: 'project',
+                oldValue: project.title,
+                newValue: 'deleted'
+            }]
+        });
+
+        await tx.query('DELETE FROM projects WHERE id = ?', [projectId]);
+    });
+
     return { id: projectId };
 };
 

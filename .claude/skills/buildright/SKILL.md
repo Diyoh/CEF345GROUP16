@@ -44,7 +44,7 @@ purpose: that is the check on contractor self-reporting.
 | Image upload behaviour | `Backend/middleware/uploadMiddleware.js` + `Backend/config/cloudinary.js` + `Backend/utils/fileHandler.js` |
 | Seed/reset data | `Backend/seed.js` (`npm run seed`) |
 | Schema | `Database/schema.sql`; live dump `backup_latest.sql` (do not edit backups) |
-| Change the schema | `Database/migrations/` — numbered SQL, applied by hand. See its README for the apply commands and the applied-state log |
+| Change the schema | Add a numbered file to `Database/migrations/`, then `cd Backend && npm run migrate:dry` → `npm run migrate`. Runner: `Backend/scripts/migrate.js` |
 | Add a field that should be auditable | `COLUMN_BY_FIELD` + the editable-fields lists in `projectService.js` — logging is automatic from there via `diffFields`/`recordChanges` |
 | Change how history is displayed | `Frontend/src/components/ChangeHistory.jsx` (`FIELD_LABELS`, unit rendering) |
 
@@ -138,7 +138,9 @@ stored row → every client's store merges it → `ProjectCard`/`ProjectDetails`
 | Write more than one row in an operation | Wrap it in `withTransaction` from `config/db.js` and pass `tx` into every helper that writes | A helper closing over `pool` runs OUTSIDE the transaction and silently defeats it. Registration, project creation and the audit log all depend on this |
 | Add a write path that changes project figures | Route it through `projectService.updateProject`, or call `recordChanges` with the same `tx` | A figure that moves without a `project_changes` row is indistinguishable from the original value. The audit log is the product's credibility |
 | `components/ui/Card.jsx` | Keep `relative` in the base class list | `ProjectCard` stretches its link with `after:absolute after:inset-0`. Without `relative` the overlay escapes to the initial containing block and swallows almost every click on the site — silently, with nothing thrown |
-| Add a schema change | A numbered file in `Database/migrations/` **and** `Database/schema.sql`, then tick the log table | `schema.sql` only describes fresh installs; existing databases (local, Docker, Aiven) need the migration |
+| Add a schema change | A numbered file in `Database/migrations/` **and** `Database/schema.sql`, then run the migrator | `schema.sql` only describes fresh installs; existing databases need the migration. `schema_migrations` in the DB is the authoritative applied-state record |
+| A migration that already ran | **Never edit it** — write a new one | The runner checksums applied files and warns on drift, because an edited applied migration means the DB no longer matches the repo |
+| `project_changes` | Nothing — it rejects UPDATE and DELETE at the database via triggers | Migration 004. Attempting either raises SQLSTATE 45000. Changing this means dropping a trigger, which is visible in the schema |
 | `CORS_ORIGINS` / a frontend domain | Nothing else — `allowedOrigins.js` feeds REST *and* Socket.io | Previously two hardcoded lists that drifted; live updates died in production |
 | Auth cookie options | `sameSite:'none'` + `secure:true` + `app.set('trust proxy', 1)` must stay together | Vercel↔Render is cross-site; removing any one breaks login in production only, never locally |
 | Add a field to `projects` | `projectService.COLUMN_BY_FIELD`, `CONTRACTOR_EDITABLE_FIELDS` / `ADMIN_EDITABLE_FIELDS`, `validateField` | Update path is an explicit whitelist; unlisted fields are silently ignored |
