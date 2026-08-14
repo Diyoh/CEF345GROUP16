@@ -138,3 +138,28 @@ describe('badges over media', () => {
     expect(screen.queryByText(/past its completion date/i)).not.toBeInTheDocument();
   });
 });
+
+describe('card badges do not repeat themselves', () => {
+  const stalled = {
+    ...project,
+    status: 'Stalled',
+    flags: [
+      { code: 'past_due', severity: 'warning', label: 'Past its completion date', detail: '60 days past.', params: { days: 60 } },
+      { code: 'stalled', severity: 'warning', label: 'Reported as stalled', detail: 'Stalled.', params: {} },
+    ],
+  };
+
+  test('a stalled project does not show STALLED twice', () => {
+    render(
+      <I18nProvider>
+        <MemoryRouter>
+          <ProjectCard project={stalled} />
+        </MemoryRouter>
+      </I18nProvider>
+    );
+    // The lifecycle badge already says it; the flag beside it is pure repetition.
+    expect(screen.getAllByText(/^Stalled$/i)).toHaveLength(1);
+    // The non-redundant flag survives.
+    expect(screen.getByText(/^Overdue$/i)).toBeInTheDocument();
+  });
+});

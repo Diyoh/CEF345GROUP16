@@ -16,6 +16,13 @@ import { useT } from '../i18n';
 
 const TONE = { critical: 'over', warning: 'delayed' };
 
+/**
+ * Flags whose whole content is already carried by the lifecycle badge. Only relevant where
+ * the two render side by side (cards); the project page shows the flag with its explanation,
+ * which the badge does not provide.
+ */
+const RESTATES_STATUS = { stalled: 'Stalled' };
+
 const ICON = {
   over_budget: 'fa-arrow-trend-up',
   spending_ahead_of_build: 'fa-scale-unbalanced',
@@ -67,12 +74,20 @@ const useFlagText = () => {
  *
  * `onMedia` gives each chip an opaque fill so it survives an unknown photograph behind it.
  */
-export const FlagBadges = ({ flags = [], size = 'sm', max = 2, short = false, onMedia = false }) => {
+export const FlagBadges = ({ flags = [], size = 'sm', max = 2, short = false, onMedia = false, status = null }) => {
   const t = useT();
   const flagText = useFlagText();
   if (!Array.isArray(flags) || flags.length === 0) return null;
-  const shown = flags.slice(0, max);
-  const hidden = flags.length - shown.length;
+
+  // Drop flags the lifecycle badge beside them already states. A card reading
+  // "STALLED · OVERDUE · STALLED" spends its scarcest space saying one thing twice, and
+  // repetition is how a reader learns the badges are not worth reading.
+  // The detail page keeps it: there the flag carries an explanatory sentence.
+  const visible = status ? flags.filter((f) => !RESTATES_STATUS[f.code] || RESTATES_STATUS[f.code] !== status) : flags;
+  if (visible.length === 0) return null;
+
+  const shown = visible.slice(0, max);
+  const hidden = visible.length - shown.length;
 
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">

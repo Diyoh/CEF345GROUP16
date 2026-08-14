@@ -60,7 +60,7 @@ export const ProjectCard = ({ project }) => {
             project page. */}
         <div className="absolute inset-x-2 top-2 flex flex-wrap justify-end gap-1">
           <StatusBadge project={project} size="sm" showFlags={false} onMedia />
-          <FlagBadges flags={project.flags} size="sm" max={2} short onMedia />
+          <FlagBadges flags={project.flags} size="sm" max={2} short onMedia status={project.status} />
         </div>
 
         {images.length > 1 && (
