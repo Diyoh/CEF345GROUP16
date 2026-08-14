@@ -107,7 +107,10 @@ export const Home = () => {
   }, [outgoing, slide]);
 
   return (
-    <div className="pb-20">
+    // No page-level bottom padding on phones: the last section's own padding is already
+    // enough separation from the footer, and stacking both left a dead band of empty
+    // canvas the height of a thumb.
+    <div className="pb-0 md:pb-20">
       {/* ---------- Hero ---------- */}
       <section className="relative isolate overflow-hidden border-b border-line bg-surface">
         <div className="absolute inset-0" aria-hidden="true">
@@ -219,7 +222,7 @@ export const Home = () => {
 
       {/* ---------- Needs attention ---------- */}
       {needsAttention.length > 0 && (
-        <section className="mx-auto max-w-content px-4 pb-16 md:px-8">
+        <section className="mx-auto max-w-content px-4 pb-10 md:px-8 md:pb-16">
           <div className="mb-6 flex items-end justify-between gap-4 border-l-2 border-over-line pl-4">
             <div>
               <h2 className="text-h2 text-fg">{t('home.needsAttention')}</h2>
@@ -240,7 +243,7 @@ export const Home = () => {
       )}
 
       {/* ---------- Recently updated ---------- */}
-      <section className="mx-auto max-w-content px-4 pb-16 md:px-8">
+      <section className="mx-auto max-w-content px-4 pb-10 md:px-8 md:pb-16">
         <div className="mb-6 flex items-end justify-between gap-4">
           <h2 className="text-h2 text-fg">{t('home.recentlyUpdated')}</h2>
           <Button as={Link} to="/projects" variant="ghost" size="sm">

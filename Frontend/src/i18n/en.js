@@ -100,6 +100,62 @@ export const en = {
         status: 'Page {page} of {total}',
     },
 
+    about: {
+        eyebrow: 'About BuildRight',
+        title: 'What was promised, what was paid, and what was built.',
+        lead: 'BuildRight is a public record of government infrastructure projects in Cameroon. It sets the money released against the work actually delivered, project by project, so anyone can check the two against each other without asking permission first.',
+
+        whyTitle: 'Why this exists',
+        whyBody1: 'A budget line and a finished road are not the same thing. Spending is announced when it is approved, and for most projects that announcement is the last anyone hears of it. What goes missing is everything after: whether the work was built, how far it got, and what it had cost by the time it stopped.',
+        whyBody2: 'BuildRight keeps that part in one place and leaves it open. Reading the record takes no account, no request, and no explanation of why you want to know.',
+
+        publishTitle: 'What we publish',
+        publish1Title: 'The money',
+        publish1Body: 'The approved budget and the amount spent to date, in FCFA, for every project on the record.',
+        publish2Title: 'The work',
+        publish2Body: 'Progress as a percentage of completion, the current status, the region and town, the contractor responsible, and the start and completion dates.',
+        publish3Title: 'The evidence',
+        publish3Body: 'Photographs attached to site updates, alongside reports filed by the people who live with the work.',
+
+        trustTitle: 'How the record is kept honest',
+        trust1Title: 'Writing is invite only',
+        trust1Body: 'Reading is open to everyone. Publishing is not. An access code carries the role it grants and is used up the moment it is redeemed, so nobody selects their own permissions.',
+        trust2Title: 'Contractors update only their own work',
+        trust2Body: 'A contractor can move the status, progress, spend and photographs of the projects assigned to them. Budgets, dates, titles and assignments stay out of reach.',
+        trust3Title: 'Every figure has a history',
+        trust3Body: 'When a number moves, the old value, the new value, who changed it and when are written to a log that cannot afterwards be edited or deleted, not even by an administrator.',
+        trust4Title: 'Citizens report without an account',
+        trust4Body: 'Anyone can file a report with photographs against any project, with no registration at all. That is deliberate: self-reporting by the party being measured needs a check that does not depend on their goodwill.',
+
+        readTitle: 'How to read the numbers',
+        readLead: 'Every project carries two bars. Read them together, because either one on its own can be made to look fine.',
+        read1Title: 'Built',
+        read1Body: 'How much of the work is finished, as reported by the contractor and visible in the photographs attached to each update.',
+        read2Title: 'Spent',
+        read2Body: 'How much of the budget has been drawn down, as a share of the approved amount.',
+        read3Title: 'The gap between them',
+        read3Body: 'Progress minus spending, counted in points. A project 20 percent built and 60 percent spent is 40 points behind its own money, and that gap is the most useful single number on the page.',
+        readNote: 'A project running ahead of its spending is shown in neutral, never in green. Underspending on public works is not automatically good news, because it can just as easily mean the site is standing idle.',
+
+        limitsTitle: 'What we do not claim',
+        limit1: 'The figures come from the bodies delivering the works. BuildRight publishes them, timestamps them and keeps every revision, but it does not audit them and does not present them as verified.',
+        limit2: 'A quiet project is flagged as quiet rather than assumed healthy. A long stretch with no update is information in itself, not the absence of it.',
+        limit3: 'Coverage extends only to the projects published here. A project missing from this record is not evidence that the project does not exist.',
+
+        openTitle: 'Take the data with you',
+        openBody: 'A record is worth little if it can only be read on our terms. Any filtered view can be downloaded as a spreadsheet, and what you export is exactly what you were looking at, so the numbers can be checked against another source.',
+        openCta: 'Browse and export the projects',
+
+        teamTitle: 'The team',
+        teamLead: 'BuildRight is built and maintained by a small group of engineers in Cameroon.',
+
+        partTitle: 'Take part',
+        partCitizenTitle: 'If you live with the work',
+        partCitizenBody: 'Open the project you know about and file a report with photographs. No account, and no form to request one.',
+        partStaffTitle: 'If you deliver the work',
+        partStaffBody: 'Contractors and administrators are issued an access code by an existing administrator, and that code is what turns a reader into a publisher.',
+    },
+
     project: {
         buildAgainstSpend: 'Build against spend',
         budget: 'Budget',

@@ -106,6 +106,62 @@ export const fr = {
         status: 'Page {page} sur {total}',
     },
 
+    about: {
+        eyebrow: 'À propos de BuildRight',
+        title: 'Ce qui a été promis, ce qui a été payé, et ce qui a été construit.',
+        lead: 'BuildRight est un registre public des projets d’infrastructures de l’État au Cameroun. Il met en regard l’argent débloqué et les travaux réellement livrés, projet par projet, afin que chacun puisse comparer les deux sans avoir à demander la permission.',
+
+        whyTitle: 'Pourquoi ce registre existe',
+        whyBody1: 'Une ligne budgétaire et une route achevée ne sont pas la même chose. Une dépense est annoncée au moment de son approbation, et pour la plupart des projets cette annonce est la dernière nouvelle que l’on en a. Ce qui disparaît, c’est tout ce qui vient ensuite : les travaux ont-ils été réalisés, jusqu’où sont-ils allés, et combien avaient-ils coûté au moment où ils se sont arrêtés.',
+        whyBody2: 'BuildRight rassemble cette partie en un seul endroit et la laisse ouverte. Consulter le registre ne demande ni compte, ni requête, ni justification.',
+
+        publishTitle: 'Ce que nous publions',
+        publish1Title: 'L’argent',
+        publish1Body: 'Le budget approuvé et le montant dépensé à ce jour, en FCFA, pour chaque projet du registre.',
+        publish2Title: 'Les travaux',
+        publish2Body: 'L’avancement en pourcentage, le statut actuel, la région et la ville, l’entreprise responsable, ainsi que les dates de début et de fin.',
+        publish3Title: 'Les preuves',
+        publish3Body: 'Les photographies jointes aux mises à jour de chantier, ainsi que les signalements déposés par les personnes qui vivent avec ces travaux.',
+
+        trustTitle: 'Ce qui garantit la fiabilité du registre',
+        trust1Title: 'La publication se fait sur invitation',
+        trust1Body: 'La lecture est ouverte à tous, la publication ne l’est pas. Un code d’accès porte le rôle qu’il accorde et est consommé dès son utilisation : personne ne choisit ses propres droits.',
+        trust2Title: 'Chaque entreprise ne met à jour que ses propres chantiers',
+        trust2Body: 'Une entreprise peut modifier le statut, l’avancement, les dépenses et les photographies des projets qui lui sont attribués. Les budgets, les dates, les intitulés et les attributions lui restent inaccessibles.',
+        trust3Title: 'Chaque chiffre a un historique',
+        trust3Body: 'Lorsqu’un chiffre change, l’ancienne valeur, la nouvelle valeur, l’auteur et la date sont inscrits dans un journal qui ne peut ensuite être ni modifié ni supprimé, pas même par un administrateur.',
+        trust4Title: 'Les citoyens signalent sans compte',
+        trust4Body: 'Toute personne peut déposer un signalement accompagné de photographies sur n’importe quel projet, sans aucune inscription. C’est un choix délibéré : les déclarations de la partie évaluée ont besoin d’un contrepoids qui ne dépende pas de sa bonne volonté.',
+
+        readTitle: 'Comment lire les chiffres',
+        readLead: 'Chaque projet porte deux barres. Elles se lisent ensemble, car chacune prise isolément peut être présentée sous un jour favorable.',
+        read1Title: 'Construit',
+        read1Body: 'La part des travaux achevée, telle que déclarée par l’entreprise et visible sur les photographies jointes à chaque mise à jour.',
+        read2Title: 'Dépensé',
+        read2Body: 'La part du budget déjà consommée, rapportée au montant approuvé.',
+        read3Title: 'L’écart entre les deux',
+        read3Body: 'L’avancement moins la dépense, compté en points. Un projet construit à 20 pour cent et dépensé à 60 pour cent accuse 40 points de retard sur son propre argent, et cet écart est le chiffre le plus utile de la page.',
+        readNote: 'Un projet en avance sur ses dépenses est affiché en neutre, jamais en vert. Sous-dépenser sur des travaux publics n’est pas automatiquement une bonne nouvelle, car cela peut tout aussi bien signifier que le chantier est à l’arrêt.',
+
+        limitsTitle: 'Ce que nous ne prétendons pas',
+        limit1: 'Les chiffres proviennent des organismes qui réalisent les travaux. BuildRight les publie, les horodate et conserve chaque révision, mais il ne les audite pas et ne les présente pas comme vérifiés.',
+        limit2: 'Un projet silencieux est signalé comme tel plutôt que supposé sain. Une longue période sans mise à jour est une information en soi, et non son absence.',
+        limit3: 'La couverture se limite aux projets publiés ici. Un projet absent de ce registre n’en est pas pour autant inexistant.',
+
+        openTitle: 'Emportez les données',
+        openBody: 'Un registre vaut peu s’il ne se lit qu’à nos conditions. Toute vue filtrée peut être téléchargée sous forme de tableur, et ce que vous exportez correspond exactement à ce que vous regardiez, afin que les chiffres puissent être confrontés à une autre source.',
+        openCta: 'Parcourir et exporter les projets',
+
+        teamTitle: 'L’équipe',
+        teamLead: 'BuildRight est conçu et maintenu par un petit groupe d’ingénieurs au Cameroun.',
+
+        partTitle: 'Participer',
+        partCitizenTitle: 'Si vous vivez avec ces travaux',
+        partCitizenBody: 'Ouvrez le projet que vous connaissez et déposez un signalement avec des photographies. Sans compte, et sans démarche pour en obtenir un.',
+        partStaffTitle: 'Si vous réalisez ces travaux',
+        partStaffBody: 'Les entreprises et les administrateurs reçoivent un code d’accès d’un administrateur existant, et c’est ce code qui transforme un lecteur en contributeur.',
+    },
+
     project: {
         buildAgainstSpend: 'Travaux réalisés et dépenses',
         budget: 'Budget',
