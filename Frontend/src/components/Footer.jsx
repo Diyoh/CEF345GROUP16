@@ -46,47 +46,46 @@ export const Footer = () => {
             <span className="text-body font-semibold text-fg">BuildRight Cameroon</span>
           </div>
           <p className="mt-4 max-w-[42ch] text-caption leading-relaxed text-fg-tertiary">
-            A public record of infrastructure spending: what is being built, what it costs, and how far
-            along it is.
+            {t('footerX.blurb')}
           </p>
         </div>
 
-        <nav aria-label="Footer">
-          <h2 className="text-overline uppercase text-fg-tertiary">Browse</h2>
+        <nav aria-label={t('footerX.browse')}>
+          <h2 className="text-overline uppercase text-fg-tertiary">{t('footerX.browse')}</h2>
           <ul className="mt-4 flex flex-col gap-2.5 text-caption">
             <li>
               <Link to="/projects" className="text-fg-secondary hover:text-fg">
-                All projects
+                {t('footerX.allProjects')}
               </Link>
             </li>
             <li>
               <Link to="/developers" className="text-fg-secondary hover:text-fg">
-                About the team
+                {t('footerX.aboutTeam')}
               </Link>
             </li>
             <li>
               <Link to="/login" className="text-fg-secondary hover:text-fg">
-                Staff sign in
+                {t('auth.staffSignIn')}
               </Link>
             </li>
           </ul>
         </nav>
 
         <div>
-          <h2 className="text-overline uppercase text-fg-tertiary">Data provenance</h2>
+          <h2 className="text-overline uppercase text-fg-tertiary">{t('footerX.provenance')}</h2>
           <dl className="mt-4 flex flex-col gap-3 text-caption">
             <div>
-              <dt className="text-fg-tertiary">Source</dt>
-              <dd className="mt-0.5 text-fg-secondary">Contractor reports and government records</dd>
+              <dt className="text-fg-tertiary">{t('footerX.source')}</dt>
+              <dd className="mt-0.5 text-fg-secondary">{t('footerX.sourceValue')}</dd>
             </div>
             <div>
-              <dt className="text-fg-tertiary">Last updated</dt>
+              <dt className="text-fg-tertiary">{t('footerX.lastUpdated')}</dt>
               <dd className="tabular mt-0.5 text-fg-secondary">
-                {lastUpdated ? formatDate(lastUpdated) : 'Not recorded'}
+                {lastUpdated ? formatDate(lastUpdated) : t('footerX.notRecorded')}
               </dd>
             </div>
             <div>
-              <dt className="text-fg-tertiary">Figures in</dt>
+              <dt className="text-fg-tertiary">{t('footerX.figuresIn')}</dt>
               <dd className="mt-0.5 text-fg-secondary">FCFA</dd>
             </div>
           </dl>
@@ -95,8 +94,8 @@ export const Footer = () => {
 
       <div className="border-t border-line-subtle">
         <div className="mx-auto flex max-w-content flex-col gap-2 px-4 py-5 text-caption text-fg-tertiary sm:flex-row sm:items-center sm:justify-between md:px-8">
-          <p>&copy; {new Date().getFullYear()} BuildRight Group 16.</p>
-          <p>Published for public accountability.</p>
+          <p>{t('footerX.rights', { year: new Date().getFullYear() })}</p>
+          <p>{t('footerX.published')}</p>
         </div>
       </div>
     </footer>

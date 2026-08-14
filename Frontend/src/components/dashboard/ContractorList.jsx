@@ -3,12 +3,14 @@ import { useAppStore } from '../../useAppStore';
 import { Table, THead, TBody, TH, TR, TD, TableEmpty, Button } from '../ui';
 import { formatMoney } from '../../utils/helpers';
 import { projectHealth } from '../../utils/projectHealth';
+import { useT } from '../../i18n';
 
 /**
  * Registered contractors. Adds the portfolio figures the admin needed the analytics modal
  * to answer: how many projects, how much money, and how many of them are in trouble.
  */
 export const ContractorList = ({ onSelect }) => {
+  const t = useT();
   const { contractors, fetchContractors, projects } = useAppStore();
 
   useEffect(() => {
@@ -31,23 +33,23 @@ export const ContractorList = ({ onSelect }) => {
   }, [projects]);
 
   return (
-    <Table caption="Registered contractors and their portfolios">
+    <Table caption={t('admin.contractorsCaption')}>
       <THead>
         <TR>
-          <TH>Contractor</TH>
-          <TH className="hidden md:table-cell">Email</TH>
-          <TH align="right">Projects</TH>
+          <TH>{t('projects.contractor')}</TH>
+          <TH className="hidden md:table-cell">{t('admin.email')}</TH>
+          <TH align="right">{t('admin.projects')}</TH>
           <TH align="right" className="hidden sm:table-cell">
-            Portfolio value
+            {t('admin.portfolioValue')}
           </TH>
           <TH align="right">
-            <span className="sr-only">Actions</span>
+            <span className="sr-only">{t('admin.actions')}</span>
           </TH>
         </TR>
       </THead>
       <TBody>
         {contractors.length === 0 ? (
-          <TableEmpty colSpan={5}>No contractors registered yet.</TableEmpty>
+          <TableEmpty colSpan={5}>{t('admin.noContractors')}</TableEmpty>
         ) : (
           contractors.map((contractor) => {
             const s = stats.get(contractor.id) || { count: 0, budget: 0, atRisk: 0 };
@@ -57,7 +59,7 @@ export const ContractorList = ({ onSelect }) => {
                   {contractor.name}
                   {s.atRisk > 0 && (
                     <span className="mt-0.5 block text-caption text-over-fg">
-                      {s.atRisk} project{s.atRisk > 1 ? 's' : ''} at risk
+                      {t('admin.atRisk', { count: s.atRisk })}
                     </span>
                   )}
                 </TD>
@@ -68,7 +70,7 @@ export const ContractorList = ({ onSelect }) => {
                 </TD>
                 <TD align="right">
                   <Button variant="ghost" size="xs" onClick={() => onSelect(contractor.id)}>
-                    Analytics
+                    {t('admin.analytics')}
                   </Button>
                 </TD>
               </TR>

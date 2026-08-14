@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAppStore } from '../useAppStore';
 import { Card, EmptyState } from '../components/ui';
+import { useT } from '../i18n';
 
 /**
  * About. Renamed from "Developers" in the navigation: to a citizen that word reads as an
@@ -8,13 +9,14 @@ import { Card, EmptyState } from '../components/ui';
  * team page. The route is unchanged so no existing link breaks.
  */
 export const Developers = () => {
+  const t = useT();
   const { teamMembers } = useAppStore();
 
   return (
     <div className="mx-auto max-w-content px-4 py-12 md:px-8 md:py-16">
       <header className="max-w-prose border-b border-line pb-8">
-        <p className="text-overline uppercase text-fg-tertiary">About</p>
-        <h1 className="mt-3 font-serif text-h1 text-fg">The people behind BuildRight</h1>
+        <p className="text-overline uppercase text-fg-tertiary">{t('project.aboutTitle')}</p>
+        <h1 className="mt-3 font-serif text-h1 text-fg">{t('project.aboutLead')}</h1>
         <p className="mt-4 text-body-lg text-fg-secondary">
           BuildRight publishes what public infrastructure projects cost, who is building them, and how far
           along they are, so that anyone can check the record for themselves.
@@ -22,7 +24,7 @@ export const Developers = () => {
       </header>
 
       {teamMembers.length === 0 ? (
-        <EmptyState className="mt-12" icon="fa-users" title="Team details are not published yet" />
+        <EmptyState className="mt-12" icon="fa-users" title={t('project.noTeam')} />
       ) : (
         <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {teamMembers.map((member) => (

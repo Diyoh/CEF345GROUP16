@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { cn } from './cn';
 import { formatMoney } from '../../utils/helpers';
+import { useT } from '../../i18n';
 
 /**
  * ProgressMeter: the core component of the product.
@@ -63,6 +64,7 @@ export const Meter = ({
   showSentence = false,
   className,
 }) => {
+  const t = useT();
   if (!health) return null;
   const { progress, burn, burnRounded, variance, varianceTone, band, overBudget, spent, budget } = health;
 
@@ -98,7 +100,7 @@ export const Meter = ({
     <div className={cn('flex flex-col gap-2', className)}>
       <div className="flex flex-col gap-1">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="text-caption text-fg-tertiary">Built</span>
+          <span className="text-caption text-fg-tertiary">{t('meter.built')}</span>
           <span className="tabular text-caption font-medium text-fg">{Math.round(progress)}%</span>
         </div>
         <Rail value={progress} tone="bg-accent" size={size} />
@@ -106,7 +108,7 @@ export const Meter = ({
 
       <div className="flex flex-col gap-1">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="text-caption text-fg-tertiary">Spent</span>
+          <span className="text-caption text-fg-tertiary">{t('meter.spent')}</span>
           <span className="tabular text-caption font-medium text-fg">
             {burnRounded}%
             {showMoney && budget > 0 && (

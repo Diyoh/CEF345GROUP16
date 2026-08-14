@@ -5,6 +5,7 @@ import { Button, cn } from '../ui';
 import { ThemeToggle } from '../ThemeToggle';
 import { ChangePasswordModal } from '../ChangePasswordModal';
 import { AuthPending } from '../AuthPending';
+import { useT } from '../../i18n';
 
 /**
  * Admin and developer shell. Spec: docs/design/02-ia-ux.md section 3.3.
@@ -17,7 +18,12 @@ import { AuthPending } from '../AuthPending';
  * The role guard lives here rather than being repeated in every section component.
  */
 
-export const Sidebar = ({ sections, title, open, onClose }) => (
+export const Sidebar = ({ sections, title, open, onClose }) => {
+  // Sidebar is exported separately, so it needs its own hook — it does not inherit `t`
+  // from AdminLayout.
+  const t = useT();
+
+  return (
   <>
     {/* Mobile drawer scrim */}
     {open && (
@@ -47,7 +53,7 @@ export const Sidebar = ({ sections, title, open, onClose }) => (
         </Link>
       </div>
 
-      <nav aria-label={`${title} sections`} className="flex-1 overflow-y-auto p-3">
+      <nav aria-label={t('admin.sectionsFor', { title })} className="flex-1 overflow-y-auto p-3">
         <ul className="flex flex-col gap-0.5">
           {sections.map((s) => (
             <li key={s.to}>
@@ -64,7 +70,7 @@ export const Sidebar = ({ sections, title, open, onClose }) => (
                 }
               >
                 <i className={cn('fas w-4 text-center text-fg-tertiary', s.icon)} aria-hidden="true" />
-                {s.label}
+                {t(s.labelKey)}
               </NavLink>
             </li>
           ))}
@@ -77,27 +83,29 @@ export const Sidebar = ({ sections, title, open, onClose }) => (
           className="flex items-center gap-3 rounded-sm px-3 py-2.5 text-caption text-fg-tertiary hover:bg-sunken hover:text-fg"
         >
           <i className="fas fa-arrow-up-right-from-square w-4 text-center" aria-hidden="true" />
-          View public site
+          {t('nav.viewPublicSite')}
         </Link>
       </div>
     </aside>
   </>
-);
+  );
+};
 
 const SECTIONS = {
   admin: [
-    { to: '/admin/overview', label: 'Overview', icon: 'fa-chart-simple' },
-    { to: '/admin/projects', label: 'Projects', icon: 'fa-diagram-project' },
-    { to: '/admin/contractors', label: 'Contractors', icon: 'fa-people-group' },
-    { to: '/admin/reports', label: 'Citizen reports', icon: 'fa-comments' },
+    { to: '/admin/overview', labelKey: 'admin.overview', icon: 'fa-chart-simple' },
+    { to: '/admin/projects', labelKey: 'admin.projects', icon: 'fa-diagram-project' },
+    { to: '/admin/contractors', labelKey: 'admin.contractors', icon: 'fa-people-group' },
+    { to: '/admin/reports', labelKey: 'admin.citizenReports', icon: 'fa-comments' },
   ],
   dev: [
-    { to: '/dev-admin/access', label: 'Access codes', icon: 'fa-key' },
-    { to: '/dev-admin/team', label: 'Team', icon: 'fa-users' },
+    { to: '/dev-admin/access', labelKey: 'admin.accessCodes', icon: 'fa-key' },
+    { to: '/dev-admin/team', labelKey: 'admin.team', icon: 'fa-users' },
   ],
 };
 
 export const AdminLayout = ({ role, variant = 'admin', title = 'Admin' }) => {
+  const t = useT();
   const { user, logout, authChecked } = useAppStore();
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -129,11 +137,11 @@ export const AdminLayout = ({ role, variant = 'admin', title = 'Admin' }) => {
               className="lg:hidden"
               onClick={() => setDrawerOpen(true)}
               aria-expanded={drawerOpen}
-              aria-label="Open sections menu"
+              aria-label={t('admin.openSections')}
               leadingIcon={<i className="fas fa-bars" aria-hidden="true" />}
             />
             <a href="#admin-main" className="skip-link">
-              Skip to main content
+              {t('nav.skipToContent')}
             </a>
           </div>
 
@@ -141,10 +149,10 @@ export const AdminLayout = ({ role, variant = 'admin', title = 'Admin' }) => {
             <ThemeToggle />
             <span className="hidden text-caption text-fg-tertiary sm:inline">{user.name}</span>
             <Button variant="ghost" size="sm" onClick={() => setPasswordOpen(true)}>
-              Change password
+              {t('admin.changePassword')}
             </Button>
             <Button variant="ghost" size="sm" onClick={logout}>
-              Sign out
+              {t('nav.signOut')}
             </Button>
           </div>
         </header>

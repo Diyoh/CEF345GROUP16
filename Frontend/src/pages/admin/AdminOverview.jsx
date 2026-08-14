@@ -6,6 +6,7 @@ import { StatTile, Card, Button, EmptyState, Meter, Skeleton } from '../../compo
 import { StatusBadge } from '../../components/StatusBadge';
 import { formatMoney } from '../../utils/helpers';
 import { projectHealth, byVarianceAsc } from '../../utils/projectHealth';
+import { useT } from '../../i18n';
 
 /**
  * Admin overview. Answers "what needs a decision today" before anything else.
@@ -18,6 +19,7 @@ const FinancialChart = lazy(() =>
   import('../../components/dashboard/FinancialChart').then((m) => ({ default: m.FinancialChart }))
 );
 export const AdminOverview = () => {
+  const t = useT();
   const { projects, comments } = useAppStore();
 
   const totals = useMemo(() => {
@@ -35,35 +37,35 @@ export const AdminOverview = () => {
   return (
     <>
       <PageHeader
-        title="Overview"
-        description="Portfolio health across every tracked project."
+        title={t('admin.overview')}
+        description={t('admin.overviewLead')}
         actions={
           <Button as={Link} to="/admin/projects" variant="primary" size="md">
-            Manage projects
+            {t('admin.manageProjects')}
           </Button>
         }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile label="Projects" value={projects.length} />
+        <StatTile label={t('admin.projects')} value={projects.length} />
         <StatTile
-          label="Total budget"
+          label={t('home.totalBudget')}
           value={formatMoney(totals.budget, 'compact')}
           exact={formatMoney(totals.budget, 'full')}
         />
         <StatTile
-          label="Total spent"
+          label={t('home.totalSpent')}
           value={formatMoney(totals.spent, 'compact')}
           exact={formatMoney(totals.spent, 'full')}
           delta={totals.budget > 0 ? `${Math.round((totals.spent / totals.budget) * 100)}%` : undefined}
           deltaTone={totals.spent > totals.budget ? 'negative' : 'neutral'}
         />
         <StatTile
-          label="Needing attention"
+          label={t('admin.needingAttention')}
           value={totals.atRisk}
-          delta={totals.atRisk > 0 ? 'Review' : 'Clear'}
+          delta={t(totals.atRisk > 0 ? 'admin.review' : 'admin.clear')}
           deltaTone={totals.atRisk > 0 ? 'negative' : 'neutral'}
-          hint="Over budget or spending well ahead of build"
+          hint={t('admin.needingAttentionHint')}
         />
       </div>
 
@@ -75,11 +77,11 @@ export const AdminOverview = () => {
         </div>
 
         <Card padding="lg">
-          <h2 className="text-h3 text-fg">Worst variance</h2>
-          <p className="mt-1 text-caption text-fg-tertiary">Build percentage minus spend percentage.</p>
+          <h2 className="text-h3 text-fg">{t('admin.worstVariance')}</h2>
+          <p className="mt-1 text-caption text-fg-tertiary">{t('admin.worstVarianceLead')}</p>
 
           {attention.length === 0 ? (
-            <EmptyState className="mt-4" icon="fa-folder-open" title="No projects yet" />
+            <EmptyState className="mt-4" icon="fa-folder-open" title={t('admin.noProjectsYet')} />
           ) : (
             <ul className="mt-4 flex flex-col divide-y divide-line-subtle">
               {attention.map((p) => (
@@ -99,7 +101,7 @@ export const AdminOverview = () => {
           )}
 
           <Button as={Link} to="/admin/reports" variant="ghost" size="sm" className="mt-4">
-            {comments.length} citizen report{comments.length === 1 ? '' : 's'} to review
+            {t('admin.reportsToReview', { count: comments.length })}
           </Button>
         </Card>
       </div>

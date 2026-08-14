@@ -1,5 +1,6 @@
 import React from 'react';
 import { Skeleton } from './ui';
+import { useT } from '../i18n';
 
 /**
  * Shown while the session check is still in flight.
@@ -18,9 +19,13 @@ import { Skeleton } from './ui';
  * `role="status"` announces the wait to screen readers rather than leaving them on a
  * silent page.
  */
-export const AuthPending = ({ label = 'Checking your session' }) => (
+export const AuthPending = ({ label }) => {
+  const t = useT();
+  const text = label || t('common.checkingSession');
+
+  return (
   <div className="mx-auto max-w-content px-4 py-10 md:px-8" role="status" aria-live="polite">
-    <span className="sr-only">{label}</span>
+    <span className="sr-only">{text}</span>
 
     <Skeleton className="h-9 w-64" />
     <Skeleton className="mt-3 h-5 w-80" />
@@ -33,4 +38,5 @@ export const AuthPending = ({ label = 'Checking your session' }) => (
 
     <Skeleton className="mt-8 h-64 w-full rounded-lg" aria-hidden="true" />
   </div>
-);
+  );
+};

@@ -4,6 +4,7 @@ import { StatusBadge } from '../StatusBadge';
 import { Table, THead, TBody, TH, TR, TD, TableEmpty, Button, Meter, Card } from '../ui';
 import { formatMoney, formatRelative } from '../../utils/helpers';
 import { projectHealth } from '../../utils/projectHealth';
+import { useT } from '../../i18n';
 
 /**
  * Project table. Spec: docs/design/02-ia-ux.md section 7.
@@ -14,16 +15,17 @@ import { projectHealth } from '../../utils/projectHealth';
  * destroys the row as a readable unit.
  */
 export const ProjectTable = ({ projects, onEdit }) => {
+  const t = useT();
   if (projects.length === 0) {
     return (
-      <Table caption="Projects">
+      <Table caption={t('admin.projects')}>
         <THead>
           <TR>
-            <TH>Project</TH>
+            <TH>{t('project.tableProject')}</TH>
           </TR>
         </THead>
         <TBody>
-          <TableEmpty colSpan={1}>No projects yet.</TableEmpty>
+          <TableEmpty colSpan={1}>{t('project.tableNoProjects')}</TableEmpty>
         </TBody>
       </Table>
     );
@@ -33,16 +35,16 @@ export const ProjectTable = ({ projects, onEdit }) => {
     <>
       {/* Desktop and tablet */}
       <div className="hidden md:block">
-        <Table caption="All projects with budget, spend and status">
+        <Table caption={t('project.tableCaption')}>
           <THead>
             <TR>
-              <TH width="32%">Project</TH>
-              <TH width="150px">Status</TH>
-              <TH width="200px">Build vs spend</TH>
+              <TH width="32%">{t('project.tableProject')}</TH>
+              <TH width="150px">{t('projects.status')}</TH>
+              <TH width="200px">{t('project.tableBuildVsSpend')}</TH>
               <TH align="right" width="140px">
                 Budget
               </TH>
-              <TH className="hidden lg:table-cell">Contractor</TH>
+              <TH className="hidden lg:table-cell">{t('projects.contractor')}</TH>
               <TH className="hidden xl:table-cell">Updated</TH>
               <TH align="right" width="80px">
                 <span className="sr-only">Actions</span>

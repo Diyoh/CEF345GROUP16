@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Badge, Button, EmptyState, ConfirmModal } from '../ui';
 import { formatRelative, formatDate } from '../../utils/helpers';
+import { useT } from '../../i18n';
 
 /**
  * Citizen report moderation. Spec: docs/design/03-components.md section 17.
@@ -11,18 +12,19 @@ import { formatRelative, formatDate } from '../../utils/helpers';
  * irreversible, and it was previously one unguarded click.
  */
 export const CommentManager = ({ comments, onDelete }) => {
+  const t = useT();
   const [pending, setPending] = useState(null);
 
   return (
     <>
       <Card padding="lg" className="flex h-full min-h-0 flex-col">
         <div className="mb-4 flex items-baseline justify-between gap-3">
-          <h2 className="text-h3 text-fg">Citizen reports</h2>
+          <h2 className="text-h3 text-fg">{t('reports.heading')}</h2>
           <span className="tabular text-caption text-fg-tertiary">{comments.length}</span>
         </div>
 
         {comments.length === 0 ? (
-          <EmptyState icon="fa-comments" title="No reports to moderate" className="flex-1" />
+          <EmptyState icon="fa-comments" title={t('admin.noReportsToModerate')} className="flex-1" />
         ) : (
           <ul className="flex max-h-[420px] flex-col divide-y divide-line-subtle overflow-y-auto">
             {comments.map((c) => (
@@ -32,10 +34,10 @@ export const CommentManager = ({ comments, onDelete }) => {
                     {/* Reports are anonymous. Older ones carry the name they were filed
                         under, before that changed. */}
                     <span className="text-body font-medium text-fg">
-                      {c.authorName || (c.authorType === 'NGO' ? 'Anonymous organisation' : 'Anonymous report')}
+                      {c.authorName || t(c.authorType === 'NGO' ? 'reports.anonymousOrg' : 'reports.anonymousReport')}
                     </span>
                     <Badge tone={c.authorType === 'NGO' ? 'planned' : 'neutral'} size="sm">
-                      {c.authorType}
+                      {t(c.authorType === 'NGO' ? 'reports.ngo' : 'reports.citizen')}
                     </Badge>
                     <time
                       className="text-caption text-fg-tertiary"
@@ -53,7 +55,7 @@ export const CommentManager = ({ comments, onDelete }) => {
                   size="xs"
                   iconOnly
                   onClick={() => setPending(c)}
-                  aria-label={`Delete this report: ${String(c.text || '').slice(0, 60)}`}
+                  aria-label={t('admin.deleteReport', { text: String(c.text || '').slice(0, 60) })}
                   leadingIcon={<i className="fas fa-trash" aria-hidden="true" />}
                 />
               </li>
@@ -69,9 +71,9 @@ export const CommentManager = ({ comments, onDelete }) => {
           onDelete(pending.id);
           setPending(null);
         }}
-        title="Delete this report?"
-        body={`This report will be removed permanently: "${String(pending?.text || '').slice(0, 120)}". This cannot be undone.`}
-        confirmLabel="Delete report"
+        title={t('admin.deleteReportTitle')}
+        body={t('admin.deleteReportBody', { text: String(pending?.text || '').slice(0, 120) })}
+        confirmLabel={t('admin.deleteReportConfirm')}
       />
     </>
   );
