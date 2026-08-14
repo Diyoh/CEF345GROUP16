@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../components/ui';
@@ -149,5 +150,67 @@ describe('admin and contractor smoke tests', () => {
     renderApp(<CommentManager comments={store.comments} onDelete={vi.fn()} />);
     expect(screen.getByText('Ada')).toBeInTheDocument();
     expect(errors).toEqual([]);
+  });
+});
+
+/**
+ * ADMIN HEADER RESPONSIVENESS
+ *
+ * On a 360px phone the header held a hamburger, two toggles and two text buttons. Nothing
+ * could shrink, so the bar ran off the side of the screen — and the labels are longer in
+ * French ("Changer le mot de passe"), so the English view understated the problem.
+ */
+import { Sidebar } from '../components/layout/AdminLayout';
+
+describe('admin shell is usable on a phone', () => {
+  const sections = [{ to: '/admin/overview', labelKey: 'admin.overview', icon: 'fa-chart-simple' }];
+
+  const renderSidebar = (props = {}) =>
+    render(
+      <I18nProvider>
+        <MemoryRouter>
+          <Sidebar
+            sections={sections}
+            title="Admin"
+            open
+            onClose={vi.fn()}
+            user={{ name: 'Admin User', role: 'ADMIN' }}
+            onChangePassword={vi.fn()}
+            onLogout={vi.fn()}
+            {...props}
+          />
+        </MemoryRouter>
+      </I18nProvider>
+    );
+
+  it('offers the account actions inside the drawer, where there is room', () => {
+    renderSidebar();
+    expect(screen.getByRole('button', { name: /change password/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument();
+    expect(screen.getByText('Admin User')).toBeInTheDocument();
+  });
+
+  it('hides those drawer actions from lg up, where the header shows them', () => {
+    // They would otherwise duplicate the header on desktop, where the sidebar is permanent.
+    renderSidebar();
+    const block = screen.getByRole('button', { name: /sign out/i }).parentElement;
+    expect(block.className.split(/\s+/)).toContain('lg:hidden');
+  });
+
+  it('calls the handlers it is given', async () => {
+    const onChangePassword = vi.fn();
+    const onLogout = vi.fn();
+    renderSidebar({ onChangePassword, onLogout });
+
+    await userEvent.click(screen.getByRole('button', { name: /change password/i }));
+    expect(onChangePassword).toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: /sign out/i }));
+    expect(onLogout).toHaveBeenCalled();
+  });
+
+  it('renders nothing account-related when there is no user', () => {
+    renderSidebar({ user: null });
+    expect(screen.queryByRole('button', { name: /sign out/i })).not.toBeInTheDocument();
   });
 });

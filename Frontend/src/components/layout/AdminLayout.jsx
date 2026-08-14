@@ -19,7 +19,7 @@ import { useT } from '../../i18n';
  * The role guard lives here rather than being repeated in every section component.
  */
 
-export const Sidebar = ({ sections, title, open, onClose }) => {
+export const Sidebar = ({ sections, title, open, onClose, user, onChangePassword, onLogout }) => {
   // Sidebar is exported separately, so it needs its own hook — it does not inherit `t`
   // from AdminLayout.
   const t = useT();
@@ -79,6 +79,37 @@ export const Sidebar = ({ sections, title, open, onClose }) => {
       </nav>
 
       <div className="border-t border-line p-3">
+        {/* Account actions live here BELOW lg only.
+            On a 360px screen the header could not hold a hamburger, two toggles and two
+            text buttons — "Change password" is already long and becomes "Changer le mot de
+            passe" in French — so the row overflowed the viewport. The drawer is reachable
+            from the hamburger and has room, and these are infrequent actions that do not
+            need to occupy the top bar on a phone.
+            Hidden from lg up, where the sidebar is permanent and the header shows them. */}
+        {user && (
+          <div className="mb-2 flex flex-col gap-0.5 border-b border-line-subtle pb-2 lg:hidden">
+            <p className="truncate px-3 py-1 text-caption text-fg-tertiary" title={user.name}>
+              {user.name}
+            </p>
+            <button
+              type="button"
+              onClick={onChangePassword}
+              className="flex items-center gap-3 rounded-sm px-3 py-2.5 text-left text-caption text-fg-secondary hover:bg-sunken hover:text-fg"
+            >
+              <i className="fas fa-key w-4 text-center" aria-hidden="true" />
+              {t('admin.changePassword')}
+            </button>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="flex items-center gap-3 rounded-sm px-3 py-2.5 text-left text-caption text-fg-secondary hover:bg-sunken hover:text-fg"
+            >
+              <i className="fas fa-right-from-bracket w-4 text-center" aria-hidden="true" />
+              {t('nav.signOut')}
+            </button>
+          </div>
+        )}
+
         <Link
           to="/"
           className="flex items-center gap-3 rounded-sm px-3 py-2.5 text-caption text-fg-tertiary hover:bg-sunken hover:text-fg"
@@ -126,10 +157,16 @@ export const AdminLayout = ({ role, variant = 'admin', title = 'Admin' }) => {
         title={title}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
+        user={user}
+        onChangePassword={() => {
+          setDrawerOpen(false);
+          setPasswordOpen(true);
+        }}
+        onLogout={logout}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-line bg-canvas px-4 md:h-16 md:px-6">
+        <header className="sticky top-0 z-30 flex h-14 min-w-0 items-center justify-between gap-2 border-b border-line bg-canvas px-3 md:h-16 md:gap-3 md:px-6">
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -146,17 +183,27 @@ export const AdminLayout = ({ role, variant = 'admin', title = 'Admin' }) => {
             </a>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             {/* Staff switch language too: a francophone administrator should not have to
                 work in English, and the toggle living in only one shell meant crossing to
                 the public site to change it. */}
             <LanguageToggle className="mr-1" />
             <ThemeToggle />
-            <span className="hidden text-caption text-fg-tertiary sm:inline">{user.name}</span>
-            <Button variant="ghost" size="sm" onClick={() => setPasswordOpen(true)}>
+            <span className="hidden max-w-[16ch] truncate text-caption text-fg-tertiary lg:inline">
+              {user.name}
+            </span>
+            {/* Below md these live in the drawer instead — see the Sidebar footer. Two text
+                buttons plus two toggles cannot fit a 360px bar, and the labels grow in
+                French. */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden md:inline-flex"
+              onClick={() => setPasswordOpen(true)}
+            >
               {t('admin.changePassword')}
             </Button>
-            <Button variant="ghost" size="sm" onClick={logout}>
+            <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={logout}>
               {t('nav.signOut')}
             </Button>
           </div>
