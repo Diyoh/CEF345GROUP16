@@ -32,22 +32,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      /* TEMP-ICON-PROBE */
-      setTimeout(function () {
-        var out = [];
-        out.push('FA6check=' + document.fonts.check('900 16px "Font Awesome 6 Free"'));
-        out.push('loaded=' + Array.from(document.fonts).map(f => f.family + ':' + f.status).join('|'));
-        Array.from(document.querySelectorAll('i')).slice(0, 8).forEach(function (el) {
-          var b = getComputedStyle(el, '::before');
-          out.push(el.className.split(' ').slice(0, 2).join('.') + ' font=[' + b.fontFamily + '] w=' + b.fontWeight + ' c=' + b.content);
-        });
-        var pre = document.createElement('pre');
-        pre.id = 'icon-probe';
-        pre.textContent = 'PROBE_START ' + out.join(' ;; ') + ' PROBE_END';
-        document.body.appendChild(pre);
-      }, 9000);
-    </script>
     <script type="module" src="/src/index.jsx"></script>
   </body>
 </html>

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
 import { ProjectCard } from '../components/ProjectCard';
-import { Button, Card, StatTile, EmptyState } from '../components/ui';
+import { Button, Card, CardRail, StatTile, EmptyState } from '../components/ui';
 import { formatMoney } from '../utils/helpers';
 import { projectHealth, byVarianceAsc } from '../utils/projectHealth';
 import { ProjectStatus } from '../types';
@@ -231,11 +231,11 @@ export const Home = () => {
               {t('home.seeAll')}
             </Button>
           </div>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <CardRail label={t('home.needsAttention')} className="sm:grid-cols-2 lg:grid-cols-4">
             {needsAttention.map((p) => (
               <ProjectCard key={p.id} project={p} />
             ))}
-          </div>
+          </CardRail>
         </section>
       )}
 
@@ -257,13 +257,13 @@ export const Home = () => {
             />
           </Card>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Four across, matching "Needs attention" above: two card sections at
-                different widths read as two different kinds of thing. */}
+          // Four across from lg, matching "Needs attention" above: two card sections at
+          // different widths read as two different kinds of thing.
+          <CardRail label={t('home.recentlyUpdated')} className="sm:grid-cols-2 lg:grid-cols-4">
             {recent.map((p) => (
               <ProjectCard key={p.id} project={p} />
             ))}
-          </div>
+          </CardRail>
         )}
       </section>
     </div>

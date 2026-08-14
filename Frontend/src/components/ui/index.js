@@ -8,6 +8,7 @@
 export { cn } from './cn';
 export { Button } from './Button';
 export { Card, CardHeader } from './Card';
+export { CardRail } from './CardRail';
 export { Badge } from './Badge';
 export { Field, Input, Textarea, Select, DateField } from './Field';
 export { Meter } from './Meter';

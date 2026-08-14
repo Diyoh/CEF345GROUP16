@@ -282,3 +282,24 @@
   .no-print { display: none !important; }
   body { background: #fff; color: #000; }
 }
+
+/* ---------------------------------------------------------------------------
+   ICON FACE PINNING
+
+   FontAwesome picks its FACE by font-weight, not by family: 900 is Solid, 400 is
+   Regular, and all three styles share the family name "Font Awesome 6 Free".
+
+   Our type scale sets a weight alongside every size, so `text-caption` (450) or
+   `text-body` (400) on an icon quietly overrode FontAwesome's own `font-weight: 900`.
+   Same specificity, and Tailwind's utilities are emitted after the icon CSS, so the
+   utility won. The browser then resolved every `fas` icon against the Regular face,
+   which carries roughly 160 of the 2000 glyphs, and rendered the rest as .notdef:
+   the box with a cross through it.
+
+   These rules sit outside every layer and after `@tailwind utilities`, so the weight
+   that selects the face is the last word. Sizing utilities on an icon still work,
+   because font-size is a different property.
+   --------------------------------------------------------------------------- */
+.fas, .fa-solid { font-weight: 900; }
+.far, .fa-regular { font-weight: 400; }
+.fab, .fa-brands { font-weight: 400; }
