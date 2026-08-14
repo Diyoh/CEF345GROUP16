@@ -93,7 +93,26 @@ CREATE TABLE IF NOT EXISTS comment_images (
     FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
 );
 
--- 8. TEAM MEMBERS
+-- 8. PROJECT CHANGES (immutable audit log)
+-- Written by the system on every figure change, inside the same transaction as the
+-- change itself. Never updated, never deleted. See migrations/003_project_change_log.sql.
+CREATE TABLE IF NOT EXISTS project_changes (
+    id CHAR(36) PRIMARY KEY,
+    project_id CHAR(36) NOT NULL,
+    -- Denormalised so history still reads correctly after a user is renamed or removed.
+    actor_id CHAR(36),
+    actor_name VARCHAR(255) NOT NULL,
+    actor_role VARCHAR(50) NOT NULL,
+    field VARCHAR(50) NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    INDEX idx_changes_project_time (project_id, changed_at DESC),
+    INDEX idx_changes_actor (actor_id)
+);
+
+-- 9. TEAM MEMBERS
 CREATE TABLE IF NOT EXISTS team_members (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     name VARCHAR(255) NOT NULL,

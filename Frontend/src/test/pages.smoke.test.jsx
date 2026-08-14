@@ -54,6 +54,9 @@ const store = {
   logout: vi.fn(),
   addComment: vi.fn(),
   fetchProjectComments: vi.fn(),
+  // ProjectDetails loads the full record on mount: the change log and narrative updates
+  // come only from the detail endpoint, not from the list used at boot.
+  fetchProject: vi.fn().mockResolvedValue({ success: true }),
   updateProject: vi.fn(),
   addProject: vi.fn(),
   deleteComment: vi.fn(),

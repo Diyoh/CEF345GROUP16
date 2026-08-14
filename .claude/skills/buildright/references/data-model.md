@@ -71,6 +71,29 @@ data is an owner decision, not a migration's.
 
 `id` PK · `comment_id` FK CASCADE · `image_url` TEXT. Up to 4 per report (frontend cap).
 
+## project_changes  (immutable audit log)
+
+`id` PK · `project_id` FK CASCADE · `actor_id` · `actor_name` · `actor_role` · `field` ·
+`old_value` TEXT · `new_value` TEXT · `changed_at` TIMESTAMP.
+Indexes: `(project_id, changed_at DESC)`, `(actor_id)`.
+
+**This is the table the product's credibility rests on.** Before it, a contractor could revise
+progress 60% → 30% and the record showed only "30%".
+
+- Written by `recordChanges()` in `projectService`, **inside the same transaction** as the UPDATE.
+  A figure cannot move without a log row landing with it.
+- **Never UPDATEd or DELETEd** by any code path. For a hard guarantee, revoke UPDATE/DELETE on
+  this table from the app DB user (command in `migrations/003`).
+- `actor_name` / `actor_role` are **denormalised on purpose** — joining to `users` would let a
+  rename or deletion rewrite history retroactively.
+- Only genuinely changed fields are logged (`diffFields` compares rendered values), because a log
+  full of `30 → 30` is one nobody reads.
+- Values are TEXT: the log spans money, percentages, dates, enums and free text, and the rendered
+  value stays readable even if a column's type changes later.
+
+Distinct from `project_updates`: that is a **narrative the contractor chooses to write**; this is a
+**factual record the system writes regardless**. Both render on the project page, adjacent.
+
 ## team_members
 
 `id` PK · `name` · `role` VARCHAR(100) · `bio` TEXT · `image_url` TEXT.

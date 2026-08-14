@@ -59,6 +59,10 @@ Called from `store.addProjectUpdate`, surfaced as the optional "Add to update hi
 contractor's edit form. Posted only after the figures save, so the history can never describe a
 change the record does not show.
 
+**GET /projects/:id** returns the project plus `images[]`, `updates[]` (contractor narrative) and
+`changes[]` (audit log, newest first, capped at 50). The LIST endpoint returns **none** of the
+last two — a detail page must fetch by id, which `store.fetchProject` does on mount.
+
 **GET /projects** — `limit` clamped 1–100 (default 10), `page` ≥1. `status` must be a valid
 `ProjectStatus` or `All`, else 400. `search` matches `title` OR `location` (LIKE `%term%`).
 Returns `p.* + contractorName + images[]`. Images batched in one `IN (...)` query.

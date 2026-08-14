@@ -52,5 +52,6 @@ safe to ignore — it means the index is present.
 |---|---|---|---|---|
 | 001 | `001_add_query_indexes.sql` | ☐ | ☐ | Indexes on `projects.created_at`, `status`, `region`, and `(status, created_at)` |
 | 002 | `002_anonymous_citizen_reports.sql` | ☐ | ☐ | `comments.author_name` made nullable; new reports store NULL |
+| 003 | `003_project_change_log.sql` | ☐ | ☐ | `project_changes` immutable audit log of every figure change |
 
 Tick the boxes when applied. This table is the only record of production schema state.

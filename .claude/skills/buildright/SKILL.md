@@ -45,6 +45,8 @@ purpose: that is the check on contractor self-reporting.
 | Seed/reset data | `Backend/seed.js` (`npm run seed`) |
 | Schema | `Database/schema.sql`; live dump `backup_latest.sql` (do not edit backups) |
 | Change the schema | `Database/migrations/` — numbered SQL, applied by hand. See its README for the apply commands and the applied-state log |
+| Add a field that should be auditable | `COLUMN_BY_FIELD` + the editable-fields lists in `projectService.js` — logging is automatic from there via `diffFields`/`recordChanges` |
+| Change how history is displayed | `Frontend/src/components/ChangeHistory.jsx` (`FIELD_LABELS`, unit rendering) |
 
 Full detail: [API contract](references/api-contract.md) · [Data model](references/data-model.md) ·
 [Frontend conventions](references/frontend.md)
@@ -133,7 +135,8 @@ stored row → every client's store merges it → `ProjectCard`/`ProjectDetails`
 | A `UserRole` value | DB ENUM, `types.js`, role literals in `projectService.js` + every `authorize()` call + `AdminLayout` guards | Role strings are hardcoded, not imported |
 | Add a socket `emit` | Wrap the payload with `camelizeKeys` (use the `emit()` helper in `projectController.js`) | Socket payloads bypass the global `res.json` serializer; an unwrapped emit sends snake_case over the socket and camelCase over HTTP |
 | Add a new endpoint | Nothing — `serializeResponse` in `index.js` camelCases every response automatically | The API contract is **camelCase out**; do not hand-alias columns |
-| Write more than one row in an operation | Wrap it in `withTransaction` from `config/db.js` and pass `tx` into every helper that writes | A helper closing over `pool` runs OUTSIDE the transaction and silently defeats it. Registration and project creation both depend on this |
+| Write more than one row in an operation | Wrap it in `withTransaction` from `config/db.js` and pass `tx` into every helper that writes | A helper closing over `pool` runs OUTSIDE the transaction and silently defeats it. Registration, project creation and the audit log all depend on this |
+| Add a write path that changes project figures | Route it through `projectService.updateProject`, or call `recordChanges` with the same `tx` | A figure that moves without a `project_changes` row is indistinguishable from the original value. The audit log is the product's credibility |
 | `components/ui/Card.jsx` | Keep `relative` in the base class list | `ProjectCard` stretches its link with `after:absolute after:inset-0`. Without `relative` the overlay escapes to the initial containing block and swallows almost every click on the site — silently, with nothing thrown |
 | Add a schema change | A numbered file in `Database/migrations/` **and** `Database/schema.sql`, then tick the log table | `schema.sql` only describes fresh installs; existing databases (local, Docker, Aiven) need the migration |
 | `CORS_ORIGINS` / a frontend domain | Nothing else — `allowedOrigins.js` feeds REST *and* Socket.io | Previously two hardcoded lists that drifted; live updates died in production |

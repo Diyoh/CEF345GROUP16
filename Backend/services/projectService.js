@@ -247,6 +247,99 @@ const saveImages = async ({ projectId, files = [], base64Images = [], markFirstA
     return stored;
 };
 
+// ---------------------------------------------------------------------------
+// AUDIT LOG
+// ---------------------------------------------------------------------------
+
+/**
+ * Renders a stored value for the log. Dates become ISO days and money/percentages become
+ * plain strings, so a row stays readable years later regardless of driver type mapping.
+ */
+const renderValue = (value) => {
+    if (value === null || value === undefined) return null;
+    if (value instanceof Date) return value.toISOString().split('T')[0];
+    return String(value);
+};
+
+/**
+ * diffFields
+ *
+ * Compares the stored row against the validated updates and returns only the fields that
+ * ACTUALLY changed. Logging a no-op edit would bury the real changes in noise, and a
+ * history full of "progress 30 -> 30" trains readers to stop reading it.
+ *
+ * Comparison is on rendered strings because the driver returns DECIMAL as Number, DATE as
+ * Date and everything else as strings, while updates arrive as coerced numbers or strings.
+ */
+const diffFields = (project, updates) => {
+    const changes = [];
+
+    for (const [field, nextValue] of Object.entries(updates)) {
+        const column = COLUMN_BY_FIELD[field];
+        const previous = renderValue(project[column]);
+        const next = renderValue(nextValue);
+
+        if (previous !== next) {
+            changes.push({ field, oldValue: previous, newValue: next });
+        }
+    }
+
+    return changes;
+};
+
+/**
+ * recordChanges
+ *
+ * Appends to the immutable log. `tx` is required, not optional: a log row written outside
+ * the transaction that changed the figure could survive a rollback, or be lost while the
+ * change committed. Either way the record would lie.
+ *
+ * actor_name and actor_role are stored, not referenced, so renaming or deleting a user
+ * cannot retroactively rewrite who did what.
+ */
+const recordChanges = async ({ tx, projectId, actor, changes }) => {
+    if (!changes || changes.length === 0) return 0;
+
+    for (const change of changes) {
+        await tx.query(
+            `INSERT INTO project_changes
+                (id, project_id, actor_id, actor_name, actor_role, field, old_value, new_value)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                randomUUID(),
+                projectId,
+                actor?.id || null,
+                actor?.name || 'Unknown',
+                actor?.role || 'UNKNOWN',
+                change.field,
+                change.oldValue,
+                change.newValue
+            ]
+        );
+    }
+
+    return changes.length;
+};
+
+/**
+ * listProjectChanges
+ * Public read of a project's change history, newest first.
+ */
+export const listProjectChanges = async (projectId, limit = 50) => {
+    const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+
+    const [rows] = await pool.query(
+        `SELECT id, field, old_value, new_value, actor_name, actor_role, changed_at
+         FROM project_changes
+         WHERE project_id = ?
+         ORDER BY changed_at DESC, id DESC
+         LIMIT ?`,
+        [projectId, safeLimit]
+    );
+
+    return rows;
+};
+
 /**
  * collectBase64Images
  *
@@ -317,6 +410,10 @@ export const getProjectDetail = async (id) => {
         [project.id]
     );
     project.updates = updates;
+
+    // The system-written record of what actually changed, alongside the contractor-written
+    // narrative above it. Capped so a heavily edited project cannot bloat the response.
+    project.changes = await listProjectChanges(project.id, 50);
 
     return project;
 };
@@ -405,35 +502,59 @@ export const updateProject = async ({ actor, projectId, body = {}, files = [] })
     }
 
     const fields = Object.keys(updates);
-    if (fields.length > 0) {
-        const assignments = fields.map(field => `${COLUMN_BY_FIELD[field]} = ?`).join(', ');
-        const params = fields.map(field => updates[field]);
-        params.push(projectId);
-        await pool.query(`UPDATE projects SET ${assignments} WHERE id = ?`, params);
-    }
-
     const base64Images = collectBase64Images(body);
     const hasNewImages = files.length > 0 || base64Images.length > 0;
-
-    if (hasNewImages) {
-        // A project only ever needs a cover assigned if it does not already have one,
-        // otherwise added photos join the gallery without displacing the cover.
-        const [[{ existing }]] = await pool.query(
-            'SELECT COUNT(*) AS existing FROM project_images WHERE project_id = ?',
-            [projectId]
-        );
-
-        await saveImages({
-            projectId,
-            files,
-            base64Images,
-            markFirstAsCover: existing === 0
-        });
-    }
 
     if (fields.length === 0 && !hasNewImages) {
         throw badRequest('No valid fields to update');
     }
+
+    // The row update and its audit rows are ONE unit. If the log write fails the figure
+    // change is rolled back with it — a changed number with no record of who changed it is
+    // worse than a rejected edit, because it is indistinguishable from the original value.
+    await withTransaction(async (tx) => {
+        if (fields.length > 0) {
+            const changes = diffFields(project, updates);
+
+            const assignments = fields.map(field => `${COLUMN_BY_FIELD[field]} = ?`).join(', ');
+            const params = fields.map(field => updates[field]);
+            params.push(projectId);
+            await tx.query(`UPDATE projects SET ${assignments} WHERE id = ?`, params);
+
+            await recordChanges({ tx, projectId, actor, changes });
+        }
+
+        if (hasNewImages) {
+            // A project only ever needs a cover assigned if it does not already have one,
+            // otherwise added photos join the gallery without displacing the cover.
+            const [[{ existing }]] = await tx.query(
+                'SELECT COUNT(*) AS existing FROM project_images WHERE project_id = ?',
+                [projectId]
+            );
+
+            const stored = await saveImages({
+                projectId,
+                files,
+                base64Images,
+                markFirstAsCover: existing === 0,
+                db: tx
+            });
+
+            // Photos are evidence, so adding them is itself an auditable act.
+            if (stored > 0) {
+                await recordChanges({
+                    tx,
+                    projectId,
+                    actor,
+                    changes: [{
+                        field: 'images',
+                        oldValue: String(existing),
+                        newValue: String(existing + stored)
+                    }]
+                });
+            }
+        }
+    });
 
     return getProjectDetail(projectId);
 };

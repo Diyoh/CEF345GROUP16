@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
 import { StatusBadge } from '../components/StatusBadge';
 import { PhotoGallery } from '../components/PhotoGallery';
+import { ChangeHistory } from '../components/ChangeHistory';
 import { Button, Card, Meter, Input, Select, Textarea, Badge, EmptyState } from '../components/ui';
 import { formatMoney, formatDate, formatRelative, fileToBase64 } from '../utils/helpers';
 import { projectHealth } from '../utils/projectHealth';
@@ -21,11 +22,15 @@ import { projectHealth } from '../utils/projectHealth';
  */
 export const ProjectDetails = () => {
   const { id } = useParams();
-  const { projects, comments, addComment, fetchProjectComments } = useAppStore();
+  const { projects, comments, addComment, fetchProjectComments, fetchProject } = useAppStore();
   const project = projects.find((p) => p.id === id);
 
   useEffect(() => {
-    if (id) fetchProjectComments(id);
+    if (!id) return;
+    // The change log and narrative updates only come from the detail endpoint, and a deep
+    // link may reference a project the boot fetch never loaded.
+    fetchProject(id);
+    fetchProjectComments(id);
   }, [id]);
 
   const [commentText, setCommentText] = useState('');
@@ -56,6 +61,9 @@ export const ProjectDetails = () => {
   const projectComments = comments.filter((c) => c.projectId === project.id);
   const galleryImages = Array.isArray(project.images) ? project.images : [];
   const updates = Array.isArray(project.updates) ? project.updates : [];
+  // Only present on rows fetched via getProjectDetail or delivered by a socket event; the
+  // list endpoint omits them.
+  const changes = Array.isArray(project.changes) ? project.changes : [];
 
   const handleImageUpload = async (e) => {
     if (!e.target.files) return;
@@ -216,6 +224,22 @@ export const ProjectDetails = () => {
               </ol>
             </section>
           )}
+
+          {/* 5b. The system-written record. Deliberately placed directly after the
+              contractor's own narrative, so a reader sees the curated account and the
+              uncurated one together rather than having to go looking. */}
+          <section aria-labelledby="changes-heading">
+            <h2 id="changes-heading" className="mb-1 text-h2 text-fg">
+              Record of changes
+            </h2>
+            <p className="mb-4 max-w-prose text-caption text-fg-tertiary">
+              Every edit to this project's figures, recorded automatically. Entries cannot be
+              edited or removed, including by the contractor who made them.
+            </p>
+            <Card padding="lg">
+              <ChangeHistory changes={changes} />
+            </Card>
+          </section>
 
           {/* 6. Citizen reports: highest volume, so last, with a count. */}
           <section aria-labelledby="reports-heading">
