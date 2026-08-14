@@ -1,52 +1,76 @@
 /**
  * MAIN APP COMPONENT
- * This is the root component of the React Application.
- * It sets up the Router (navigation) and provides the Global Store to all pages.
+ *
+ * Routing note: the admin and developer surfaces moved from single pages to nested
+ * routes under their own shell (docs/design/02-ia-ux.md section 3.3). Every previously
+ * working path still works: /admin and /dev-admin redirect to their first section.
  */
 
 import React from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom'; // Using HashRouter for easier file-based deployment compatibility
-import { AppProvider } from './store'; // The global state provider
-import { Layout } from './components/Layout'; // The wrapper with Navbar and Footer
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AppProvider } from './store';
+import { Layout } from './components/Layout';
+import { AdminLayout } from './components/layout/AdminLayout';
+import { ToastProvider } from './components/ui';
+import { UserRole } from './types';
 
-// Import Pages (The views of our app)
 import { Home } from './pages/Home';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetails } from './pages/ProjectDetails';
 import { Developers } from './pages/Developers';
 import { Login } from './pages/Login';
-import { AdminDashboard } from './pages/AdminDashboard';
 import { ContractorDashboard } from './pages/ContractorDashboard';
-import { DeveloperDashboard } from './pages/DeveloperDashboard';
+
+import { AdminOverview } from './pages/admin/AdminOverview';
+import { AdminProjects } from './pages/admin/AdminProjects';
+import { AdminContractors } from './pages/admin/AdminContractors';
+import { AdminReports } from './pages/admin/AdminReports';
+import { DevAccess } from './pages/admin/DevAccess';
+import { DevTeam } from './pages/admin/DevTeam';
 
 const App = () => {
-    return (
-        // AppProvider: WRAPS everything so all components can access 'user', 'projects', etc.
-        <AppProvider>
-            {/* HashRouter: Handles URL changes (e.g., /#/login) without needing server config */}
-            <HashRouter>
-                <Routes>
-                    {/* Parent Route: Layout contains the Navbar and Footer */}
-                    <Route path="/" element={<Layout />}>
-                        
-                        {/* Public Routes: Accessible by everyone */}
-                        <Route index element={<Home />} /> {/* Homepage */}
-                        <Route path="projects" element={<ProjectsPage />} />
-                        <Route path="project/:id" element={<ProjectDetails />} /> {/* Dynamic Route: :id changes */}
-                        <Route path="developers" element={<Developers />} />
-                        <Route path="login" element={<Login />} />
+  return (
+    <AppProvider>
+      {/* Toasts replace the blocking "saved successfully" modal, so the live regions have
+          to exist from mount rather than being inserted at announcement time. */}
+      <ToastProvider>
+        <HashRouter>
+          <Routes>
+            {/* Public portal and the contractor surface share the public shell. */}
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Home />} />
+              <Route path="projects" element={<ProjectsPage />} />
+              <Route path="project/:id" element={<ProjectDetails />} />
+              <Route path="developers" element={<Developers />} />
+              <Route path="login" element={<Login />} />
+              <Route path="contractor" element={<ContractorDashboard />} />
+            </Route>
 
-                        {/* Protected Routes (Logic handled inside components for simplicity in this demo) */}
-                        {/* Users are redirected if they try to access these without the right role */}
-                        <Route path="admin" element={<AdminDashboard />} />
-                        <Route path="contractor" element={<ContractorDashboard />} />
-                        <Route path="dev-admin" element={<DeveloperDashboard />} />
-                        
-                    </Route>
-                </Routes>
-            </HashRouter>
-        </AppProvider>
-    );
+            {/* Admin: sidebar shell, role guard in the layout. */}
+            <Route path="/admin" element={<AdminLayout role={UserRole.ADMIN} variant="admin" title="Admin" />}>
+              <Route index element={<Navigate to="overview" replace />} />
+              <Route path="overview" element={<AdminOverview />} />
+              <Route path="projects" element={<AdminProjects />} />
+              <Route path="contractors" element={<AdminContractors />} />
+              <Route path="reports" element={<AdminReports />} />
+            </Route>
+
+            {/* Developer control panel. */}
+            <Route
+              path="/dev-admin"
+              element={<AdminLayout role={UserRole.DEVELOPER_ADMIN} variant="dev" title="Developer" />}
+            >
+              <Route index element={<Navigate to="access" replace />} />
+              <Route path="access" element={<DevAccess />} />
+              <Route path="team" element={<DevTeam />} />
+            </Route>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </HashRouter>
+      </ToastProvider>
+    </AppProvider>
+  );
 };
 
 export default App;

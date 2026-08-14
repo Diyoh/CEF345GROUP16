@@ -1,136 +1,260 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
 import { ProjectCard } from '../components/ProjectCard';
-import { formatCurrency } from '../utils/helpers';
+import { Button, Card, StatTile, EmptyState } from '../components/ui';
+import { formatMoney } from '../utils/helpers';
+import { projectHealth, byVarianceAsc } from '../utils/projectHealth';
 import { ProjectStatus } from '../types';
 
+/**
+ * Public homepage. Spec: docs/design/02-ia-ux.md section 3.1.
+ *
+ * This page is no longer a second project browser. It is an editorial front page:
+ * a hero, the national totals, what changed recently, and what needs attention. Every
+ * section links into /projects carrying its filter, so a citizen who starts here never
+ * has to restart their query on the browse page.
+ */
+/**
+ * Hero slideshow. A curated, editorially-chosen set that ships with the app rather than
+ * whichever photos contractors happen to have uploaded — the front page has to read as a
+ * credible public record on day one, before any project has a single image attached.
+ * Files live in public/hero/, so these are plain absolute URLs, not bundled imports.
+ * Ordered strongest-first: the first frame is the one that loads eagerly and is seen most.
+ */
+/** How long one image holds, zooming, before it starts handing over to the next. */
+const HERO_INTERVAL_MS = 4000;
+
+/**
+ * Dissolve length. The outgoing frame is still zooming inward throughout, so the two
+ * frames are always moving the same direction while they overlap — that is what stops
+ * the handoff reading as a zoom out.
+ * HERO_INTERVAL_MS + HERO_FADE_MS must stay equal to the `hero-zoom` animation duration.
+ */
+const HERO_FADE_MS = 600;
+
+const HERO_SLIDES = [
+  { id: 'road-construction', image: '/hero/road-construction.jpg', caption: 'Road resurfacing works in progress' },
+  { id: 'yaounde-city', image: '/hero/yaounde-city.jpg', caption: 'Yaoundé — city road network' },
+  { id: 'site-workforce', image: '/hero/site-workforce.jpg', caption: 'Site crew and plant at a works compound' },
+  { id: 'land-reclamation', image: '/hero/land-reclamation.jpg', caption: 'Land reclamation after site closure' },
+];
+
 export const Home = () => {
-    const { projects } = useAppStore();
-    const [filter, setFilter] = useState('All');
-    const [search, setSearch] = useState('');
-    const [sort, setSort] = useState('recent');
+  const { projects } = useAppStore();
+  const [search, setSearch] = useState('');
 
-    const filteredProjects = useMemo(() => {
-        return projects
-            .filter(p => {
-                const matchesStatus = filter === 'All' || p.status === filter;
-                const matchesSearch = p.title.toLowerCase().includes(search.toLowerCase()) ||
-                    p.location.toLowerCase().includes(search.toLowerCase());
-                return matchesStatus && matchesSearch;
-            })
-            .sort((a, b) => {
-                if (sort === 'budget') return b.budget - a.budget;
-                return b.id.localeCompare(a.id);
-            });
-    }, [projects, filter, search, sort]);
+  const totals = useMemo(() => {
+    const budget = projects.reduce((acc, p) => acc + (Number(p.budget) || 0), 0);
+    const spent = projects.reduce((acc, p) => acc + (Number(p.spent) || 0), 0);
+    return { budget, spent, count: projects.length };
+  }, [projects]);
 
-    // Upcoming projects (Planned)
-    const upcomingProjects = projects.filter(p => p.status === ProjectStatus.PLANNED);
+  const needsAttention = useMemo(
+    () =>
+      projects
+        .filter((p) => {
+          const h = projectHealth(p);
+          return p.status === ProjectStatus.STALLED || h.overBudget || h.band === 'critical' || h.delayed;
+        })
+        .sort(byVarianceAsc)
+        .slice(0, 4),
+    [projects]
+  );
 
-    // Stats for Hero
-    const totalBudget = projects.reduce((acc, p) => acc + p.budget, 0);
-    const totalProjects = projects.length;
+  const recent = useMemo(() => [...projects].reverse().slice(0, 6), [projects]);
 
-    return (
-        <div className="min-h-screen pb-12 bg-gray-50">
-            {/* Hero Section - Cameroon Green Background */}
-            <section className="bg-primary text-white py-20 px-4 relative overflow-hidden">
-                {/* Background decorative circle - Yellow */}
-                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-accent opacity-20 rounded-full blur-3xl"></div>
-                {/* Background decorative circle - Red */}
-                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-60 h-60 bg-secondary opacity-30 rounded-full blur-3xl"></div>
+  const heroSlides = HERO_SLIDES;
 
-                <div className="container mx-auto max-w-5xl text-center relative z-10">
-                    <div className="mb-6 inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
-                        <i className="fas fa-star text-accent"></i>
-                        <span className="font-bold text-sm tracking-wide">REPUBLIQUE DU CAMEROUN</span>
-                        <i className="fas fa-star text-accent"></i>
-                    </div>
-                    <h1 className="text-4xl md:text-6xl font-extrabold mb-6 leading-tight">
-                        Building Cameroon <br /><span className="text-accent">Transparently</span> Together
-                    </h1>
-                    <p className="text-lg md:text-xl text-gray-100 mb-10 max-w-2xl mx-auto font-light">
-                        A public platform tracking <span className="font-bold text-white border-b-2 border-secondary">{totalProjects} projects</span> across the nation.
-                        Monitoring <span className="font-bold text-accent">{formatCurrency(totalBudget)}</span> in public infrastructure funds.
-                    </p>
+  // `outgoing` is the frame currently fading away. It keeps its zoom class for the length
+  // of the crossfade so it holds the scale it reached instead of snapping back to 1 — the
+  // snap is what makes most slideshows look broken. Dropping the class once it is invisible
+  // is also what resets the animation, so the frame zooms from 1 again on its next turn.
+  const [slide, setSlide] = useState(0);
+  const [outgoing, setOutgoing] = useState(null);
+  const slideRef = useRef(0);
+  slideRef.current = slide;
 
-                    <div className="flex flex-col md:flex-row justify-center gap-4 max-w-3xl mx-auto">
-                        <div className="relative w-full">
-                            <i className="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                            <input
-                                type="text"
-                                placeholder="Search projects by name, city, or region..."
-                                className="w-full pl-12 pr-6 py-4 rounded-lg text-gray-900 focus:outline-none focus:ring-4 focus:ring-accent/50 shadow-xl"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                        </div>
-                        <button className="bg-secondary hover:bg-red-700 text-white px-8 py-4 rounded-lg font-bold transition-colors shadow-xl flex items-center justify-center gap-2 whitespace-nowrap border-b-4 border-red-800 active:border-b-0 active:translate-y-1">
-                            Find Projects
-                        </button>
-                    </div>
-                </div>
-            </section>
+  const goTo = (next) => {
+    if (next === slideRef.current) return;
+    setOutgoing(slideRef.current);
+    setSlide(next);
+  };
 
-            {/* Dashboard & Grid */}
-            <div className="container mx-auto px-4 -mt-16 relative z-20">
-                <div className="bg-white rounded-xl shadow-xl p-6 md:p-8 mb-12 border-t-8 border-accent">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
-                        <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-                            <span className="bg-primary/10 text-primary p-2 rounded-lg"><i className="fas fa-chart-pie"></i></span>
-                            Projects Dashboard
-                        </h2>
-
-                        <div className="flex flex-wrap gap-4 w-full md:w-auto">
-                            <select
-                                className="flex-1 md:flex-none bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary outline-none cursor-pointer hover:bg-white transition-colors"
-                                value={filter}
-                                onChange={(e) => setFilter(e.target.value)}
-                            >
-                                <option value="All">All Statuses</option>
-                                {Object.values(ProjectStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                            <select
-                                className="flex-1 md:flex-none bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary outline-none cursor-pointer hover:bg-white transition-colors"
-                                value={sort}
-                                onChange={(e) => setSort(e.target.value)}
-                            >
-                                <option value="recent">Most Recent</option>
-                                <option value="budget">Highest Budget</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {filteredProjects.map(p => (
-                            <ProjectCard key={p.id} project={p} />
-                        ))}
-                    </div>
-
-                    {filteredProjects.length === 0 && (
-                        <div className="text-center py-16 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                            <i className="fas fa-search-location text-5xl text-gray-300 mb-4"></i>
-                            <p className="text-lg font-medium">No projects found.</p>
-                            <p className="text-sm">Try adjusting your search or filters.</p>
-                        </div>
-                    )}
-                </div>
-
-                {/* Upcoming Projects Section */}
-                {upcomingProjects.length > 0 && (
-                    <div className="mb-12">
-                        <div className="flex items-center gap-3 mb-6 pl-3 border-l-4 border-secondary">
-                            <h2 className="text-2xl font-bold text-dark">Upcoming Projects</h2>
-                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-bold">Planned</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {upcomingProjects.map(p => (
-                                <ProjectCard key={p.id} project={p} />
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
+  useEffect(() => {
+    if (heroSlides.length < 2) return undefined;
+    const timer = setInterval(
+      () => goTo((slideRef.current + 1) % heroSlides.length),
+      HERO_INTERVAL_MS
     );
+    return () => clearInterval(timer);
+  }, [heroSlides.length]);
+
+  // Stop treating a frame as outgoing once it has finished fading, which drops its zoom
+  // class and arms the animation to replay from the start next time round.
+  useEffect(() => {
+    if (outgoing === null) return undefined;
+    const timer = setTimeout(() => setOutgoing(null), HERO_FADE_MS);
+    return () => clearTimeout(timer);
+  }, [outgoing, slide]);
+
+  return (
+    <div className="pb-20">
+      {/* ---------- Hero ---------- */}
+      <section className="relative isolate overflow-hidden border-b border-line bg-surface">
+        <div className="absolute inset-0" aria-hidden="true">
+          {heroSlides.map((s, i) => (
+            <div
+              key={s.id}
+              style={{ transitionDuration: `${HERO_FADE_MS}ms` }}
+              className={`absolute inset-0 transition-opacity ease-in-out ${
+                i === slide ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              <img
+                src={s.image}
+                alt=""
+                loading={i === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+                className={`h-full w-full object-cover will-change-transform ${
+                  i === slide || i === outgoing ? 'hero-zoom' : ''
+                }`}
+              />
+            </div>
+          ))}
+          {/* Overlay carries the text contrast: every foreground pair below is measured
+              against it, not against the photograph, so a light frame can never wash out
+              the headline. */}
+          <div className="absolute inset-0 bg-[rgb(var(--overlay)/0.72)]" />
+        </div>
+
+        <div className="relative mx-auto max-w-content px-4 py-16 text-white md:px-8 md:py-24">
+          <div className="max-w-3xl">
+            <p className="text-overline uppercase text-white/70">Public infrastructure record</p>
+            <h1 className="mt-3 font-serif text-display text-white">
+              Every project, every franc, on the record.
+            </h1>
+            <p className="mt-5 max-w-prose text-body-lg text-white/85">
+              {totals.count} public construction projects across Cameroon, with what was budgeted, what has
+              been spent, and how much has actually been built.
+            </p>
+
+            <form
+              className="mt-8 flex max-w-xl flex-col gap-3 sm:flex-row"
+              onSubmit={(e) => e.preventDefault()}
+              role="search"
+            >
+              <label htmlFor="hero-search" className="sr-only">
+                Search projects by name or town
+              </label>
+              <input
+                id="hero-search"
+                type="search"
+                placeholder="Search by project or town"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-12 w-full rounded-sm border border-input bg-canvas px-4 text-body text-fg placeholder:text-fg-placeholder"
+              />
+              <Button
+                as={Link}
+                to={`/projects${search ? `?q=${encodeURIComponent(search)}` : ''}`}
+                variant="primary"
+                size="lg"
+              >
+                Find projects
+              </Button>
+            </form>
+          </div>
+
+          {heroSlides.length > 1 && (
+            <div className="mt-10 flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                {heroSlides.map((s, i) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => goTo(i)}
+                    aria-label={`Show image ${i + 1} of ${heroSlides.length}: ${s.caption}`}
+                    aria-current={i === slide}
+                    className={`h-1.5 rounded-full transition-all duration-fast ${
+                      i === slide ? 'w-8 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80'
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="truncate text-caption text-white/70">{heroSlides[slide]?.caption}</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ---------- National totals ---------- */}
+      <section className="mx-auto max-w-content px-4 py-12 md:px-8 md:py-16">
+        <h2 className="sr-only">National totals</h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatTile label="Projects tracked" value={totals.count} hint="Across all ten regions" />
+          <StatTile
+            label="Total budget"
+            value={formatMoney(totals.budget, 'compact')}
+            exact={formatMoney(totals.budget, 'full')}
+          />
+          <StatTile
+            label="Total spent"
+            value={formatMoney(totals.spent, 'compact')}
+            exact={formatMoney(totals.spent, 'full')}
+            delta={totals.budget > 0 ? `${Math.round((totals.spent / totals.budget) * 100)}% of budget` : undefined}
+            deltaTone="neutral"
+          />
+        </div>
+      </section>
+
+      {/* ---------- Needs attention ---------- */}
+      {needsAttention.length > 0 && (
+        <section className="mx-auto max-w-content px-4 pb-16 md:px-8">
+          <div className="mb-6 flex items-end justify-between gap-4 border-l-2 border-over-line pl-4">
+            <div>
+              <h2 className="text-h2 text-fg">Needs attention</h2>
+              <p className="mt-1 text-caption text-fg-tertiary">
+                Stalled, delayed, or spending faster than they are building.
+              </p>
+            </div>
+            <Button as={Link} to="/projects?status=Stalled" variant="ghost" size="sm">
+              See all
+            </Button>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {needsAttention.map((p) => (
+              <ProjectCard key={p.id} project={p} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ---------- Recently updated ---------- */}
+      <section className="mx-auto max-w-content px-4 pb-16 md:px-8">
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <h2 className="text-h2 text-fg">Recently updated</h2>
+          <Button as={Link} to="/projects" variant="ghost" size="sm">
+            Browse all projects
+          </Button>
+        </div>
+
+        {recent.length === 0 ? (
+          <Card padding="none">
+            <EmptyState
+              icon="fa-folder-open"
+              title="No projects published yet"
+              body="Once a project is created it appears here for everyone to follow."
+            />
+          </Card>
+        ) : (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {recent.map((p) => (
+              <ProjectCard key={p.id} project={p} />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
 };

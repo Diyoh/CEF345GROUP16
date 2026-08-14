@@ -2,11 +2,283 @@
 @tailwind components;
 @tailwind utilities;
 
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-in-out;
+/* ============================================================================
+   BuildRight Cameroon - theme tokens
+   Spec: docs/design/01-foundations.md
+   Values are RGB channel triples so Tailwind opacity modifiers keep working
+   (bg-surface/50). Dark mode is a designed theme, not an inversion.
+   ========================================================================== */
+
+:root {
+  /* surfaces */
+  --canvas: 255 255 255;
+  --surface: 246 247 247;      /* neutral-50  */
+  --raised: 255 255 255;
+  --sunken: 236 237 236;       /* neutral-100 */
+  --overlay: 28 37 34;         /* neutral-950, used at 55% */
+
+  /* text - every value below passes WCAG AA on canvas, most pass AAA */
+  --fg: 28 37 34;              /* neutral-950  15.71:1 */
+  --fg-secondary: 73 86 81;    /* neutral-800   7.68:1 */
+  --fg-tertiary: 94 107 102;   /* neutral-700   5.57:1 */
+  --fg-placeholder: 94 107 102;/* neutral-700   5.57:1 - neutral-600 fails at 4.23 */
+  --fg-disabled: 137 150 145;  /* neutral-500   3.07:1 - inactive controls only */
+  --fg-inverse: 255 255 255;
+
+  /* borders */
+  --line-subtle: 217 221 220;  /* neutral-200 */
+  --line: 194 201 198;         /* neutral-300 */
+  --line-strong: 164 175 171;  /* neutral-400 - rules only */
+  --line-input: 137 150 145;   /* neutral-500  3.07:1 - the only border that passes 1.4.11 */
+
+  /* intent */
+  --accent: 0 124 90;              /* green-700  5.21:1 */
+  --accent-fill: 0 124 90;
+  --accent-fill-hover: 0 99 69;    /* green-800  7.32:1 */
+  --accent-fg: 255 255 255;        /* on fill    5.21:1 */
+  --accent-subtle: 244 248 246;    /* green-50 */
+  --danger: 194 15 6;              /* red-700    6.24:1 */
+  --danger-fill: 194 15 6;
+  --danger-fill-hover: 160 0 0;    /* red-800 */
+  --danger-fg: 255 255 255;        /* on fill    6.24:1 */
+  --danger-subtle: 251 245 245;    /* red-50 */
+  --warning: 111 74 0;             /* amber-800  7.91:1 */
+  --info: 46 100 188;              /* blue-700   5.73:1 */
+  --focus-ring: 0 145 108;         /* green-600  3.99:1 - green-500 fails at 2.93 */
+
+  /* status chips */
+  --planned-bg: 244 247 249;  --planned-fg: 46 100 188;  --planned-line: 199 224 248;  /* 5.33:1 */
+  --progress-bg: 244 248 246; --progress-fg: 0 99 69;    --progress-line: 194 230 218; /* 6.83:1 */
+  --delayed-bg: 249 248 227;  --delayed-fg: 111 74 0;    --delayed-line: 236 196 0;    /* 7.37:1 */
+  --done-bg: 227 240 236;     --done-fg: 0 99 69;        --done-line: 141 218 193;     /* 6.25:1 */
+  --over-bg: 251 245 245;     --over-fg: 194 15 6;       --over-line: 255 173 170;     /* 5.79:1 */
+  --stalled-bg: 236 237 236;  --stalled-fg: 73 86 81;    --stalled-line: 194 201 198;  /* 6.55:1 */
+
+  /* Chart series. Full colour values, not triples: these are consumed by SVG fills.
+     Ordered so consecutive luminances differ by at least 1.4x, which keeps the series
+     distinguishable in greyscale and in print. Spec: 04-dataviz.md section 5. */
+  --chart-series-1: #006345;  /* green-800  lum 0.094 */
+  --chart-series-2: #3D7ACE;  /* blue-600   lum 0.194 */
+  --chart-series-3: #899691;  /* neutral-500 lum 0.292 */
+  --chart-series-4: #D0A700;  /* amber-400  lum 0.415, fill only, needs amber-600 stroke */
+  --chart-balance: #899691;
+  --chart-watch: #9C7300;
+  --chart-critical: #DD2826;
+
+  color-scheme: light;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+.dark {
+  /* Elevation in dark mode is luminance plus border-light. Shadows are removed
+     entirely below, because a shadow on a dark canvas is invisible. */
+  --canvas: 14 22 19;          /* neutral-1000 - not black; true black halates on cheap LCDs */
+  --surface: 19 29 25;         /* neutral-975 */
+  --raised: 28 37 34;          /* neutral-950 */
+  --sunken: 10 16 14;
+  --overlay: 0 0 0;            /* used at 65% */
+
+  --fg: 246 247 247;           /* neutral-50   17.12:1 - never pure white */
+  --fg-secondary: 217 221 220; /* neutral-200  13.41:1 */
+  --fg-tertiary: 164 175 171;  /* neutral-400   8.14:1 */
+  --fg-placeholder: 164 175 171;
+  --fg-disabled: 137 150 145;  /* neutral-500   5.98:1 */
+  --fg-inverse: 28 37 34;
+
+  --line-subtle: 27 36 33;
+  --line: 39 49 45;
+  --line-strong: 62 73 69;
+  --line-input: 99 109 105;    /* neutral-400 @55%  3.22:1 - @45% fails at 2.60 */
+
+  --accent: 81 196 162;            /* green-400  8.55:1 */
+  --accent-fill: 11 171 133;       /* green-500 */
+  --accent-fill-hover: 81 196 162;
+  --accent-fg: 28 37 34;           /* on fill    5.37:1 */
+  --accent-subtle: 18 52 42;
+  --danger: 255 127 123;           /* red-400    7.50:1 */
+  --danger-fill: 255 127 123;
+  --danger-fill-hover: 255 173 170;
+  --danger-fg: 28 37 34;
+  --danger-subtle: 55 37 33;
+  --warning: 236 196 0;            /* amber-300 10.90:1 */
+  --info: 115 176 246;             /* blue-400   8.11:1 */
+  --focus-ring: 81 196 162;        /* green-400  8.55:1 */
+
+  /* chips: hue-500 at 16% over surface, border at 32%, text at hue-300 */
+  --planned-bg: 30 48 57;    --planned-fg: 156 204 254; --planned-line: 40 67 89;   /* 8.12:1 */
+  --progress-bg: 18 52 42;   --progress-fg: 141 218 193;--progress-line: 16 74 60;  /* 8.34:1 */
+  --delayed-bg: 45 47 21;    --delayed-fg: 236 196 0;   --delayed-line: 71 65 17;   /* 8.15:1 */
+  --done-bg: 18 52 42;       --done-fg: 194 230 218;    --done-line: 16 74 60;      /* 10.08:1 */
+  --over-bg: 55 37 33;       --over-fg: 255 173 170;    --over-line: 92 45 41;      /* 8.15:1 */
+  --stalled-bg: 42 52 48;    --stalled-fg: 194 201 198; --stalled-line: 65 76 72;   /* 7.64:1 */
+
+  --chart-series-1: #8DDAC1;
+  --chart-series-2: #73B0F6;
+  --chart-series-3: #899691;
+  --chart-series-4: #F6DD66;
+  --chart-balance: #899691;
+  --chart-watch: #ECC400;
+  --chart-critical: #FF7F7B;
+
+  color-scheme: dark;
+}
+
+/* Shadows do not exist in dark mode. Elevation is carried by surface luminance. */
+.dark .shadow-e1, .dark .shadow-e2, .dark .shadow-e3, .dark .shadow-e4,
+.dark .shadow-sm, .dark .shadow, .dark .shadow-md, .dark .shadow-lg, .dark .shadow-xl {
+  box-shadow: none;
+}
+
+/* ============================================================================
+   Fonts
+
+   DISABLED until the woff2 files are actually added to public/fonts/.
+
+   A @font-face pointing at a missing file is not harmless here: Vite's SPA fallback
+   answers /fonts/*.woff2 with index.html, so the browser downloads HTML, fails to parse
+   it as a font, and logs "Failed to decode downloaded font" plus an OTS parsing error on
+   every page load. The system fallback stacks in tailwind.config.js render correctly in
+   the meantime (Georgia carries the editorial serif role).
+
+   To enable: add the three subset files, then uncomment. Nothing else changes, because
+   the family names below already head their stacks.
+
+@font-face {
+  font-family: 'InterVariable';
+  src: url('/fonts/inter-latin.woff2') format('woff2-variations');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+20A0-20AB, U+20AD-20CF, U+2122, U+2191, U+2193, U+2212;
+}
+
+@font-face {
+  font-family: 'Source Serif 4 Variable';
+  src: url('/fonts/source-serif-4-latin.woff2') format('woff2-variations');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+2000-206F, U+20A0-20AB;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/jetbrains-mono-subset.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0030-0039, U+0041-005A, U+002D;
+}
+   ========================================================================== */
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-canvas text-fg font-sans antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'cv05' 1; /* single-storey l, clearer at 13px on low DPI */
+  }
+
+  /* One focus rule for the whole app. `focus:outline-none` without a replacement
+     is a review failure; this is what replaces the 26 existing instances. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--focus-ring));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  :focus:not(:focus-visible) { outline: none; }
+
+  ::selection {
+    background-color: rgb(var(--accent) / 0.18);
+    color: rgb(var(--fg));
+  }
+
+  /* Money, percentages, dates and counts must never shift column width. */
+  table, .tabular, [data-numeric] {
+    font-variant-numeric: tabular-nums slashed-zero;
+  }
+
+  /* Headings inherit their role tokens rather than browser defaults. */
+  h1 { @apply text-h1; }
+  h2 { @apply text-h2; }
+  h3 { @apply text-h3; }
+
+  /* Form controls inherit type instead of falling back to system UI fonts. */
+  button, input, optgroup, select, textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* Images never cause layout shift: width/height attributes are required in
+     components, and this keeps them fluid without overflowing. */
+  img, svg, video { @apply block max-w-full; }
+  img { height: auto; }
+
+  hr { @apply border-line-subtle; }
+
+  [hidden] { display: none !important; }
+}
+
+@layer components {
+  /* Skip link: first focusable element on every page. */
+  .skip-link {
+    @apply sr-only;
+  }
+  .skip-link:focus-visible {
+    @apply not-sr-only fixed left-4 top-4 z-[100] rounded-sm bg-raised px-4 py-2 text-body font-medium text-fg shadow-e3;
+  }
+
+  /* Expands the tap target of small controls to 44x44 on touch devices without
+     growing the visual box, so density survives WCAG 2.5.8. */
+  .hit-target::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  @media (pointer: coarse) {
+    .hit-target::after { inset: -8px; }
+  }
+
+  /* Skeletons are sized to the final layout by the caller; this only supplies the fill. */
+  .skeleton {
+    @apply rounded-sm bg-sunken animate-shimmer;
+  }
+
+  /* Live socket arrival. Applied for one animation cycle, then removed. */
+  .value-flash {
+    @apply animate-value-flash rounded-xs;
+  }
+
+  /* Hero slideshow (public portal). */
+  .hero-zoom {
+    @apply animate-hero-zoom;
+  }
+}
+
+/* ============================================================================
+   Reduced motion. Motion never carries information that is not also in text,
+   so removing it costs nothing.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* These would otherwise freeze mid-animation at the wrong scale or opacity. */
+  .hero-zoom { animation: none !important; transform: none !important; }
+  .skeleton { animation: none !important; opacity: 1 !important; }
+  .value-flash { animation: none !important; background-color: rgb(var(--accent) / 0.12) !important; }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; color: #000; }
 }
