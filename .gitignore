@@ -146,10 +146,28 @@ vite.config.ts.timestamp-*
 Backend/public/uploads/
 
 # Documentation
+#
+# `*.md` here was silently discarding real project documentation: the design
+# specification in Frontend/docs/design/, the agent skill in .claude/, SETUP.md, and
+# several files in Documents/. None of it was ever committed and nobody noticed, because
+# an ignored file produces no warning.
+#
+# The rule is kept so stray scratch notes at the repo root stay out, but every directory
+# that holds deliberate documentation is exempted below.
 *.md
 !README.md
 !CONTRIBUTING.md
+!SECURITY.md
+!SETUP.md
 !setup_guide.md
+!task.md
+!implementation_plan.md
+
+# Deliberate documentation trees — these are project deliverables, not scratch files.
+!Documents/**
+!Frontend/docs/**
+!Database/**/*.md
+!.claude/**
 
 # Microsoft Office Temp Files
 ~$*
