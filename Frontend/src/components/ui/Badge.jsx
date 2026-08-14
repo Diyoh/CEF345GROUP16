@@ -33,12 +33,26 @@ const FLAG_TONES = {
 
 const SIZES = { sm: 'h-5 px-1.5 gap-1', md: 'h-6 px-2 gap-1.5' };
 
+/**
+ * `onMedia` — for badges sitting on top of a photograph.
+ *
+ * The outlined flag rank uses `bg-transparent`, which is right on a known surface and
+ * unreadable over an image: contractors upload whatever they photograph, so the pixels
+ * behind a badge may be white sky, dark tarmac or an orange jacket. Amber text on a
+ * transparent chip disappeared entirely over a bright photo.
+ *
+ * The fix is an OPAQUE fill, not a gradient scrim. A gradient fades, so a badge landing in
+ * its light end is still unreadable — it moves the problem rather than removing it. A solid
+ * tint gives the same contrast ratio over every possible photograph, and the ring separates
+ * the chip from the image so it does not read as part of the picture.
+ */
 export const Badge = ({
   tone = 'neutral',
   rank = 'lifecycle',
   size = 'md',
   icon = null,
   title,
+  onMedia = false,
   className,
   children,
 }) => (
@@ -47,7 +61,12 @@ export const Badge = ({
     className={cn(
       'inline-flex shrink-0 items-center rounded-full border text-overline uppercase',
       SIZES[size],
-      rank === 'flag' ? cn('bg-transparent', FLAG_TONES[tone]) : TONES[tone],
+      // Over media every badge takes the filled treatment regardless of rank.
+      onMedia
+        ? cn(TONES[tone], 'ring-1 ring-[rgb(var(--overlay)/0.25)] shadow-e1')
+        : rank === 'flag'
+          ? cn('bg-transparent', FLAG_TONES[tone])
+          : TONES[tone],
       className
     )}
   >

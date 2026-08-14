@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
 import { csvExportUrl } from '../api';
 import { useT } from '../i18n';
 import { ProjectCard } from '../components/ProjectCard';
-import { Button, Card, Select, EmptyState, Badge, Skeleton, SkeletonRegion } from '../components/ui';
+import { Button, Card, Select, EmptyState, Badge, Skeleton, SkeletonRegion, Pagination } from '../components/ui';
 import { ProjectStatus } from '../types';
 import { projectHealth, byVarianceAsc } from '../utils/projectHealth';
 

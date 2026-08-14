@@ -220,6 +220,7 @@ export default {
       aspectRatio: {
         plot: '21 / 9',     // chart plot area, desktop
         photo: '4 / 3',     // construction photography
+        cover: '16 / 9',    // card cover crop: shorter, so more cards fit above the fold
       },
     },
 

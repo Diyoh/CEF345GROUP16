@@ -17,6 +17,7 @@ export { Tabs, TabPanel } from './Tabs';
 export { Table, THead, TBody, TH, TR, TD, TableEmpty } from './Table';
 export { Skeleton, SkeletonText, SkeletonRegion } from './Skeleton';
 export { EmptyState } from './EmptyState';
+export { Pagination } from './Pagination';
 export { StatTile } from './StatTile';
 export { ChartShell } from './ChartShell';
 export { VisuallyHidden } from './VisuallyHidden';

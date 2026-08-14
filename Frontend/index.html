@@ -24,12 +24,11 @@
       })();
     </script>
 
-    <!-- TODO(phase5): replaced by the local SVG sprite once every icon call site is
-         migrated. Kept until then so the 31 icons currently in use keep rendering. -->
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-      rel="stylesheet"
-    />
+    <!-- Icons are now bundled from the @fortawesome/fontawesome-free package, imported
+         in src/index.jsx. Do not reintroduce a CDN <link> here: a blocked external
+         request turned every icon on the site into a tofu box.
+         TODO(phase5): still to be replaced by the local SVG sprite once every icon
+         call site is migrated. -->
   </head>
   <body>
     <div id="root"></div>
