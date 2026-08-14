@@ -82,6 +82,8 @@ export const register = async (req, res) => {
                 throw new AppError('User already exists', 400);
             }
 
+            assertPasswordAcceptable(password);
+
             const salt = await bcrypt.genSalt(10);
             const passwordHash = await bcrypt.hash(password, salt);
 
@@ -180,10 +182,35 @@ export const getMe = async (req, res) => {
     });
 };
 
+/**
+ * Minimum password policy, enforced server-side.
+ *
+ * The frontend checked 6 characters on the registration form only, and the API checked
+ * nothing at all — so the change-password endpoint accepted a single character, and any
+ * non-browser client could set anything. These accounts can alter the public spending
+ * record, so the floor belongs on the server where it cannot be bypassed.
+ *
+ * Length over composition rules: mandatory symbol classes push people toward predictable
+ * substitutions, while length is what actually resists guessing.
+ */
+const MIN_PASSWORD_LENGTH = 8;
+
+const assertPasswordAcceptable = (password) => {
+    const value = String(password || '');
+    if (value.length < MIN_PASSWORD_LENGTH) {
+        throw new AppError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`, 400);
+    }
+    if (/^\s+$/.test(value)) {
+        throw new AppError('Password cannot be only spaces', 400);
+    }
+};
+
 export const changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
-        
+
+        assertPasswordAcceptable(newPassword);
+
         // 1. Get user with password hash
         const [users] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
         if (users.length === 0) return res.status(404).json({ success: false, error: 'User not found' });
@@ -206,7 +233,8 @@ export const changePassword = async (req, res) => {
         res.json({ success: true, message: 'Password updated successfully' });
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, error: 'Server Error' });
+        // sendError maps AppError (the policy rejection above) to its own status; anything
+        // unexpected still becomes a logged 500.
+        sendError(res, error);
     }
 };

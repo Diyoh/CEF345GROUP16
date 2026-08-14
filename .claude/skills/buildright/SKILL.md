@@ -31,6 +31,8 @@ purpose: that is the check on contractor self-reporting.
 | Add a CORS origin | `Backend/config/allowedOrigins.js` + `CORS_ORIGINS` env — used by REST **and** sockets |
 | Change DB connection / SSL | `Backend/config/db.js` |
 | Change API output key casing | `Backend/utils/serialize.js` — one global rule, applied in `index.js` |
+| Change password policy or limits | `MIN_PASSWORD_LENGTH` in `authController.js` (mirror it in `Login.jsx`), `RATE_LIMIT_MAX` / `JSON_BODY_LIMIT` env vars in `index.js` |
+| Add a role-guarded page | `components/AuthPending.jsx` pattern — gate on `authChecked` BEFORE `user`, and put every hook above the early returns |
 | Add a frontend API call | `Frontend/src/api.js` → wire an action in `Frontend/src/store.jsx` |
 | Add a route/page | `Frontend/src/App.jsx` (+ `components/layout/AdminLayout.jsx` for admin sections) |
 | Change global state | `Frontend/src/store.jsx` (single Context; `useAppStore.js` is the hook) |
@@ -168,20 +170,21 @@ Do not trust these paths; do not "discover" them again.
 
 | ID | Where | Problem |
 |---|---|---|
-| P1-05 | — | `POST /projects/:id/updates` + `api.addGlobalUpdate` have **no caller**; the timeline is never written outside `seed.js` |
 | P1-07 | `Database/migrations/001` | Index migration is **written but NOT APPLIED** to any database. Until the log table in `migrations/README.md` is ticked, assume the live schema has no query indexes |
 | P1-08 | `Backend/socket.js` | No socket auth, no rooms — every client receives every project mutation. Harmless while all data is public; a leak the moment a non-public field is added |
-| P2-02 | `authController.changePassword` | No server-side password strength rule |
-| P2-03 | `index.js` | `express.json({limit:'50mb'})` — one unauthenticated comment POST can push 50 MB |
-| P2-06 | `store.jsx` | `authChecked` is exported but no guard consumes it; guards can flash `/login` before `getMe()` resolves |
-| P2-07 | `index.js` | Global rate limit still 1000/15min, labelled `[DEV]`. Credential routes are separately limited to 20 |
+| P2-04 | `commentRoutes.js` | `POST /projects/:id/comments` is unauthenticated with only the global limiter — spam vector on the public write path |
+| P2-05 | `index.js` | No 404 handler for unknown API paths; they fall through to the error handler |
 | P2-08 | `index.html` | FontAwesome CDN — external blocking request (~70 KB) on every page load |
+| P3 | — | Dead code (below), `ProjectStatus` in 6 places, no backend integration tests |
 
 **FIXED 2026-08-14** (do not re-report): S-01…S-08 (the whole snake_case/camelCase class, via the
 boundary serializer), P0-02 (access-code entropy), P0-05 (`Card` missing `relative` — stretched-link
 overlay swallowed nearly every click site-wide), P1-01 (`api.deleteProject`), P1-02 (false success
-toast + missing optimistic rollback), P2-01 (project create + registration now transactional, with
-`FOR UPDATE` closing the double-spend race on access codes).
+toast + missing optimistic rollback), P1-05 (timeline wired: `addProjectUpdate` in the store, note
+field on the contractor form), P2-01 (project create + registration now transactional, with
+`FOR UPDATE` closing the double-spend race on access codes), P2-02 (8-char minimum enforced
+server-side on both register and change-password), P2-03 (JSON body 50mb → 10mb), P2-06 (guards wait
+for `authChecked`), P2-07 (global rate limit 1000 → 300, env-tunable).
 
 Dead code (safe to delete): `Frontend/src/data.js`, `Frontend/src/style.css`,
 `Backend/debug_contractors.js`, `Backend/debug_user.js`, `GET /stats/global` (no caller),

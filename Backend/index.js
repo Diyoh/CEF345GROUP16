@@ -43,12 +43,17 @@ app.use(helmet({
 
 // [SECURITY FIX] Rate Limiting: Prevent Brute Force & DoS
 // Limits a single IP to 100 requests per 15 minutes
+// Sized for real browsing rather than for a demo: a citizen loading the portal and paging
+// through projects makes a handful of requests, so 300 per 15 minutes leaves generous
+// headroom while still bounding scraping and abuse. Configurable so it can be tuned on
+// Render without a code change. Credential routes are limited far more tightly in
+// routes/authRoutes.js — that is where guessing actually wins something.
 const limiter = rateLimit({
-	windowMs: 15 * 60 * 1000, 
-	max: 1000, // [DEV] Increased from 100 to 1000 to prevent locking out during testing
-    message: 'Too many requests from this IP, please try again after 15 minutes',
+    windowMs: 15 * 60 * 1000,
+    max: Number(process.env.RATE_LIMIT_MAX) || 300,
+    message: { success: false, error: 'Too many requests from this IP, please try again after 15 minutes' },
     standardHeaders: true,
-	legacyHeaders: false,
+    legacyHeaders: false,
 });
 app.use(limiter);
 
@@ -61,9 +66,14 @@ app.use(cors(corsOptions));
 // [SECURITY FIX] Cookie Parser
 app.use(cookieParser());
 
-// Enable JSON parsing. 
-// We kept the limit high for Base64 images as per project structure, but Rate Limiting helps mitigate DoS.
-app.use(express.json({ limit: '50mb' }));
+// JSON body limit.
+//
+// 50mb was set so Base64 images could be posted inline. That path still exists for citizen
+// report photos (capped at 4 by the UI) and the legacy project-image fallback, but 50mb let
+// a single UNAUTHENTICATED comment POST push 50 megabytes through Render on every request.
+// 10mb comfortably covers four phone photos after Base64's ~33% overhead; genuine bulk
+// uploads go through multer as multipart, which this limit does not apply to.
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '10mb' }));
 
 // [CONTRACT] Everything leaving this API uses camelCase keys.
 // MySQL columns are snake_case; the frontend reads camelCase. Converting once here means

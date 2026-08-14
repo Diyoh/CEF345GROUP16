@@ -4,6 +4,7 @@ import { useAppStore } from '../useAppStore';
 import { UserRole } from '../types';
 import { ContractorProjectCard } from '../components/dashboard/ContractorProjectCard';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
+import { AuthPending } from '../components/AuthPending';
 import { Button, EmptyState, StatTile, useToast } from '../components/ui';
 import { formatMoney } from '../utils/helpers';
 import { projectHealth } from '../utils/projectHealth';
@@ -18,20 +19,25 @@ import { projectHealth } from '../utils/projectHealth';
  * The update handler is unchanged: same FormData fields, same image merge, same
  * updateProject call.
  */
+const STALE_MS = 7 * 24 * 60 * 60 * 1000;
+
 export const ContractorDashboard = () => {
-  const { user, projects, updateProject } = useAppStore();
+  const { user, projects, updateProject, addProjectUpdate, authChecked } = useAppStore();
   const [editingId, setEditingId] = useState(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const toast = useToast();
 
-  if (!user || user.role !== UserRole.CONTRACTOR) return <Navigate to="/login" replace />;
-
+  // EVERY hook must run before any early return. These useMemo calls previously sat below
+  // the auth guard, so the hook count changed between renders once `user` arrived —
+  // React's "rendered more hooks than during the previous render". It survived only
+  // because the guard navigated away and remounted the component; adding a second guard
+  // would have made it fire.
   const myProjects = useMemo(
-    () => projects.filter((p) => p.contractorId === user.id || p.contractor_id === user.id),
-    [projects, user.id]
+    () => (user ? projects.filter((p) => p.contractorId === user.id || p.contractor_id === user.id) : []),
+    [projects, user]
   );
 
-  const staleMs = 7 * 24 * 60 * 60 * 1000;
+  const staleMs = STALE_MS;
   const sorted = useMemo(() => {
     const isStale = (p) => {
       const updated = p.updatedAt || p.updated_at;
@@ -54,6 +60,10 @@ export const ContractorDashboard = () => {
     const atRisk = myProjects.filter((p) => projectHealth(p).overBudget).length;
     return { budget, needsUpdate, atRisk };
   }, [myProjects]);
+
+  // Guards run only after every hook above has been called.
+  if (!authChecked) return <AuthPending />;
+  if (!user || user.role !== UserRole.CONTRACTOR) return <Navigate to="/login" replace />;
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -87,8 +97,24 @@ export const ContractorDashboard = () => {
     });
 
     if (result && result.success) {
+      // Only append to the permanent timeline once the figures actually saved, so the
+      // history can never describe a change the record does not show.
+      const note = String(formData.get('timelineNote') || '').trim();
+      if (note) {
+        const noteResult = await addProjectUpdate(project.id, note);
+        if (!noteResult.success) {
+          toast.error('Your figures saved, but the history note did not. Please add it again.');
+          setEditingId(null);
+          return;
+        }
+      }
+
       setEditingId(null);
-      toast.success('Progress updated. The public page now shows your changes.');
+      toast.success(
+        note
+          ? 'Progress and history note published.'
+          : 'Progress updated. The public page now shows your changes.'
+      );
     } else {
       // The editor stays open so the contractor does not lose what they typed.
       toast.error(result?.error || 'Your update could not be saved. Your changes are still here.');

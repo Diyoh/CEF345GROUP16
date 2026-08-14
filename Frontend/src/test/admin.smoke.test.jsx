@@ -34,9 +34,14 @@ const store = {
   accessCodes: [{ code: 'ABC-123', role: 'CONTRACTOR', isUsed: false, generatedBy: 'dev' }],
   teamMembers: [{ id: 't1', name: 'Dev Lead', role: 'Engineering', bio: 'x', imageUrl: '/x.jpg' }],
   user: { id: 'u2', name: 'BTP Cameroun S.A.', role: 'CONTRACTOR' },
+  // The session check has completed. Guards refuse to decide before this is true, because
+  // `user` is null until getMe() returns and a guard reading it alone reports every
+  // visitor as logged out.
+  authChecked: true,
   loading: false,
   error: null,
   updateProject: vi.fn(),
+  addProjectUpdate: vi.fn().mockResolvedValue({ success: true }),
   addProject: vi.fn(),
   deleteComment: vi.fn(),
   fetchContractors: vi.fn(),
@@ -76,6 +81,25 @@ describe('admin and contractor smoke tests', () => {
     expect(screen.getByRole('heading', { name: /your projects/i })).toBeInTheDocument();
     expect(screen.getByText('No photos yet')).toBeInTheDocument();
     expect(errors).toEqual([]);
+  });
+
+  it('ContractorDashboard waits for the session check instead of showing logged-out', () => {
+    // Before this, a guard reading `user` alone redirected on every page load, so
+    // refreshing the dashboard bounced an authenticated contractor to the login screen —
+    // for up to ~30s on a Render cold start, long enough to retype credentials.
+    store.authChecked = false;
+    try {
+      renderApp(<ContractorDashboard />);
+      // Queried by text, not by role name: `status` is not a name-from-content role, and
+      // ToastProvider renders a second role="status" region, so getByRole is ambiguous.
+      const pending = screen.getByText(/checking your session/i);
+      expect(pending).toBeInTheDocument();
+      expect(pending.closest('[role="status"]')).not.toBeNull();
+      expect(screen.queryByRole('heading', { name: /your projects/i })).not.toBeInTheDocument();
+      expect(errors).toEqual([]);
+    } finally {
+      store.authChecked = true;
+    }
   });
 
   it('ProjectTable renders both the table and the mobile list', () => {

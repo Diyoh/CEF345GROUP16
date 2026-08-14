@@ -180,6 +180,16 @@ their first section.
 
 Guards are **cosmetic**. All real enforcement is server-side.
 
+**Every guard gates on `authChecked` before `user`.** The store starts with `user = null` and only
+learns the session from `getMe()`, so a guard reading `user` alone reports every visitor as logged
+out and redirects on page load. On a Render cold start that leaves an authenticated user staring at
+a login form for ~30s. `components/AuthPending.jsx` is the shared pending state.
+
+**Every hook must run before any early return.** `ContractorDashboard` had three `useMemo` calls
+below its guard, so the hook count changed once `user` arrived — React's "rendered more hooks than
+during the previous render". It only survived because the guard navigated away and remounted the
+component; adding a second guard made it reachable. Hooks first, returns after.
+
 ---
 
 ## Accessibility baseline

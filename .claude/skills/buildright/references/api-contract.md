@@ -55,6 +55,10 @@ exist yet — do not hand-alias columns in SQL. Dates stay `Date` objects (seria
 | DELETE | `/projects/:id` | protect + ADMIN | — | `project:deleted` |
 | POST | `/projects/:id/updates` | protect + ADMIN\|CONTRACTOR | `{message,date}` | `project:updated` |
 
+Called from `store.addProjectUpdate`, surfaced as the optional "Add to update history" field on the
+contractor's edit form. Posted only after the figures save, so the history can never describe a
+change the record does not show.
+
 **GET /projects** — `limit` clamped 1–100 (default 10), `page` ≥1. `status` must be a valid
 `ProjectStatus` or `All`, else 400. `search` matches `title` OR `location` (LIKE `%term%`).
 Returns `p.* + contractorName + images[]`. Images batched in one `IN (...)` query.
