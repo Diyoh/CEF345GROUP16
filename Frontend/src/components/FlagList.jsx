@@ -58,8 +58,17 @@ const useFlagText = () => {
   };
 };
 
-/** Compact row of badges — cards and table rows. */
-export const FlagBadges = ({ flags = [], size = 'sm', max = 2 }) => {
+/**
+ * Compact row of badges — cards and table rows.
+ *
+ * `short` swaps the full label for a two-word version. "Past its completion date" and
+ * "Reported as stalled" side by side overflowed a card and collided; the full wording
+ * belongs on the detail page, where there is room to justify it.
+ *
+ * `onMedia` gives each chip an opaque fill so it survives an unknown photograph behind it.
+ */
+export const FlagBadges = ({ flags = [], size = 'sm', max = 2, short = false, onMedia = false }) => {
+  const t = useT();
   const flagText = useFlagText();
   if (!Array.isArray(flags) || flags.length === 0) return null;
   const shown = flags.slice(0, max);
@@ -69,16 +78,20 @@ export const FlagBadges = ({ flags = [], size = 'sm', max = 2 }) => {
     <span className="inline-flex flex-wrap items-center gap-1.5">
       {shown.map((flag) => {
         const text = flagText(flag);
+        // The short key falls back to the full label when it is missing.
+        const shortKey = `flags.${flag.code}_short`;
+        const shortLabel = short && t(shortKey) !== shortKey ? t(shortKey) : text.label;
         return (
         <Badge
           key={flag.code}
           rank="flag"
+          onMedia={onMedia}
           tone={TONE[flag.severity] || 'neutral'}
           size={size}
           icon={<i className={`fas ${ICON[flag.code] || 'fa-flag'}`} />}
           title={text.detail}
         >
-          {text.label}
+          {shortLabel}
         </Badge>
         );
       })}
