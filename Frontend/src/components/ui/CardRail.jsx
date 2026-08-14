@@ -34,9 +34,10 @@ export const CardRail = ({ children, className, label, ...props }) => (
   >
     {React.Children.map(children, (child) =>
       child == null ? null : (
-        // 78% leaves roughly a third of the next card showing at phone widths, which is
-        // enough of it to be recognisable as a card rather than a stray edge.
-        <div className="w-[78%] shrink-0 snap-start sm:w-auto">{child}</div>
+        // 62% of the viewport puts one whole card on screen and half of the next. The cut
+        // card is the affordance: half is unmistakably more-to-come, where a thin sliver
+        // reads as a rendering mistake and a nearly-whole one reads as a row of two.
+        <div className="w-[62%] shrink-0 snap-start sm:w-auto">{child}</div>
       )
     )}
   </div>

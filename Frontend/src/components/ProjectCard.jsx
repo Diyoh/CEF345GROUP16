@@ -31,9 +31,10 @@ export const ProjectCard = ({ project }) => {
 
   return (
     <Card as="article" variant="interactive" padding="none" className="group flex h-full flex-col overflow-hidden">
-      {/* 16:9 rather than 4:3. The cover carries no information, so it is the first
-          thing to give up height when the goal is more projects per screen. */}
-      <div className="relative aspect-cover w-full overflow-hidden bg-sunken">
+      {/* 16:9 rather than 4:3, and flatter still on phones. The cover carries no
+          information, so it is the first thing to give up height when the goal is more
+          projects per screen. */}
+      <div className="relative aspect-[2/1] w-full overflow-hidden bg-sunken sm:aspect-cover">
         {cover ? (
           <img
             /* A card is at most ~480px wide, so asking Cloudinary for the original 4000px
@@ -70,12 +71,19 @@ export const ProjectCard = ({ project }) => {
         )}
       </div>
 
-      <div className="flex flex-1 flex-col p-3.5">
-        <h3 className="text-h3 text-fg">
+      <div className="flex flex-1 flex-col p-3 sm:p-3.5">
+        {/* Body size on phones: at a third of the viewport wide, a 20px title wraps to
+            three lines and sets the height of the whole card. */}
+        <h3 className="text-body font-semibold text-fg sm:text-h3">
           {/* One link, wrapping the title, expanded to the whole card. The accessible name
               is the title and the card is announced once rather than three times. */}
           <Link to={`/project/${project.id}`} className="after:absolute after:inset-0 hover:underline">
-            <span className="line-clamp-2">{project.title}</span>
+            {/* One line, always. A title that wraps to two or three sets the height of
+                every card in the row, and the full text is one tap away on the project
+                page. The ellipsis is what says there is more of it. */}
+            <span className="line-clamp-1" title={project.title}>
+              {project.title}
+            </span>
           </Link>
         </h3>
 
@@ -86,11 +94,11 @@ export const ProjectCard = ({ project }) => {
 
         {/* mt-auto pins the meter and figures to the bottom, so cards of differing
             title lengths still line their numbers up across a row. */}
-        <div className="mt-auto pt-3">
+        <div className="mt-auto pt-2.5 sm:pt-3">
           <Meter health={health} variant="dual" size="md" />
         </div>
 
-        <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-line-subtle pt-2.5">
+        <div className="mt-2.5 flex flex-wrap items-baseline justify-between gap-x-3 border-t border-line-subtle pt-2 sm:mt-3 sm:pt-2.5">
           <span className="tabular text-body font-medium text-fg" title={formatMoney(health.budget, 'full')}>
             {formatMoney(health.budget, 'compact')}
           </span>
