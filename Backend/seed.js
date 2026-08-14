@@ -1,6 +1,24 @@
 import pool from './config/db.js';
 import bcrypt from 'bcryptjs';
 
+/**
+ * Seed dates are RELATIVE to the day the seed runs.
+ *
+ * They used to be hardcoded ('2026-06-30'), which was sensible when written and quietly
+ * decayed: every demo project drifted past its completion date and stopped being updated,
+ * so a freshly seeded database showed almost every project flagged past-due and dormant.
+ * Flags that fire on everything are wallpaper — readers stop seeing them, which defeats the
+ * point of having them.
+ *
+ * The dataset below is also deliberately shaped so each anomaly appears roughly once: one
+ * healthy project, one over budget, one spending far ahead of building, one stalled, one
+ * genuinely overdue, one not started. A demo should exercise the product, not just fill it.
+ */
+const day = 24 * 60 * 60 * 1000;
+const iso = (offsetDays) => new Date(Date.now() + offsetDays * day).toISOString().split('T')[0];
+const daysAgo = (n) => iso(-n);
+const daysAhead = (n) => iso(n);
+
 const seedDatabase = async () => {
     try {
         console.log('Starting seed process...');
@@ -45,22 +63,27 @@ const seedDatabase = async () => {
         console.log('Users seeded.');
 
         // 3. SEED PROJECTS
+        // Each project is written to demonstrate a specific state. See the flag definitions
+        // in services/projectFlags.js — the shapes here are chosen to match them.
         const projects = [
             {
+                // HEALTHY: build and spend track each other, comfortably inside its window.
                 id: 'p1',
                 title: 'Yaoundé-Douala Highway Phase 2',
                 description: 'Construction of the remaining 60km section connecting the two major economic hubs.',
                 location: 'Edéa',
                 region: 'Littoral',
                 budget: 85000000000,
-                spent: 45000000000,
+                spent: 44000000000,
                 progress: 55,
                 status: 'Ongoing',
-                contractor_id: 'u2', // BTP Cameroun
-                start_date: '2023-01-15',
-                completion_date: '2026-06-30'
+                contractor_id: 'u2',
+                start_date: daysAgo(400),
+                completion_date: daysAhead(300)
             },
             {
+                // COMPLETED: finished slightly under budget. Carries no flags at all, which
+                // matters — a reader must see that a clean project looks clean.
                 id: 'p2',
                 title: 'Regional Hospital Maroua',
                 description: 'Modernization of the regional hospital including new pediatric wing.',
@@ -71,10 +94,12 @@ const seedDatabase = async () => {
                 progress: 100,
                 status: 'Completed',
                 contractor_id: 'u3',
-                start_date: '2022-03-10',
-                completion_date: '2024-01-20'
+                start_date: daysAgo(900),
+                completion_date: daysAgo(200)
             },
             {
+                // STALLED: reported stalled, and deliberately NOT also flagged dormant —
+                // the stall already explains the silence.
                 id: 'p3',
                 title: 'Rural Electrification - East Region',
                 description: 'Installation of solar grids in 50 villages.',
@@ -85,10 +110,12 @@ const seedDatabase = async () => {
                 progress: 20,
                 status: 'Stalled',
                 contractor_id: 'u2',
-                start_date: '2024-01-01',
-                completion_date: '2025-12-31'
+                start_date: daysAgo(220),
+                completion_date: daysAhead(120)
             },
-             {
+            {
+                // NOT STARTED: approved, work begins later. Exempt from dormant, because a
+                // project cannot be behind on reporting before it begins.
                 id: 'p4',
                 title: 'New Community Library',
                 description: 'A modern library facility for the university district.',
@@ -99,8 +126,39 @@ const seedDatabase = async () => {
                 progress: 0,
                 status: 'Planned',
                 contractor_id: 'u3',
-                start_date: '2025-06-01',
-                completion_date: '2026-01-01'
+                start_date: daysAhead(45),
+                completion_date: daysAhead(400)
+            },
+            {
+                // SPENDING FAR AHEAD OF BUILDING: the headline anomaly this product exists
+                // to surface. 78% of the money gone, 20% of the work done.
+                id: 'p5',
+                title: 'Bamenda Ring Road Section 4',
+                description: 'Resurfacing and drainage works on the northern ring road.',
+                location: 'Bamenda',
+                region: 'North West',
+                budget: 9000000000,
+                spent: 7020000000,
+                progress: 20,
+                status: 'Ongoing',
+                contractor_id: 'u2',
+                start_date: daysAgo(180),
+                completion_date: daysAhead(90)
+            },
+            {
+                // OVER BUDGET and PAST DUE: money exhausted, deadline gone, work unfinished.
+                id: 'p6',
+                title: 'Kribi Water Treatment Plant',
+                description: 'Construction of a municipal water treatment and distribution facility.',
+                location: 'Kribi',
+                region: 'South',
+                budget: 3000000000,
+                spent: 3450000000,
+                progress: 70,
+                status: 'Ongoing',
+                contractor_id: 'u3',
+                start_date: daysAgo(500),
+                completion_date: daysAgo(60)
             }
         ];
 
@@ -122,6 +180,12 @@ const seedDatabase = async () => {
             { id: 'img4', project_id: 'p2', image_url: '/pictures/beautiful-smiling-african-american-woman-using-phone-outdoors.jpg', is_main: false },
             { id: 'img5', project_id: 'p3', image_url: '/pictures/upbeat-gen-z-girl-reading-messages-phone.jpg', is_main: true },
             { id: 'img6', project_id: 'p4', image_url: '/pictures/Bullseye PNG.jpg', is_main: true },
+            // p5 is documented, so it demonstrates "spending ahead of building" on its own.
+            // p6 is deliberately left without photos: a project that exhausted its budget and
+            // missed its deadline plausibly also skipped its uploads, which is exactly the
+            // combination the no_evidence check exists to surface.
+            { id: 'img7', project_id: 'p5', image_url: '/pictures/upbeat-gen-z-girl-reading-messages-phone.jpg', is_main: true },
+            { id: 'img8', project_id: 'p5', image_url: '/pictures/beautiful-smiling-african-american-woman-using-phone-outdoors.jpg', is_main: false },
         ];
 
         for (const img of projectImages) {
@@ -134,8 +198,8 @@ const seedDatabase = async () => {
 
         // 5. SEED UPDATES
         const updates = [
-            { id: 'up1', project_id: 'p1', message: 'Foundation work completed for bridge section.', author_name: 'Admin User', update_date: '2023-11-20' },
-            { id: 'up2', project_id: 'p3', message: 'Equipment delivery delayed due to customs.', author_name: 'BTP Cameroun S.A.', update_date: '2024-02-15' }
+            { id: 'up1', project_id: 'p1', message: 'Foundation work completed for bridge section.', author_name: 'Admin User', update_date: daysAgo(120) },
+            { id: 'up2', project_id: 'p3', message: 'Equipment delivery delayed due to customs.', author_name: 'BTP Cameroun S.A.', update_date: daysAgo(30) }
         ];
 
         for (const up of updates) {

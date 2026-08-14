@@ -75,6 +75,18 @@ Filter: `?flagged=true` (any flag) or `?flagged=critical` (money gone/unaccounte
 happens in SQL — `no_evidence` is excluded from the predicate because it needs the image join,
 so a project flagged ONLY for missing photos will not appear in `?flagged=true`.
 
+**Suppression rules — keep these when editing flags.** A flag that fires on everything is
+wallpaper, and readers stop seeing all of them:
+- `over_budget` suppresses `spending_ahead_*` (one problem, one flag — it is the same money).
+- `stalled` suppresses `dormant` (a stalled project is *expected* to be quiet).
+- Not-yet-started (`start_date` in the future) and `Completed` are exempt from `dormant`.
+- `Completed` is exempt from `past_due`.
+- `no_evidence` needs progress ≥ 25%, so early-stage projects are not accused of hiding
+  evidence they were never expected to have.
+
+The SQL predicates in `projectFlags.js` mirror these exemptions and must be changed together
+with the JS `test` functions, or the filter and the badges will disagree.
+
 **GET /projects** — `limit` clamped 1–100 (default 10), `page` ≥1. `status` must be a valid
 `ProjectStatus` or `All`, else 400. `search` matches `title` OR `location` (LIKE `%term%`).
 Returns `p.* + contractorName + images[]`. Images batched in one `IN (...)` query.

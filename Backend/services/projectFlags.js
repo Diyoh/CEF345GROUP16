@@ -139,9 +139,21 @@ const DEFINITIONS = [
         code: 'dormant',
         severity: 'warning',
         label: 'No recent update',
-        // A completed project is legitimately quiet; an in-flight one is not.
         test: (h, p, now) => {
+            // A completed project is legitimately quiet.
             if (p.status === 'Completed') return false;
+
+            // A STALLED project is also expected to be quiet — that is what stalled means.
+            // Flagging both says "this is stalled" and "this is not being updated" as though
+            // they were two findings. One flag per problem, or the flags become wallpaper
+            // and readers stop looking at any of them.
+            if (p.status === 'Stalled') return false;
+
+            // Work that has not started yet cannot be behind on reporting. Without this a
+            // project approved months in advance is flagged from the day it is created.
+            const startDate = p.start_date || p.startDate;
+            if (startDate && new Date(startDate).getTime() > now) return false;
+
             const age = daysSince(p.updated_at || p.updatedAt, now);
             return age !== null && age >= DORMANT_DAYS;
         },
@@ -212,7 +224,13 @@ const SQL_OVER_BUDGET = `(p.budget > 0 AND p.spent > p.budget)`;
 const SQL_SPENDING_AHEAD = `(p.budget > 0 AND (p.progress - ((p.spent / p.budget) * 100)) < ${VARIANCE_CRITICAL})`;
 const SQL_PAST_DUE = `(p.completion_date IS NOT NULL AND p.completion_date < CURDATE() AND p.status <> 'Completed')`;
 const SQL_STALLED = `(p.status = 'Stalled')`;
-const SQL_DORMANT = `(p.status <> 'Completed' AND p.updated_at < DATE_SUB(NOW(), INTERVAL ${DORMANT_DAYS} DAY))`;
+// Mirrors the exemptions in the `dormant` test above: completed and stalled projects are
+// expected to be quiet, and work that has not started cannot be behind on reporting.
+const SQL_DORMANT = `(
+    p.status NOT IN ('Completed', 'Stalled')
+    AND (p.start_date IS NULL OR p.start_date <= CURDATE())
+    AND p.updated_at < DATE_SUB(NOW(), INTERVAL ${DORMANT_DAYS} DAY)
+)`;
 
 /** Money is gone or unaccounted for. `?flagged=critical` */
 export const CRITICAL_SQL = `(${SQL_OVER_BUDGET} OR ${SQL_SPENDING_AHEAD})`;

@@ -160,6 +160,16 @@ Any helper that writes must receive the transaction connection (`db: tx`). A hel
 ## Seeding
 
 `Backend/seed.js` (`npm run seed`) **deletes every row** in FK-safe order, then inserts 9 users,
-4 projects, 6 images, 2 updates, 2 comments, 5 team members, 3 access codes
+6 projects, 8 images, 2 updates, 2 comments, 5 team members, 3 access codes
 (`DEV123`, `ADMIN123`, `CONTR123`). Every user's password is `password`.
 Seeded image URLs are `/pictures/...` local paths, not Cloudinary URLs.
+
+**All seed dates are RELATIVE to the run date** (`daysAgo()` / `daysAhead()`). They were
+hardcoded, which decayed silently: every demo project drifted past its completion date and
+stopped being updated, so a freshly seeded database showed 13 flags across 6 projects and the
+flags read as background noise. Never reintroduce a literal date here.
+
+The six projects are shaped to demonstrate each flag roughly once — healthy, completed,
+stalled, not-yet-started, spending-ahead, and over-budget/past-due/undocumented. Three are
+deliberately clean, because a reader has to be able to see what "no problems" looks like.
+Current distribution: 5 flags across 6 projects.

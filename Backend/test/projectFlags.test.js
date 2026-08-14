@@ -121,6 +121,46 @@ describe('flags that must NOT fire — the expensive mistakes', () => {
     });
 });
 
+describe('noise suppression — flags must stay worth reading', () => {
+    test('a stalled project is not ALSO flagged dormant', () => {
+        // "This is stalled" and "this is not being updated" are the same finding stated
+        // twice. Two badges for one problem is how flags become wallpaper.
+        const result = codes(project({ status: 'Stalled', updated_at: daysAgo(200) }));
+        expect(result).toContain('stalled');
+        expect(result).not.toContain('dormant');
+    });
+
+    test('work that has not started yet is not flagged dormant', () => {
+        // A project approved months ahead of its start date would otherwise be flagged from
+        // the day it was created, for failing to report on work nobody expected yet.
+        const result = codes(project({
+            status: 'Planned',
+            start_date: daysAgo(-45),   // starts in 45 days
+            updated_at: daysAgo(200)
+        }));
+        expect(result).not.toContain('dormant');
+    });
+
+    test('a started, quiet, in-flight project IS still flagged dormant', () => {
+        // The exemptions must not swallow the real case.
+        const result = codes(project({
+            status: 'Ongoing',
+            start_date: daysAgo(200),
+            updated_at: daysAgo(200)
+        }));
+        expect(result).toContain('dormant');
+    });
+
+    test('a realistic healthy portfolio produces no flags', () => {
+        const healthy = [
+            project({ budget: 85e9, spent: 44e9, progress: 55, completion_date: daysAgo(-300), start_date: daysAgo(400) }),
+            project({ status: 'Completed', budget: 12e9, spent: 11.5e9, progress: 100, completion_date: daysAgo(200) }),
+            project({ status: 'Planned', budget: 250e6, spent: 0, progress: 0, start_date: daysAgo(-45), completion_date: daysAgo(-400) })
+        ];
+        expect(healthy.flatMap(codes)).toEqual([]);
+    });
+});
+
 describe('flag payloads', () => {
     test('every flag carries the figures that triggered it', () => {
         const flags = computeFlags(project({ budget: 1000, spent: 800, progress: 20 }), NOW);
