@@ -29,7 +29,11 @@ export const CommentManager = ({ comments, onDelete }) => {
               <li key={c.id} className="flex items-start justify-between gap-4 py-3 first:pt-0">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-body font-medium text-fg">{c.authorName}</span>
+                    {/* Reports are anonymous. Older ones carry the name they were filed
+                        under, before that changed. */}
+                    <span className="text-body font-medium text-fg">
+                      {c.authorName || (c.authorType === 'NGO' ? 'Anonymous organisation' : 'Anonymous report')}
+                    </span>
                     <Badge tone={c.authorType === 'NGO' ? 'planned' : 'neutral'} size="sm">
                       {c.authorType}
                     </Badge>
@@ -49,7 +53,7 @@ export const CommentManager = ({ comments, onDelete }) => {
                   size="xs"
                   iconOnly
                   onClick={() => setPending(c)}
-                  aria-label={`Delete the report from ${c.authorName}`}
+                  aria-label={`Delete this report: ${String(c.text || '').slice(0, 60)}`}
                   leadingIcon={<i className="fas fa-trash" aria-hidden="true" />}
                 />
               </li>
@@ -66,7 +70,7 @@ export const CommentManager = ({ comments, onDelete }) => {
           setPending(null);
         }}
         title="Delete this report?"
-        body={`The report from ${pending?.authorName} will be removed permanently. This cannot be undone.`}
+        body={`This report will be removed permanently: "${String(pending?.text || '').slice(0, 120)}". This cannot be undone.`}
         confirmLabel="Delete report"
       />
     </>

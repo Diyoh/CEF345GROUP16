@@ -76,7 +76,9 @@ CREATE TABLE IF NOT EXISTS project_updates (
 CREATE TABLE IF NOT EXISTS comments (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     project_id CHAR(36) NOT NULL,
-    author_name VARCHAR(255) NOT NULL,
+    -- Nullable: citizen reports are anonymous. New rows store NULL; rows filed before
+    -- migration 002 keep the name they were submitted under.
+    author_name VARCHAR(255) NULL,
     author_type ENUM('Citizen', 'NGO') DEFAULT 'Citizen',
     text TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
