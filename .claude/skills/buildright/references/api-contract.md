@@ -63,6 +63,18 @@ change the record does not show.
 `changes[]` (audit log, newest first, capped at 50). The LIST endpoint returns **none** of the
 last two — a detail page must fetch by id, which `store.fetchProject` does on mount.
 
+**Anomaly flags.** Every project returned by the list and detail endpoints carries `health`
+(`burn`, `variance`, `band`, `overBudget`, `delayed`) and `flags[]` — computed server-side in
+`services/projectFlags.js` so the API, the UI and any export agree on what counts as a problem.
+Each flag is `{code, severity, label, detail}`; `detail` always contains the figures that
+triggered it, because an unexplained flag is a rumour. Codes: `over_budget`,
+`spending_ahead_of_build`, `spending_ahead_watch`, `past_due`, `stalled`, `dormant`,
+`no_evidence`.
+
+Filter: `?flagged=true` (any flag) or `?flagged=critical` (money gone/unaccounted). Filtering
+happens in SQL — `no_evidence` is excluded from the predicate because it needs the image join,
+so a project flagged ONLY for missing photos will not appear in `?flagged=true`.
+
 **GET /projects** — `limit` clamped 1–100 (default 10), `page` ≥1. `status` must be a valid
 `ProjectStatus` or `All`, else 400. `search` matches `title` OR `location` (LIKE `%term%`).
 Returns `p.* + contractorName + images[]`. Images batched in one `IN (...)` query.

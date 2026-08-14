@@ -18,6 +18,7 @@ import { randomUUID } from 'crypto';
 import pool, { withTransaction } from '../config/db.js';
 import { AppError, badRequest, forbidden, notFound } from '../utils/AppError.js';
 import { saveBase64Image } from '../utils/fileHandler.js';
+import { attachFlags, FLAGGED_SQL, CRITICAL_SQL } from './projectFlags.js';
 
 /** Valid values for projects.status — must stay in sync with the ENUM in schema.sql */
 export const PROJECT_STATUSES = ['Planned', 'Ongoing', 'Stalled', 'Completed'];
@@ -363,7 +364,7 @@ const collectBase64Images = (body) => {
  * listProjects
  * Public read. Supports status filter, text search and pagination.
  */
-export const listProjects = async ({ status, search, limit = 10, page = 1 } = {}) => {
+export const listProjects = async ({ status, search, flagged, limit = 10, page = 1 } = {}) => {
     // Clamp pagination so a bad/hostile query can't ask for the entire table.
     const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
     const safePage = Math.max(parseInt(page, 10) || 1, 1);
@@ -388,11 +389,24 @@ export const listProjects = async ({ status, search, limit = 10, page = 1 } = {}
         params.push(`%${search}%`, `%${search}%`);
     }
 
+    // Filtering in the database rather than client-side: on a metered mobile connection,
+    // downloading every project to find the few that matter is the difference between a
+    // usable query and an unaffordable one.
+    //   ?flagged=true      any flag (matches what the badges show)
+    //   ?flagged=critical  money gone or unaccounted for
+    if (flagged === 'critical') {
+        query += ` AND ${CRITICAL_SQL}`;
+    } else if (flagged === 'true' || flagged === true) {
+        query += ` AND ${FLAGGED_SQL}`;
+    }
+
     query += ' ORDER BY p.created_at DESC LIMIT ? OFFSET ?';
     params.push(safeLimit, offset);
 
     const [projects] = await pool.query(query, params);
-    return attachImages(projects);
+    await attachImages(projects);
+    // Flags need the images array, so this must follow attachImages.
+    return attachFlags(projects);
 };
 
 /**
@@ -414,6 +428,8 @@ export const getProjectDetail = async (id) => {
     // The system-written record of what actually changed, alongside the contractor-written
     // narrative above it. Capped so a heavily edited project cannot bloat the response.
     project.changes = await listProjectChanges(project.id, 50);
+
+    attachFlags([project]);
 
     return project;
 };

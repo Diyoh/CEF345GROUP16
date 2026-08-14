@@ -107,10 +107,31 @@ CREATE TABLE IF NOT EXISTS project_changes (
     old_value TEXT,
     new_value TEXT,
     changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    -- Deliberately NO foreign key to projects. An ON DELETE CASCADE here meant deleting a
+    -- project erased its entire history, which is the cheapest way to make an inconvenient
+    -- record disappear. Audit rows outlive the project they describe; the deletion itself
+    -- is logged as the final entry. See migrations/004.
+    INDEX idx_changes_project (project_id),
     INDEX idx_changes_project_time (project_id, changed_at DESC),
     INDEX idx_changes_actor (actor_id)
 );
+
+-- Append-only enforcement. An audit log that CAN be edited is worse than none: readers
+-- trust it precisely because they assume it cannot be. Written without BEGIN...END so each
+-- trigger is a single statement (see Backend/scripts/migrate.js).
+DROP TRIGGER IF EXISTS project_changes_no_update;
+CREATE TRIGGER project_changes_no_update
+BEFORE UPDATE ON project_changes
+FOR EACH ROW
+SIGNAL SQLSTATE '45000'
+SET MESSAGE_TEXT = 'project_changes is an append-only audit log: rows cannot be modified';
+
+DROP TRIGGER IF EXISTS project_changes_no_delete;
+CREATE TRIGGER project_changes_no_delete
+BEFORE DELETE ON project_changes
+FOR EACH ROW
+SIGNAL SQLSTATE '45000'
+SET MESSAGE_TEXT = 'project_changes is an append-only audit log: rows cannot be deleted';
 
 -- 9. TEAM MEMBERS
 CREATE TABLE IF NOT EXISTS team_members (

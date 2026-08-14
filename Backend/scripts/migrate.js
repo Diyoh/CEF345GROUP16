@@ -30,6 +30,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import pool from '../config/db.js';
+import { splitStatements } from '../utils/sqlStatements.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = path.join(__dirname, '..', '..', 'Database', 'migrations');
@@ -42,74 +43,6 @@ const ALREADY_APPLIED = new Set([
     'ER_TRG_ALREADY_EXISTS',
     'ER_CANT_DROP_FIELD_OR_KEY', // dropping something already gone
 ]);
-
-/**
- * Splits a file into statements on semicolons, ignoring those inside string literals,
- * identifiers and comments.
- *
- * Triggers in this project are written WITHOUT BEGIN...END precisely so they contain no
- * internal semicolons and this stays simple. If a future migration needs a multi-statement
- * body, give it its own file and a DELIMITER-aware runner rather than complicating this.
- */
-const splitStatements = (sql) => {
-    const statements = [];
-    let current = '';
-    let quote = null;
-    let inLineComment = false;
-    let inBlockComment = false;
-
-    for (let i = 0; i < sql.length; i++) {
-        const char = sql[i];
-        const next = sql[i + 1];
-
-        if (inLineComment) {
-            if (char === '\n') inLineComment = false;
-            current += char;
-            continue;
-        }
-
-        if (inBlockComment) {
-            current += char;
-            if (char === '*' && next === '/') {
-                current += next;
-                i++;
-                inBlockComment = false;
-            }
-            continue;
-        }
-
-        if (!quote && char === '-' && next === '-') { inLineComment = true; current += char; continue; }
-        if (!quote && char === '#') { inLineComment = true; current += char; continue; }
-        if (!quote && char === '/' && next === '*') { inBlockComment = true; current += char; continue; }
-
-        if (quote) {
-            current += char;
-            if (char === '\\') { current += next ?? ''; i++; continue; } // escaped char
-            if (char === quote) quote = null;
-            continue;
-        }
-
-        if (char === "'" || char === '"' || char === '`') { quote = char; current += char; continue; }
-
-        if (char === ';') {
-            const trimmed = current.trim();
-            if (trimmed) statements.push(trimmed);
-            current = '';
-            continue;
-        }
-
-        current += char;
-    }
-
-    const tail = current.trim();
-    if (tail) statements.push(tail);
-
-    // Drop entries that are only comments.
-    return statements.filter((s) => s.split('\n').some((line) => {
-        const t = line.trim();
-        return t && !t.startsWith('--') && !t.startsWith('#');
-    }));
-};
 
 const ensureTrackingTable = async () => {
     await pool.query(`

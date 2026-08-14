@@ -11,7 +11,11 @@ wrong is a P0, not a cosmetic bug.
 
 Stack: React 18 + Vite 7 + Tailwind 3 (`Frontend/`) · Node ESM + Express 4 + MySQL + Socket.io
 (`Backend/`) · MySQL 8/MariaDB (`Database/`).
-Deploy: Vercel (frontend) → Render (backend) → Aiven (MySQL). Cross-site cookies are load-bearing.
+Deploy: Vercel (frontend) → Render (backend) → MySQL. Cross-site cookies are load-bearing.
+
+⚠️ **The original Aiven database is being retired — do not target it.** Nothing depends on that
+instance. Any MySQL 8 / MariaDB works: point `Backend/.env` at it and run
+`npm run db:init && npm run migrate` (then `npm run seed` for demo data).
 
 **Trust model:** reading is open to all; writing is invite-only. Access codes carry the role and
 are consumed on registration — you cannot choose your own role. Contractors are confined to
@@ -38,7 +42,7 @@ purpose: that is the check on contractor self-reporting.
 | Change global state | `Frontend/src/store.jsx` (single Context; `useAppStore.js` is the hook) |
 | Build a UI control | `Frontend/src/components/ui/*` — never raw Tailwind for chrome |
 | Change money/date formatting | `Frontend/src/utils/helpers.js` — the ONLY formatter |
-| Change the risk/health verdict | `Frontend/src/utils/projectHealth.js` — client-side only, not persisted |
+| Change the risk/health verdict | `Backend/services/projectFlags.js` is authoritative (thresholds + flag definitions + the SQL predicates). `Frontend/src/utils/projectHealth.js` mirrors the arithmetic for meters — **change both or they disagree** |
 | Change status colours/icons | `Frontend/src/utils/projectHealth.js` (`statusTone`, `statusIcon`) + tokens in `Frontend/src/index.css` |
 | Change theme/design tokens | `Frontend/src/index.css` (CSS vars) + `Frontend/tailwind.config.js` |
 | Image upload behaviour | `Backend/middleware/uploadMiddleware.js` + `Backend/config/cloudinary.js` + `Backend/utils/fileHandler.js` |
@@ -204,6 +208,9 @@ bilingual support, offline contractor updates.
 ## Commands
 
 ```bash
+cd Backend  && npm run db:init      # create schema in an empty DB (idempotent, never drops)
+cd Backend  && npm run migrate:dry  # preview pending migrations
+cd Backend  && npm run migrate      # apply them; state lives in the DB's schema_migrations
 cd Backend  && npm run dev     # node --watch, port 5000
 cd Backend  && npm run seed    # wipes and reseeds; default password for every user: "password"
 cd Backend  && npm test        # Jest, ESM via --experimental-vm-modules

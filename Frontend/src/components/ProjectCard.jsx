@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { StatusBadge } from './StatusBadge';
+import { FlagBadges } from './FlagList';
 import { Card, Meter } from './ui';
 import { formatMoney, formatRelative } from '../utils/helpers';
 import { projectHealth } from '../utils/projectHealth';
@@ -44,8 +45,11 @@ export const ProjectCard = ({ project }) => {
           </div>
         )}
 
-        <div className="absolute right-2 top-2">
-          <StatusBadge project={project} size="sm" />
+        <div className="absolute right-2 top-2 flex max-w-[85%] flex-wrap justify-end gap-1">
+          <StatusBadge project={project} size="sm" showFlags={false} />
+          {/* Server-computed anomalies. Capped at two so a badly-off project does not turn
+              the card into a wall of red. */}
+          <FlagBadges flags={project.flags} size="sm" max={2} />
         </div>
 
         {images.length > 1 && (
