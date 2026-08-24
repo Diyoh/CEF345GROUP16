@@ -172,6 +172,17 @@ export const api = {
         return await res.json();
     },
     
+    // Government entities (the administrative hierarchy). Public reads.
+    getEntities: async () => {
+        const res = await fetch(`${BASE_URL}/entities`, getOptions('GET'));
+        return await res.json();
+    },
+
+    getEntity: async (code) => {
+        const res = await fetch(`${BASE_URL}/entities/${encodeURIComponent(code)}`, getOptions('GET'));
+        return await res.json();
+    },
+
     // Stats
     getStats: async () => {
         const res = await fetch(`${BASE_URL}/stats/global`);

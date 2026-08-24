@@ -37,6 +37,8 @@ const FIELD_LABELS = {
   completionDate: 'project.fieldCompletionDate',
   images: 'project.sitePhotos',
   project: 'project.fieldProject',
+  ownerEntity: 'project.fieldOwnerEntity',
+  areas: 'project.fieldAreas',
 };
 
 const MONEY_FIELDS = new Set(['spent', 'budget']);

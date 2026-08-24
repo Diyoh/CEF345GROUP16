@@ -94,6 +94,9 @@ export const Navbar = () => {
           <NavLink to="/projects" className={linkClass}>
             {t('nav.projects')}
           </NavLink>
+          <NavLink to="/governance" className={linkClass}>
+            {t('nav.institutions')}
+          </NavLink>
           <NavLink to="/developers" className={linkClass}>
             {t('nav.about')}
           </NavLink>
@@ -149,6 +152,9 @@ export const Navbar = () => {
             <NavLink to="/projects" className="rounded-sm px-2 py-3 text-body font-medium text-fg hover:bg-sunken">
               {t('nav.projects')}
             </NavLink>
+            <NavLink to="/governance" className="rounded-sm px-2 py-3 text-body font-medium text-fg hover:bg-sunken">
+              {t('nav.institutions')}
+            </NavLink>
             <NavLink to="/developers" className="rounded-sm px-2 py-3 text-body font-medium text-fg hover:bg-sunken">
               {t('nav.about')}
             </NavLink>
@@ -158,7 +164,7 @@ export const Navbar = () => {
             {user ? (
               <div className="flex flex-col gap-3">
                 <p className="text-caption text-fg-tertiary">
-                  Signed in as <span className="font-medium text-fg">{user.name}</span>
+                  {t('nav.signedInAs')} <span className="font-medium text-fg">{user.name}</span>
                 </p>
                 {dashboard && (
                   <Button as={Link} to={dashboard.to} variant="secondary" size="lg" fullWidth>

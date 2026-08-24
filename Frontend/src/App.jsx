@@ -19,6 +19,8 @@ import { Home } from './pages/Home';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetails } from './pages/ProjectDetails';
 import { Developers } from './pages/Developers';
+import { Governance } from './pages/Governance';
+import { EntityPage } from './pages/EntityPage';
 import { Login } from './pages/Login';
 import { ContractorDashboard } from './pages/ContractorDashboard';
 
@@ -45,6 +47,8 @@ const App = () => {
               <Route index element={<Home />} />
               <Route path="projects" element={<ProjectsPage />} />
               <Route path="project/:id" element={<ProjectDetails />} />
+              <Route path="governance" element={<Governance />} />
+              <Route path="entity/:code" element={<EntityPage />} />
               <Route path="developers" element={<Developers />} />
               <Route path="login" element={<Login />} />
               <Route path="contractor" element={<ContractorDashboard />} />

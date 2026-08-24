@@ -4,6 +4,23 @@
 -- Disable foreign key checks temporarily
 SET foreign_key_checks = 0;
 
+-- 0. GOVERNMENT ENTITIES (the administrative hierarchy)
+-- One typed table for every level of the state. Depth is fixed at two: councils
+-- point at their region, ministries and regions point at the national root.
+-- Mirrored by migrations/005_gov_entities.sql for existing databases.
+CREATE TABLE IF NOT EXISTS gov_entities (
+    id          CHAR(36) PRIMARY KEY,
+    type        ENUM('NATIONAL','MINISTRY','REGION','COUNCIL') NOT NULL,
+    code        VARCHAR(30) UNIQUE NOT NULL,
+    name_en     VARCHAR(255) NOT NULL,
+    name_fr     VARCHAR(255) NOT NULL,
+    parent_id   CHAR(36) NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_id) REFERENCES gov_entities(id),
+    INDEX idx_entities_parent (parent_id),
+    INDEX idx_entities_type (type)
+);
+
 -- 1. USERS
 CREATE TABLE IF NOT EXISTS users (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
@@ -38,11 +55,15 @@ CREATE TABLE IF NOT EXISTS projects (
     CONSTRAINT chk_progress CHECK (progress >= 0 AND progress <= 100),
     status ENUM('Planned', 'Ongoing', 'Stalled', 'Completed') DEFAULT 'Planned',
     contractor_id CHAR(36),
+    -- The council or ministry that commissions and manages the project. Nullable
+    -- during the transition from the free-text region column.
+    owner_entity_id CHAR(36) NULL,
     start_date DATE,
     completion_date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (contractor_id) REFERENCES users(id),
+    FOREIGN KEY (owner_entity_id) REFERENCES gov_entities(id),
 
     -- Query indexes. Mirrored by Database/migrations/001_add_query_indexes.sql for
     -- databases that already exist. Keep the two in sync.
@@ -50,6 +71,19 @@ CREATE TABLE IF NOT EXISTS projects (
     INDEX idx_projects_status (status),                 -- status filter + stats counts
     INDEX idx_projects_region (region),                 -- region filter, public browse
     INDEX idx_projects_status_created (status, created_at DESC) -- "filtered, newest first"
+);
+
+-- 3b. PROJECT AREAS (where a project happens)
+-- A council project covers its council. A ministerial project covers one or more
+-- regions, or the national root for country-wide works. The service enforces the
+-- legal combinations; this table only stores them.
+CREATE TABLE IF NOT EXISTS project_areas (
+    project_id CHAR(36) NOT NULL,
+    entity_id  CHAR(36) NOT NULL,
+    PRIMARY KEY (project_id, entity_id),
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (entity_id) REFERENCES gov_entities(id),
+    INDEX idx_areas_entity (entity_id)
 );
 
 -- 4. PROJECT IMAGES

@@ -1,0 +1,160 @@
+# BuildRight council seed data. STARTER LIST, NOT THE COMPLETE OFFICIAL REGISTER.
+# Cameroon has about 360 communes plus 14 city councils. This file carries the
+# city and arrondissement councils plus well-established communes in every region.
+# Complete and verify against the official MINDDEVEL list before production use.
+# Names in a public state record must be exactly right.
+# Columns: code,region_code,name_en,name_fr
+code,region_code,name_en,name_fr
+CE-YAOUNDE-I,CE,Yaounde I,Yaounde I
+CE-YAOUNDE-II,CE,Yaounde II,Yaounde II
+CE-YAOUNDE-III,CE,Yaounde III,Yaounde III
+CE-YAOUNDE-IV,CE,Yaounde IV,Yaounde IV
+CE-YAOUNDE-V,CE,Yaounde V,Yaounde V
+CE-YAOUNDE-VI,CE,Yaounde VI,Yaounde VI
+CE-YAOUNDE-VII,CE,Yaounde VII,Yaounde VII
+CE-MBALMAYO,CE,Mbalmayo,Mbalmayo
+CE-OBALA,CE,Obala,Obala
+CE-MFOU,CE,Mfou,Mfou
+CE-SOA,CE,Soa,Soa
+CE-BAFIA,CE,Bafia,Bafia
+CE-NTUI,CE,Ntui,Ntui
+CE-NANGA-EBOKO,CE,Nanga-Eboko,Nanga-Eboko
+CE-AKONOLINGA,CE,Akonolinga,Akonolinga
+CE-AYOS,CE,Ayos,Ayos
+CE-ESEKA,CE,Eseka,Eseka
+CE-OKOLA,CE,Okola,Okola
+CE-MBANKOMO,CE,Mbankomo,Mbankomo
+CE-MONATELE,CE,Monatele,Monatele
+LT-DOUALA-I,LT,Douala I,Douala I
+LT-DOUALA-II,LT,Douala II,Douala II
+LT-DOUALA-III,LT,Douala III,Douala III
+LT-DOUALA-IV,LT,Douala IV,Douala IV
+LT-DOUALA-V,LT,Douala V,Douala V
+LT-DOUALA-VI,LT,Douala VI,Douala VI
+LT-EDEA-I,LT,Edea I,Edea I
+LT-EDEA-II,LT,Edea II,Edea II
+LT-NKONGSAMBA-I,LT,Nkongsamba I,Nkongsamba I
+LT-NKONGSAMBA-II,LT,Nkongsamba II,Nkongsamba II
+LT-NKONGSAMBA-III,LT,Nkongsamba III,Nkongsamba III
+LT-LOUM,LT,Loum,Loum
+LT-MBANGA,LT,Mbanga,Mbanga
+LT-MANJO,LT,Manjo,Manjo
+LT-MELONG,LT,Melong,Melong
+LT-YABASSI,LT,Yabassi,Yabassi
+LT-DIZANGUE,LT,Dizangue,Dizangue
+LT-POUMA,LT,Pouma,Pouma
+NW-BAMENDA-I,NW,Bamenda I,Bamenda I
+NW-BAMENDA-II,NW,Bamenda II,Bamenda II
+NW-BAMENDA-III,NW,Bamenda III,Bamenda III
+NW-KUMBO,NW,Kumbo,Kumbo
+NW-NDOP,NW,Ndop,Ndop
+NW-NKAMBE,NW,Nkambe,Nkambe
+NW-WUM,NW,Wum,Wum
+NW-FUNDONG,NW,Fundong,Fundong
+NW-MBENGWI,NW,Mbengwi,Mbengwi
+NW-BATIBO,NW,Batibo,Batibo
+NW-BALI,NW,Bali,Bali
+NW-SANTA,NW,Santa,Santa
+NW-TUBAH,NW,Tubah,Tubah
+NW-BAFUT,NW,Bafut,Bafut
+NW-NDU,NW,Ndu,Ndu
+NW-OKU,NW,Oku,Oku
+NW-JAKIRI,NW,Jakiri,Jakiri
+NW-BELO,NW,Belo,Belo
+NW-NJINIKOM,NW,Njinikom,Njinikom
+SW-BUEA,SW,Buea,Buea
+SW-LIMBE-I,SW,Limbe I,Limbe I
+SW-LIMBE-II,SW,Limbe II,Limbe II
+SW-LIMBE-III,SW,Limbe III,Limbe III
+SW-TIKO,SW,Tiko,Tiko
+SW-MUYUKA,SW,Muyuka,Muyuka
+SW-KUMBA-I,SW,Kumba I,Kumba I
+SW-KUMBA-II,SW,Kumba II,Kumba II
+SW-KUMBA-III,SW,Kumba III,Kumba III
+SW-MAMFE,SW,Mamfe,Mamfe
+SW-EYUMOJOCK,SW,Eyumojock,Eyumojock
+SW-AKWAYA,SW,Akwaya,Akwaya
+SW-MUNDEMBA,SW,Mundemba,Mundemba
+SW-EKONDO-TITI,SW,Ekondo-Titi,Ekondo-Titi
+SW-MENJI,SW,Menji,Menji
+SW-ALOU,SW,Alou,Alou
+SW-WABANE,SW,Wabane,Wabane
+SW-KONYE,SW,Konye,Konye
+SW-MBONGE,SW,Mbonge,Mbonge
+WE-BAFOUSSAM-I,WE,Bafoussam I,Bafoussam I
+WE-BAFOUSSAM-II,WE,Bafoussam II,Bafoussam II
+WE-BAFOUSSAM-III,WE,Bafoussam III,Bafoussam III
+WE-DSCHANG,WE,Dschang,Dschang
+WE-MBOUDA,WE,Mbouda,Mbouda
+WE-BAFANG,WE,Bafang,Bafang
+WE-BANGANGTE,WE,Bangangte,Bangangte
+WE-FOUMBAN,WE,Foumban,Foumban
+WE-FOUMBOT,WE,Foumbot,Foumbot
+WE-BAHAM,WE,Baham,Baham
+WE-BATIE,WE,Batie,Batie
+WE-BAMENDJOU,WE,Bamendjou,Bamendjou
+WE-SANTCHOU,WE,Santchou,Santchou
+WE-KEKEM,WE,Kekem,Kekem
+WE-KOUTABA,WE,Koutaba,Koutaba
+SO-EBOLOWA-I,SO,Ebolowa I,Ebolowa I
+SO-EBOLOWA-II,SO,Ebolowa II,Ebolowa II
+SO-KRIBI-I,SO,Kribi I,Kribi I
+SO-KRIBI-II,SO,Kribi II,Kribi II
+SO-SANGMELIMA,SO,Sangmelima,Sangmelima
+SO-AMBAM,SO,Ambam,Ambam
+SO-LOLODORF,SO,Lolodorf,Lolodorf
+SO-CAMPO,SO,Campo,Campo
+SO-AKOM-II,SO,Akom II,Akom II
+SO-DJOUM,SO,Djoum,Djoum
+SO-MEYOMESSALA,SO,Meyomessala,Meyomessala
+SO-ZOETELE,SO,Zoetele,Zoetele
+SO-MINTOM,SO,Mintom,Mintom
+EA-BERTOUA-I,EA,Bertoua I,Bertoua I
+EA-BERTOUA-II,EA,Bertoua II,Bertoua II
+EA-BATOURI,EA,Batouri,Batouri
+EA-ABONG-MBANG,EA,Abong-Mbang,Abong-Mbang
+EA-YOKADOUMA,EA,Yokadouma,Yokadouma
+EA-DOUME,EA,Doume,Doume
+EA-DIMAKO,EA,Dimako,Dimako
+EA-GAROUA-BOULAI,EA,Garoua-Boulai,Garoua-Boulai
+EA-BELABO,EA,Belabo,Belabo
+EA-MOLOUNDOU,EA,Moloundou,Moloundou
+EA-LOMIE,EA,Lomie,Lomie
+AD-NGAOUNDERE-I,AD,Ngaoundere I,Ngaoundere I
+AD-NGAOUNDERE-II,AD,Ngaoundere II,Ngaoundere II
+AD-NGAOUNDERE-III,AD,Ngaoundere III,Ngaoundere III
+AD-MEIGANGA,AD,Meiganga,Meiganga
+AD-TIBATI,AD,Tibati,Tibati
+AD-TIGNERE,AD,Tignere,Tignere
+AD-BANYO,AD,Banyo,Banyo
+AD-BANKIM,AD,Bankim,Bankim
+AD-DJOHONG,AD,Djohong,Djohong
+AD-NGAOUNDAL,AD,Ngaoundal,Ngaoundal
+AD-MBE,AD,Mbe,Mbe
+NO-GAROUA-I,NO,Garoua I,Garoua I
+NO-GAROUA-II,NO,Garoua II,Garoua II
+NO-GAROUA-III,NO,Garoua III,Garoua III
+NO-GUIDER,NO,Guider,Guider
+NO-POLI,NO,Poli,Poli
+NO-TCHOLLIRE,NO,Tchollire,Tchollire
+NO-REY-BOUBA,NO,Rey-Bouba,Rey-Bouba
+NO-LAGDO,NO,Lagdo,Lagdo
+NO-PITOA,NO,Pitoa,Pitoa
+NO-FIGUIL,NO,Figuil,Figuil
+NO-BIBEMI,NO,Bibemi,Bibemi
+NO-TOUBORO,NO,Touboro,Touboro
+FN-MAROUA-I,FN,Maroua I,Maroua I
+FN-MAROUA-II,FN,Maroua II,Maroua II
+FN-MAROUA-III,FN,Maroua III,Maroua III
+FN-KOUSSERI,FN,Kousseri,Kousseri
+FN-MOKOLO,FN,Mokolo,Mokolo
+FN-MORA,FN,Mora,Mora
+FN-KAELE,FN,Kaele,Kaele
+FN-YAGOUA,FN,Yagoua,Yagoua
+FN-BOGO,FN,Bogo,Bogo
+FN-MINDIF,FN,Mindif,Mindif
+FN-KOZA,FN,Koza,Koza
+FN-TOKOMBERE,FN,Tokombere,Tokombere
+FN-WAZA,FN,Waza,Waza
+FN-MAKARY,FN,Makary,Makary
+FN-GOULFEY,FN,Goulfey,Goulfey
