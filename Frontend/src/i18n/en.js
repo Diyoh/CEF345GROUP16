@@ -447,6 +447,10 @@ export const en = {
 
     minfi: {
         lead: 'Commit money to ministries and councils, record what was sent, and watch what the receiving side has confirmed.',
+        budgetsTitle: 'Budgets across the state',
+        budgetsLead: 'Every budget declared on the platform, with what you allocated to that institution for the year and the income it recorded itself.',
+        plannedCol: 'Declared budget',
+        incomeCol: 'Own income',
         newTitle: 'New allocation',
         year: 'Fiscal year',
         amount: 'Amount (FCFA)',
@@ -488,6 +492,27 @@ export const en = {
         pay: 'Record payment',
         paySummary: 'Record {amount} paid to {contractor}.',
         paidToast: 'Payment recorded. The contractor must now affirm it.',
+    },
+
+
+    money: {
+        title: 'Public finances',
+        lead: 'What the Ministry of Finance committed and sent, what this institution confirmed receiving, what it paid its contractors and what they affirm. Every figure is written to the signed public ledger; the gaps are published, not hidden.',
+        budgetOf: 'Planned budget {year}',
+        budgetNone: 'No budget declared',
+        allocatedLabel: 'Allocated by MINFI',
+        confirmedLabel: 'Confirmed received',
+        incomeLabel: 'Own income',
+        gapDelta: '{amount} unexplained gap',
+        allocationsTitle: 'Allocations and their confirmation',
+        sentShort: 'sent',
+        confirmedFull: 'confirmed in full',
+        confirmedShort: '{amount} confirmed',
+        notConfirmed: 'not yet confirmed',
+        paymentsTitle: 'Payments to contractors',
+        notAffirmed: 'awaiting the contractor',
+        affirmedFull: 'affirmed in full',
+        affirmedShort: '{amount} affirmed',
     },
 
     verify: {

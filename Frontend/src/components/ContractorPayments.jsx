@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useT, useI18n } from '../i18n';
 import { ConfirmSecondFactor } from './ConfirmSecondFactor';
+import { subscribeFinanceChanges } from '../liveFinance';
 import { Card, Button, Badge, useToast } from './ui';
 import { formatMoney, formatDate } from '../utils/helpers';
 
@@ -27,7 +28,13 @@ export const ContractorPayments = () => {
       .then((res) => setPayments(res.success ? res.data : []))
       .catch(() => setPayments([]));
   };
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    // Live: a payment recorded against this company appears without a refresh.
+    return subscribeFinanceChanges((payload) => {
+      if (payload?.kind === 'payment') load();
+    });
+  }, []);
 
   const payerName = (row) => (locale === 'fr' ? row.payerNameFr : row.payerNameEn);
 

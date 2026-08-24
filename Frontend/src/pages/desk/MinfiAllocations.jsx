@@ -3,6 +3,7 @@ import { api } from '../../api';
 import { useT, useI18n } from '../../i18n';
 import { PageHeader } from '../../components/layout/AdminLayout';
 import { ConfirmSecondFactor } from '../../components/ConfirmSecondFactor';
+import { subscribeFinanceChanges } from '../../liveFinance';
 import { Card, Button, Badge, Input, Select, Textarea, EmptyState, Skeleton, SkeletonRegion, useToast } from '../../components/ui';
 import { formatMoney } from '../../utils/helpers';
 
@@ -24,6 +25,7 @@ export const MinfiAllocations = () => {
 
   const [tree, setTree] = useState(null);
   const [allocations, setAllocations] = useState(null);
+  const [budgets, setBudgets] = useState([]);
 
   const [toEntityId, setToEntityId] = useState('');
   const [year, setYear] = useState(String(thisYear));
@@ -37,12 +39,20 @@ export const MinfiAllocations = () => {
     api.getMinfiOverview()
       .then((res) => setAllocations(res.success ? res.data.allocations : []))
       .catch(() => setAllocations([]));
+    // The whole budget book: every institution's declared budget, with what
+    // MINFI allocated to it and what it recorded as its own income. The
+    // ministry that funds the system sees everything about budgets.
+    api.getAllBudgets()
+      .then((res) => setBudgets(res.success ? res.data.budgets : []))
+      .catch(() => setBudgets([]));
   };
   useEffect(() => {
     load();
     api.getEntities()
       .then((res) => setTree(res.success ? res.data : { ministries: [], regions: [] }))
       .catch(() => setTree({ ministries: [], regions: [] }));
+    // Live: confirmations and budget declarations elsewhere land here unasked.
+    return subscribeFinanceChanges(() => load());
   }, []);
 
   const name = (row) => (locale === 'fr' ? row.nameFr || row.name_fr : row.nameEn || row.name_en);
@@ -193,6 +203,41 @@ export const MinfiAllocations = () => {
             );
           })}
         </ul>
+      )}
+
+      {budgets.length > 0 && (
+        <>
+          <h2 className="mb-4 mt-10 text-h3 text-fg">{t('minfi.budgetsTitle')}</h2>
+          <Card padding="lg">
+            <p className="mb-3 max-w-prose text-caption text-fg-secondary">{t('minfi.budgetsLead')}</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-caption">
+                <thead>
+                  <tr className="border-b border-line text-left text-overline uppercase text-fg-tertiary">
+                    <th className="py-2 pr-4 font-medium">{t('codes.institution')}</th>
+                    <th className="py-2 pr-4 font-medium">{t('minfi.year')}</th>
+                    <th className="py-2 pr-4 text-right font-medium">{t('minfi.plannedCol')}</th>
+                    <th className="py-2 pr-4 text-right font-medium">{t('desk.totalAllocated')}</th>
+                    <th className="py-2 text-right font-medium">{t('minfi.incomeCol')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {budgets.map((b) => (
+                    <tr key={b.id} className="border-b border-line-subtle last:border-b-0">
+                      <td className="py-2 pr-4 text-fg">
+                        {locale === 'fr' ? b.entityNameFr : b.entityNameEn}
+                      </td>
+                      <td className="tabular py-2 pr-4 text-fg-secondary">{b.fiscalYear}</td>
+                      <td className="tabular py-2 pr-4 text-right text-fg">{formatMoney(Number(b.plannedAmountXaf), 'full')}</td>
+                      <td className="tabular py-2 pr-4 text-right text-fg-secondary">{formatMoney(Number(b.allocatedXaf), 'full')}</td>
+                      <td className="tabular py-2 text-right text-fg-secondary">{formatMoney(Number(b.incomeXaf), 'full')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
       )}
 
       <ConfirmSecondFactor

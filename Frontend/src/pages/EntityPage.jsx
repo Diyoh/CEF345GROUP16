@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 import { entityName, entityTypeKey } from '../utils/entities';
 import { ProjectCard } from '../components/ProjectCard';
 import { Card, Badge, EmptyState, Skeleton, SkeletonRegion } from '../components/ui';
+import { EntityMoney } from '../components/EntityMoney';
+import { subscribeFinanceChanges, touchesEntity } from '../liveFinance';
 
 /**
  * One institution's public page: what it is, where it sits in the hierarchy, and
@@ -17,20 +19,35 @@ export const EntityPage = () => {
   const { t, locale } = useI18n();
   const [data, setData] = useState(null);
   const [failed, setFailed] = useState(false);
+  const idsRef = useRef([]);
 
   useEffect(() => {
     let cancelled = false;
     setData(null);
     setFailed(false);
-    api.getEntity(code)
-      .then((res) => {
-        if (cancelled) return;
-        if (res.success) setData(res.data);
-        else setFailed(true);
-      })
-      .catch(() => !cancelled && setFailed(true));
+
+    const load = () =>
+      api.getEntity(code)
+        .then((res) => {
+          if (cancelled) return;
+          if (res.success) {
+            setData(res.data);
+            idsRef.current = [res.data.entity.id, ...(res.data.children || []).map((c) => c.id)];
+          } else setFailed(true);
+        })
+        .catch(() => !cancelled && setFailed(true));
+    load();
+
+    // Live: when money moves anywhere this body is party to, refetch, so an
+    // open public page shows a new allocation the moment MINFI signs it.
+    // Relevance is checked against the loaded ids BEFORE any network call.
+    const unsubscribe = subscribeFinanceChanges((payload) => {
+      if (touchesEntity(payload, idsRef.current)) load();
+    });
+
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, [code]);
 
@@ -126,6 +143,8 @@ export const EntityPage = () => {
           </Card>
         </section>
       )}
+
+      <EntityMoney finance={data.finance} />
 
       <section aria-labelledby="entity-projects-heading">
         <h2 id="entity-projects-heading" className="mb-5 text-h2 text-fg">

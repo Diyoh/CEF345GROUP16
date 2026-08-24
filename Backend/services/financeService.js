@@ -100,13 +100,14 @@ export const createDisbursement = async ({ actor, allocationId, amountXaf, passw
     const amount = parseAmount(amountXaf, 'Disbursement');
     const id = randomUUID();
     let ledger;
+    let alloc;
 
     await withTransaction(async (tx) => {
         const [allocs] = await tx.query(
             'SELECT id, to_entity_id, fiscal_year, amount_xaf FROM allocations WHERE id = ? FOR UPDATE',
             [allocationId]
         );
-        const alloc = allocs[0];
+        alloc = allocs[0];
         if (!alloc) throw notFound('Allocation not found');
 
         // A disbursement beyond the commitment is almost always a typo; and if
@@ -133,7 +134,7 @@ export const createDisbursement = async ({ actor, allocationId, amountXaf, passw
         });
     });
 
-    return { id, allocationId, amountXaf: amount, ledgerSeq: ledger.seq };
+    return { id, allocationId, toEntityId: alloc.to_entity_id, amountXaf: amount, ledgerSeq: ledger.seq };
 };
 
 /**
@@ -336,7 +337,7 @@ export const affirmPayment = async ({ actor, paymentId, amountAffirmedXaf, passw
     let result;
     await withTransaction(async (tx) => {
         const [rows] = await tx.query(
-            'SELECT id, project_id, contractor_id, amount_xaf, affirmed_at FROM project_payments WHERE id = ? FOR UPDATE',
+            'SELECT id, project_id, payer_entity_id, contractor_id, amount_xaf, affirmed_at FROM project_payments WHERE id = ? FOR UPDATE',
             [paymentId]
         );
         const payment = rows[0];
@@ -382,6 +383,7 @@ export const affirmPayment = async ({ actor, paymentId, amountAffirmedXaf, passw
         result = {
             id: paymentId,
             projectId: payment.project_id,
+            payerEntityId: payment.payer_entity_id,
             paidXaf: Number(payment.amount_xaf),
             affirmedXaf: affirmed,
             gapXaf: gap,
@@ -481,6 +483,30 @@ export const getEntityFinance = async (entityId) => {
     totals.paid_affirmed_xaf = payments.reduce((s, r) => s + Number(r.amount_affirmed_xaf || 0), 0);
 
     return { budgets, income, allocations, payments, totals };
+};
+
+/**
+ * MINFI's budget oversight: every declared budget on the platform, by
+ * institution and year, alongside what MINFI allocated to that institution
+ * for the same year and what the institution recorded as its own income.
+ * The ministry that funds the system sees the whole book.
+ */
+export const getAllBudgets = async (actor) => {
+    requireMinfi(actor);
+
+    const [rows] = await pool.query(
+        `SELECT b.id, b.fiscal_year, b.planned_amount AS planned_amount_xaf, b.note, b.updated_at,
+                e.id AS entity_id, e.code AS entity_code, e.type AS entity_type,
+                e.name_en AS entity_name_en, e.name_fr AS entity_name_fr,
+                (SELECT COALESCE(SUM(a.amount_xaf), 0) FROM allocations a
+                    WHERE a.to_entity_id = b.entity_id AND a.fiscal_year = b.fiscal_year) AS allocated_xaf,
+                (SELECT COALESCE(SUM(i.amount_xaf), 0) FROM entity_income i
+                    WHERE i.entity_id = b.entity_id AND i.fiscal_year = b.fiscal_year) AS income_xaf
+         FROM budgets b
+         JOIN gov_entities e ON b.entity_id = e.id
+         ORDER BY b.fiscal_year DESC, e.type, e.code`
+    );
+    return { budgets: rows };
 };
 
 /** MINFI's outbound view: every allocation it made, with confirmation status. */

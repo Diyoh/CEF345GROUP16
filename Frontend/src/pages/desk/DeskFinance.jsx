@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api';
 import { useAppStore } from '../../useAppStore';
+import { subscribeFinanceChanges, touchesEntity } from '../../liveFinance';
 import { useT, useI18n } from '../../i18n';
 import { PageHeader } from '../../components/layout/AdminLayout';
 import { ConfirmSecondFactor } from '../../components/ConfirmSecondFactor';
@@ -40,7 +41,14 @@ export const DeskFinance = () => {
       .then((res) => setData(res.success ? res.data : { budgets: [], income: [], allocations: [], totals: {} }))
       .catch(() => setData({ budgets: [], income: [], allocations: [], totals: {} }));
   };
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    // Live: a disbursement sent to us, or a contractor affirming our payment,
+    // lands on this desk without a refresh.
+    return subscribeFinanceChanges((payload) => {
+      if (touchesEntity(payload, user?.entityId)) load();
+    });
+  }, []);
 
   const runPending = async (secondFactor) => {
     setBusy(true);

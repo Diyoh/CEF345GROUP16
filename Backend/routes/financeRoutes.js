@@ -25,6 +25,7 @@ import {
     recordIncome,
     getMine,
     getMinfiOverview,
+    getAllBudgets,
     getLedgerHead,
     verifyLedger,
 } from '../controllers/financeController.js';
@@ -51,6 +52,7 @@ router.use(protect);
 // Institution desks.
 router.get('/mine', authorize('ENTITY_ADMIN'), getMine);
 router.get('/minfi', authorize('ENTITY_ADMIN'), getMinfiOverview);
+router.get('/budgets', authorize('ENTITY_ADMIN'), getAllBudgets);
 
 router.post('/allocations', authorize('ENTITY_ADMIN'), secondFactorLimiter, createAllocation);
 router.post('/allocations/:id/disbursements', authorize('ENTITY_ADMIN'), secondFactorLimiter, createDisbursement);

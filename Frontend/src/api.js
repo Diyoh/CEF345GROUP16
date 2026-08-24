@@ -206,6 +206,11 @@ export const api = {
         return await res.json();
     },
 
+    getAllBudgets: async () => {
+        const res = await fetch(`${BASE_URL}/finance/budgets`, getOptions('GET'));
+        return await res.json();
+    },
+
     getMinfiOverview: async () => {
         const res = await fetch(`${BASE_URL}/finance/minfi`, getOptions('GET'));
         return await res.json();

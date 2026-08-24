@@ -454,6 +454,10 @@ export const fr = {
 
     minfi: {
         lead: "Engager de l'argent pour les ministères et les communes, enregistrer les envois et suivre ce que la partie réceptrice a confirmé.",
+        budgetsTitle: "Budgets de l'ensemble de l'État",
+        budgetsLead: "Chaque budget déclaré sur la plateforme, avec ce que vous avez alloué à cette institution pour l'année et les recettes qu'elle a elle-même enregistrées.",
+        plannedCol: 'Budget déclaré',
+        incomeCol: 'Recettes propres',
         newTitle: 'Nouvelle allocation',
         year: 'Exercice budgétaire',
         amount: 'Montant (FCFA)',
@@ -495,6 +499,27 @@ export const fr = {
         pay: 'Enregistrer le paiement',
         paySummary: 'Enregistrer {amount} payés à {contractor}.',
         paidToast: "Paiement enregistré. L'entrepreneur doit maintenant l'attester.",
+    },
+
+
+    money: {
+        title: 'Finances publiques',
+        lead: "Ce que le ministère des Finances a engagé et envoyé, ce que cette institution a confirmé avoir reçu, ce qu'elle a payé à ses entrepreneurs et ce qu'ils attestent. Chaque chiffre est inscrit au registre public signé ; les écarts sont publiés, pas cachés.",
+        budgetOf: 'Budget prévu {year}',
+        budgetNone: 'Aucun budget déclaré',
+        allocatedLabel: 'Alloué par le MINFI',
+        confirmedLabel: 'Réception confirmée',
+        incomeLabel: 'Recettes propres',
+        gapDelta: "{amount} d'écart inexpliqué",
+        allocationsTitle: 'Allocations et leur confirmation',
+        sentShort: 'envoyés',
+        confirmedFull: 'confirmés en totalité',
+        confirmedShort: '{amount} confirmés',
+        notConfirmed: 'pas encore confirmés',
+        paymentsTitle: 'Paiements aux entrepreneurs',
+        notAffirmed: "en attente de l'entrepreneur",
+        affirmedFull: 'attesté en totalité',
+        affirmedShort: '{amount} attestés',
     },
 
     verify: {

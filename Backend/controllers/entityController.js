@@ -8,6 +8,7 @@
 
 import * as entityService from '../services/entityService.js';
 import * as projectService from '../services/projectService.js';
+import * as financeService from '../services/financeService.js';
 import { sendError } from '../utils/AppError.js';
 
 /** GET /api/v1/entities */
@@ -30,7 +31,15 @@ export const getEntity = async (req, res) => {
         const scopeIds = await entityService.entityScopeIds(profile.entity);
         const projects = await projectService.listProjects({ entityIds: scopeIds, limit: 100 });
 
-        res.json({ success: true, data: { ...profile, projects } });
+        // The body's money, on its public page: budget, income, allocations
+        // with their confirmation gaps, payments with their affirmation gaps.
+        // Ministries and councils hold money; regions and the national root
+        // aggregate elsewhere (the national money view).
+        const finance = ['MINISTRY', 'COUNCIL'].includes(profile.entity.type)
+            ? await financeService.getEntityFinance(profile.entity.id)
+            : null;
+
+        res.json({ success: true, data: { ...profile, projects, finance } });
     } catch (error) {
         sendError(res, error);
     }

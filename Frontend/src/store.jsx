@@ -16,6 +16,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api, SOCKET_URL } from './api';
+import { publishFinanceChange } from './liveFinance';
 import { UserRole } from './types';
 
 export const AppContext = createContext(undefined);
@@ -68,6 +69,13 @@ export const AppProvider = ({ children }) => {
             // Handle Project Deleted
             socket.on('project:deleted', ({ id }) => {
                 setProjects(prev => prev.filter(p => p.id !== id));
+            });
+
+            // Money moved somewhere: forward to whichever finance views are
+            // open (public entity pages, desks, the contractor inbox). They
+            // refetch their own slice; the store holds no finance state.
+            socket.on('finance:changed', (payload) => {
+                publishFinanceChange(payload);
             });
         });
 

@@ -71,6 +71,9 @@ vi.mock('../api', async () => {
       ...actual.api,
       getMyFinance: vi.fn().mockResolvedValue({ success: true, data: myFinance }),
       getMinfiOverview: vi.fn().mockResolvedValue({ success: true, data: minfiOverview }),
+      getAllBudgets: vi.fn().mockResolvedValue({ success: true, data: { budgets: [
+        { id: 'b1', fiscalYear: 2026, plannedAmountXaf: 900000000, entityNameEn: 'Bamenda I Council', entityNameFr: 'Commune de Bamenda I', allocatedXaf: 500000000, incomeXaf: 25000000 },
+      ] } }),
       getPaymentInbox: vi.fn().mockResolvedValue({
         success: true,
         data: [
@@ -102,6 +105,7 @@ import { DeskFinance } from '../pages/desk/DeskFinance';
 import { MinfiAllocations } from '../pages/desk/MinfiAllocations';
 import { ConfirmSecondFactor } from '../components/ConfirmSecondFactor';
 import { ContractorPayments } from '../components/ContractorPayments';
+import { EntityMoney } from '../components/EntityMoney';
 
 const renderApp = (ui) =>
   render(
@@ -151,6 +155,35 @@ describe('ContractorPayments', () => {
     expect(screen.getByText(/awaiting your answer/i)).toBeInTheDocument();
     // The answered payment shows what was affirmed, not a green tick.
     expect(screen.getByText(/affirmed 15/i)).toBeInTheDocument();
+  });
+});
+
+describe('EntityMoney, the citizens view', () => {
+  const finance = {
+    budgets: [{ id: 'b1', fiscalYear: new Date().getFullYear(), plannedAmountXaf: 900000000 }],
+    income: [{ id: 'i1', label: 'Market fees', amountXaf: 25000000 }],
+    allocations: [{
+      id: 'a1', fiscalYear: 2026, amountXaf: 500000000, purpose: 'Urban roads programme',
+      fromNameEn: 'Ministry of Finance', fromNameFr: 'Ministere des Finances',
+      disbursements: [{ id: 'd1', amountXaf: 300000000, amountConfirmedXaf: 250000000 }],
+    }],
+    payments: [{ id: 'pay1', projectTitle: 'Market Rehab', contractorName: 'BTP', initiatedAt: '2026-08-01', amountXaf: 60000000, affirmedAt: '2026-08-10', amountAffirmedXaf: 45000000 }],
+    totals: { allocatedXaf: 500000000, confirmedXaf: 250000000, incomeXaf: 25000000, gapXaf: 50000000 },
+  };
+
+  it('publishes the money with its gaps, never hiding them', () => {
+    renderApp(<EntityMoney finance={finance} />);
+    expect(screen.getByRole('heading', { name: /public finances/i })).toBeInTheDocument();
+    expect(screen.getByText('Urban roads programme')).toBeInTheDocument();
+    // The 300M sent / 250M confirmed disbursement renders its shortfall.
+    expect(screen.getByText((text) => /250.*confirmed/i.test(text))).toBeInTheDocument();
+    // The 60M/45M payment shows what the contractor actually affirmed.
+    expect(screen.getByText((text) => /45.*affirmed/i.test(text))).toBeInTheDocument();
+  });
+
+  it('renders nothing when a body has no financial records', () => {
+    const { container } = renderApp(<EntityMoney finance={{ budgets: [], income: [], allocations: [], payments: [], totals: {} }} />);
+    expect(container.querySelector('section')).toBeNull();
   });
 });
 
