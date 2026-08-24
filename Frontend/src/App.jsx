@@ -31,6 +31,8 @@ import { AdminReports } from './pages/admin/AdminReports';
 import { DevAccess } from './pages/admin/DevAccess';
 import { DeskProjects } from './pages/desk/DeskProjects';
 import { VerificationQueue } from './pages/desk/VerificationQueue';
+import { DeskFinance } from './pages/desk/DeskFinance';
+import { MinfiAllocations } from './pages/desk/MinfiAllocations';
 import { DevTeam } from './pages/admin/DevTeam';
 
 const App = () => {
@@ -73,6 +75,8 @@ const App = () => {
               <Route index element={<Navigate to="projects" replace />} />
               <Route path="projects" element={<DeskProjects />} />
               <Route path="verification" element={<VerificationQueue />} />
+              <Route path="finance" element={<DeskFinance />} />
+              <Route path="allocations" element={<MinfiAllocations />} />
             </Route>
 
             {/* Developer control panel. */}

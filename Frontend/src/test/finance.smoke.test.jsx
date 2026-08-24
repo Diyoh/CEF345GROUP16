@@ -1,0 +1,157 @@
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
+import { ToastProvider } from '../components/ui';
+import { I18nProvider } from '../i18n';
+
+/**
+ * The finance surfaces of phase G3: the institution desk, the MINFI outbound
+ * desk, and the second-factor modal every money action passes through.
+ *
+ * The modal's contract matters most: it must not submit without both factors,
+ * and it must hand the caller exactly { password, pcn } plus the optional
+ * amount, because that payload goes straight into a signed ledger entry.
+ */
+
+const { myFinance, minfiOverview } = vi.hoisted(() => ({
+  myFinance: {
+  budgets: [{ id: 'b1', fiscalYear: new Date().getFullYear(), plannedAmountXaf: 900000000 }],
+  income: [{ id: 'i1', fiscalYear: 2026, label: 'Market fees', amountXaf: 25000000 }],
+  allocations: [
+    {
+      id: 'a1',
+      fiscalYear: 2026,
+      amountXaf: 500000000,
+      purpose: 'Road maintenance',
+      fromNameEn: 'Ministry of Finance',
+      fromNameFr: 'Ministere des Finances',
+      disbursements: [
+        { id: 'd1', amountXaf: 300000000, amountConfirmedXaf: null },
+        { id: 'd2', amountXaf: 100000000, amountConfirmedXaf: 80000000 },
+      ],
+    },
+  ],
+  totals: { allocatedXaf: 500000000, disbursedXaf: 400000000, confirmedXaf: 80000000, gapXaf: 20000000, awaitingConfirmation: 1 },
+  },
+  minfiOverview: {
+  allocations: [
+    {
+      id: 'a1',
+      fiscalYear: 2026,
+      amountXaf: 500000000,
+      purpose: 'Road maintenance',
+      toNameEn: 'Bamenda I Council',
+      toNameFr: 'Commune de Bamenda I',
+      disbursedXaf: 300000000,
+      confirmedXaf: 0,
+      awaitingConfirmation: 1,
+    },
+  ],
+  },
+}));
+
+vi.mock('../api', async () => {
+  const actual = await vi.importActual('../api');
+  return {
+    ...actual,
+    api: {
+      ...actual.api,
+      getMyFinance: vi.fn().mockResolvedValue({ success: true, data: myFinance }),
+      getMinfiOverview: vi.fn().mockResolvedValue({ success: true, data: minfiOverview }),
+      getEntities: vi.fn().mockResolvedValue({
+        success: true,
+        data: {
+          national: null,
+          ministries: [
+            { id: 'e-minfi', code: 'MINFI', nameEn: 'Ministry of Finance', nameFr: 'Ministere des Finances' },
+            { id: 'e-mintp', code: 'MINTP', nameEn: 'Ministry of Public Works', nameFr: 'Ministere des Travaux Publics' },
+          ],
+          regions: [
+            {
+              id: 'e-nw', code: 'NW', nameEn: 'North West', nameFr: 'Nord-Ouest',
+              councils: [{ id: 'e-bam1', code: 'NW-BAMENDA-I', nameEn: 'Bamenda I Council', nameFr: 'Commune de Bamenda I' }],
+            },
+          ],
+        },
+      }),
+    },
+  };
+});
+
+import { DeskFinance } from '../pages/desk/DeskFinance';
+import { MinfiAllocations } from '../pages/desk/MinfiAllocations';
+import { ConfirmSecondFactor } from '../components/ConfirmSecondFactor';
+
+const renderApp = (ui) =>
+  render(
+    <I18nProvider><MemoryRouter>
+      <ToastProvider>{ui}</ToastProvider>
+    </MemoryRouter></I18nProvider>
+  );
+
+describe('DeskFinance', () => {
+  it('shows the totals and the unconfirmed payment', async () => {
+    renderApp(<DeskFinance />);
+    expect(await screen.findByText('Road maintenance')).toBeInTheDocument();
+    // One disbursement is unconfirmed: the confirm action is offered exactly once.
+    expect(screen.getAllByRole('button', { name: /confirm receipt/i })).toHaveLength(1);
+    // The partially confirmed one shows its gap.
+    expect(screen.getByText(/gap of/i)).toBeInTheDocument();
+  });
+
+  it('routes a budget declaration through the second-factor modal', async () => {
+    renderApp(<DeskFinance />);
+    await screen.findByText('Road maintenance');
+    await userEvent.type(screen.getByLabelText(/planned amount/i), '1000');
+    await userEvent.click(screen.getByRole('button', { name: /revise budget/i }));
+    // The modal is open, asking for both factors before anything is sent.
+    expect(await screen.findByLabelText(/your password/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/private confirmation number/i)).toBeInTheDocument();
+  });
+});
+
+describe('MinfiAllocations', () => {
+  it('shows the allocation with its confirmation status and receiving picker', async () => {
+    renderApp(<MinfiAllocations />);
+    expect(await screen.findByText('Road maintenance')).toBeInTheDocument();
+    expect(screen.getByText(/awaiting/i)).toBeInTheDocument();
+    // MINFI cannot allocate to itself: it is absent from its own picker.
+    const picker = screen.getByLabelText(/institution/i);
+    const labels = Array.from(picker.querySelectorAll('option')).map((o) => o.textContent);
+    expect(labels).toContain('Ministry of Public Works');
+    expect(labels).not.toContain('Ministry of Finance');
+  });
+});
+
+describe('ConfirmSecondFactor', () => {
+  it('refuses to submit until both factors are present, then hands them over', async () => {
+    const onConfirm = vi.fn();
+    renderApp(<ConfirmSecondFactor isOpen onClose={vi.fn()} onConfirm={onConfirm} summary="Allocate 500" />);
+
+    const confirmButton = screen.getByRole('button', { name: /confirm and sign/i });
+    // The Button renders aria-disabled (it stays focusable for screen readers).
+    expect(confirmButton).toHaveAttribute('aria-disabled', 'true');
+
+    await userEvent.type(screen.getByLabelText(/your password/i), 'password');
+    expect(confirmButton).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.click(confirmButton);
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    await userEvent.type(screen.getByLabelText(/private confirmation number/i), 'AB23-CD45-EF67');
+    await userEvent.click(confirmButton);
+    expect(onConfirm).toHaveBeenCalledWith({ password: 'password', pcn: 'AB23-CD45-EF67' });
+  });
+
+  it('includes the amount when the action asks for one', async () => {
+    const onConfirm = vi.fn();
+    renderApp(
+      <ConfirmSecondFactor isOpen onClose={vi.fn()} onConfirm={onConfirm} amountLabel="Amount sent (FCFA)" initialAmount={200} />
+    );
+    await userEvent.type(screen.getByLabelText(/your password/i), 'password');
+    await userEvent.type(screen.getByLabelText(/private confirmation number/i), 'AB23CD45EF67');
+    await userEvent.click(screen.getByRole('button', { name: /confirm and sign/i }));
+    expect(onConfirm).toHaveBeenCalledWith({ password: 'password', pcn: 'AB23CD45EF67', amountXaf: 200 });
+  });
+});

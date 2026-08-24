@@ -12,8 +12,9 @@
  */
 
 import { randomUUID } from 'crypto';
-import pool from '../config/db.js';
+import pool, { withTransaction } from '../config/db.js';
 import { badRequest, forbidden, notFound } from '../utils/AppError.js';
+import { appendEntry } from './ledgerService.js';
 
 export const CONTRACTOR_STATUSES = ['PENDING', 'VERIFIED', 'REJECTED'];
 
@@ -140,12 +141,23 @@ export const decide = async ({ actor, userId, decision, reason }) => {
     );
     if (profiles.length === 0) throw notFound('Contractor profile not found');
 
-    await pool.query(
-        `UPDATE contractor_profiles
-         SET status = ?, verified_by = ?, verified_at = NOW(), rejection_reason = ?
-         WHERE user_id = ?`,
-        [decision, actor.id, decision === 'REJECTED' ? why : null, userId]
-    );
+    // The decision and its ledger entry land together or not at all. A
+    // verification is an economic act: it opens the door to public contracts.
+    await withTransaction(async (tx) => {
+        await tx.query(
+            `UPDATE contractor_profiles
+             SET status = ?, verified_by = ?, verified_at = NOW(), rejection_reason = ?
+             WHERE user_id = ?`,
+            [decision, actor.id, decision === 'REJECTED' ? why : null, userId]
+        );
+        await appendEntry(tx, {
+            entryType: decision === 'VERIFIED' ? 'contractor.verified' : 'contractor.rejected',
+            refTable: 'contractor_profiles',
+            refId: userId,
+            actor,
+            data: decision === 'REJECTED' ? { reason: why } : {},
+        });
+    });
 
     return getProfile(userId);
 };

@@ -136,6 +136,7 @@ const SECTIONS = {
   ],
   entity: [
     { to: '/desk/projects', labelKey: 'admin.projects', icon: 'fa-diagram-project' },
+    { to: '/desk/finance', labelKey: 'desk.finance', icon: 'fa-coins' },
   ],
 };
 
@@ -160,6 +161,9 @@ export const AdminLayout = ({ role, variant = 'admin', title = 'Admin' }) => {
         ...SECTIONS.entity,
         ...(user.entityCode === 'MINTP'
           ? [{ to: '/desk/verification', labelKey: 'admin.verification', icon: 'fa-user-check' }]
+          : []),
+        ...(user.entityCode === 'MINFI'
+          ? [{ to: '/desk/allocations', labelKey: 'desk.allocations', icon: 'fa-money-bill-transfer' }]
           : []),
       ]
     : SECTIONS[variant];

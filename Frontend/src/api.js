@@ -198,6 +198,49 @@ export const api = {
         return await res.json();
     },
 
+    // Finance (phase G3). Every mutation carries the second factor: the
+    // caller's password and Private Confirmation Number travel in the body of
+    // that one request and are never stored on the client.
+    getMyFinance: async () => {
+        const res = await fetch(`${BASE_URL}/finance/mine`, getOptions('GET'));
+        return await res.json();
+    },
+
+    getMinfiOverview: async () => {
+        const res = await fetch(`${BASE_URL}/finance/minfi`, getOptions('GET'));
+        return await res.json();
+    },
+
+    createAllocation: async (payload) => {
+        const res = await fetch(`${BASE_URL}/finance/allocations`, getOptions('POST', payload));
+        return await res.json();
+    },
+
+    createDisbursement: async (allocationId, payload) => {
+        const res = await fetch(`${BASE_URL}/finance/allocations/${allocationId}/disbursements`, getOptions('POST', payload));
+        return await res.json();
+    },
+
+    confirmDisbursement: async (disbursementId, payload) => {
+        const res = await fetch(`${BASE_URL}/finance/disbursements/${disbursementId}/confirm`, getOptions('POST', payload));
+        return await res.json();
+    },
+
+    setBudget: async (payload) => {
+        const res = await fetch(`${BASE_URL}/finance/budget`, getOptions('PUT', payload));
+        return await res.json();
+    },
+
+    recordIncome: async (payload) => {
+        const res = await fetch(`${BASE_URL}/finance/income`, getOptions('POST', payload));
+        return await res.json();
+    },
+
+    getLedgerHead: async () => {
+        const res = await fetch(`${BASE_URL}/finance/ledger/head`, getOptions('GET'));
+        return await res.json();
+    },
+
     // Government entities (the administrative hierarchy). Public reads.
     getEntities: async () => {
         const res = await fetch(`${BASE_URL}/entities`, getOptions('GET'));
