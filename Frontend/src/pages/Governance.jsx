@@ -81,28 +81,27 @@ export const Governance = () => {
               {t('gov.ministriesTitle')}
             </h2>
 
-            <Card padding="none">
-              <ul className="divide-y divide-line-subtle">
-                {tree.ministries.map((ministry) => (
-                  <li key={ministry.code}>
-                    <Link
-                      to={`/entity/${ministry.code}`}
-                      className="flex items-center justify-between gap-4 px-4 py-3.5 hover:bg-sunken md:px-5"
-                    >
-                      <span className="flex min-w-0 items-center gap-3">
-                        <Badge tone="neutral" size="sm" className="font-mono">
-                          {ministry.code}
-                        </Badge>
-                        <span className="truncate text-body text-fg">{entityName(ministry, locale)}</span>
-                      </span>
-                      <span className="tabular shrink-0 text-caption text-fg-tertiary">
-                        {t('gov.projects', { count: ministry.projectCount })}
-                      </span>
+            {/* Same structure as the region cards above: two sections of the same
+                kind of thing at different shapes read as two different things. */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {tree.ministries.map((ministry) => (
+                <Card key={ministry.code} variant="interactive" padding="lg" className="flex h-full flex-col">
+                  <h3 className="text-h3 leading-snug text-fg">
+                    <Link to={`/entity/${ministry.code}`} className="after:absolute after:inset-0 hover:underline">
+                      {entityName(ministry, locale)}
                     </Link>
-                  </li>
-                ))}
-              </ul>
-            </Card>
+                  </h3>
+                  <p className="mt-1">
+                    <Badge tone="neutral" size="sm" className="font-mono">
+                      {ministry.code}
+                    </Badge>
+                  </p>
+                  <p className="tabular mt-auto pt-3 text-body font-medium text-fg">
+                    {t('gov.projects', { count: ministry.projectCount })}
+                  </p>
+                </Card>
+              ))}
+            </div>
           </section>
         </>
       )}

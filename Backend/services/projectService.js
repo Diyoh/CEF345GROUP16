@@ -214,11 +214,16 @@ const attachImages = async (projects) => {
 const attachEntities = async (projects) => {
     if (projects.length === 0) return projects;
 
+    // parent_code rides along so a council resolves to its region without another
+    // query: it is what lets a region filter catch council-owned work.
     const ownerIds = [...new Set(projects.map(p => p.owner_entity_id).filter(Boolean))];
     const ownersById = new Map();
     if (ownerIds.length > 0) {
         const [rows] = await pool.query(
-            `SELECT id, type, code, name_en, name_fr FROM gov_entities WHERE id IN (${ownerIds.map(() => '?').join(',')})`,
+            `SELECT e.id, e.type, e.code, e.name_en, e.name_fr, pe.code AS parent_code
+             FROM gov_entities e
+             LEFT JOIN gov_entities pe ON e.parent_id = pe.id
+             WHERE e.id IN (${ownerIds.map(() => '?').join(',')})`,
             ownerIds
         );
         for (const row of rows) ownersById.set(row.id, row);
@@ -227,9 +232,10 @@ const attachEntities = async (projects) => {
     const projectIds = projects.map(p => p.id);
     const areasByProject = new Map();
     const [areaRows] = await pool.query(
-        `SELECT pa.project_id, e.id, e.type, e.code, e.name_en, e.name_fr
+        `SELECT pa.project_id, e.id, e.type, e.code, e.name_en, e.name_fr, pe.code AS parent_code
          FROM project_areas pa
          JOIN gov_entities e ON pa.entity_id = e.id
+         LEFT JOIN gov_entities pe ON e.parent_id = pe.id
          WHERE pa.project_id IN (${projectIds.map(() => '?').join(',')})
          ORDER BY e.name_en`,
         projectIds
