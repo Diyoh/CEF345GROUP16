@@ -29,6 +29,9 @@ const seedDatabase = async () => {
         await pool.query('DELETE FROM comments');
         await pool.query('DELETE FROM project_updates');
         await pool.query('DELETE FROM project_images');
+        await pool.query('DELETE FROM project_areas');
+        await pool.query('DELETE FROM contractor_documents');
+        await pool.query('DELETE FROM contractor_profiles');
         await pool.query('DELETE FROM projects');
         await pool.query('DELETE FROM access_codes');
         await pool.query('DELETE FROM users');
@@ -39,7 +42,7 @@ const seedDatabase = async () => {
         // 2. SEED USERS
         // Note: Using hardcoded UUIDs so we can link them easily in this script
         const users = [
-          { id: 'u1', name: 'Admin User', role: 'ADMIN', email: 'admin@buildright.cm' },
+          { id: 'u1', name: 'Admin User', role: 'PLATFORM_ADMIN', email: 'admin@buildright.cm' },
           { id: 'u2', name: 'BTP Cameroun S.A.', role: 'CONTRACTOR', email: 'contact@btpcameroun.cm' },
           { id: 'u3', name: 'BuildFast Const', role: 'CONTRACTOR', email: 'info@buildfast.cm' },
           { id: 'u4', name: 'Dev Team Lead', role: 'DEVELOPER_ADMIN', email: 'dev@buildright.cm' },
@@ -61,6 +64,45 @@ const seedDatabase = async () => {
              );
         }
         console.log('Users seeded.');
+
+        // Entity administrator demo accounts, when the hierarchy is seeded
+        // (run seed:entities first). Their shared demo PCN is printed below so
+        // the G3 confirmation flow can be exercised without registering anew.
+        const DEMO_PCN = 'AB23CD45EF67';
+        const pcnHash = await bcrypt.hash(DEMO_PCN, salt);
+        const [entityRows] = await pool.query(
+            "SELECT id, code FROM gov_entities WHERE code IN ('MINFI','MINTP','NW-BAMENDA-I')"
+        );
+        const entityByCode = Object.fromEntries(entityRows.map(e => [e.code, e.id]));
+
+        const entityAdmins = [
+            { id: 'ent1', name: 'MINFI Finance Desk', email: 'finance@minfi.cm', code: 'MINFI' },
+            { id: 'ent2', name: 'MINTP Works Desk', email: 'works@mintp.cm', code: 'MINTP' },
+            { id: 'ent3', name: 'Bamenda I Council Desk', email: 'council@bamenda1.cm', code: 'NW-BAMENDA-I' },
+        ];
+        let entityAdminCount = 0;
+        for (const admin of entityAdmins) {
+            const entityId = entityByCode[admin.code];
+            if (!entityId) continue; // hierarchy not seeded yet; run seed:entities, then seed again
+            await pool.query(
+                'INSERT INTO users (id, name, email, role, password_hash, entity_id, pcn_hash) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [admin.id, admin.name, admin.email, 'ENTITY_ADMIN', passwordHash, entityId, pcnHash]
+            );
+            entityAdminCount += 1;
+        }
+        console.log(entityAdminCount > 0
+            ? `Entity admins seeded (${entityAdminCount}). Demo PCN for all of them: AB23-CD45-EF67`
+            : 'Entity admins skipped: run seed:entities first, then seed again.');
+
+        // Contractor verification files. One VERIFIED so assignment works out of
+        // the box, one PENDING so the MINTP queue has something to decide.
+        await pool.query(
+            "INSERT INTO contractor_profiles (user_id, company_name, rccm_number, taxpayer_number, status, verified_by, verified_at) VALUES ('u2', 'BTP Cameroun S.A.', 'RC/DLA/2015/B/1234', 'M051512345678A', 'VERIFIED', 'u1', NOW())"
+        );
+        await pool.query(
+            "INSERT INTO contractor_profiles (user_id, company_name, status) VALUES ('u3', 'BuildFast Const', 'PENDING')"
+        );
+        console.log('Contractor profiles seeded: BTP Cameroun VERIFIED, BuildFast PENDING.');
 
         // 3. SEED PROJECTS
         // Each project is written to demonstrate a specific state. See the flag definitions
@@ -169,6 +211,25 @@ const seedDatabase = async () => {
             );
         }
         console.log('Projects seeded.');
+
+        // Place the demo projects in the hierarchy when it exists, so seed order
+        // stops mattering: entities first, then this script, nothing else needed.
+        const [mintpRows] = await pool.query("SELECT id FROM gov_entities WHERE code = 'MINTP'");
+        if (mintpRows.length > 0) {
+            const regionMap = {
+                'Adamaoua': 'AD', 'Centre': 'CE', 'East': 'EA', 'Far North': 'FN', 'Littoral': 'LT',
+                'North': 'NO', 'North West': 'NW', 'South': 'SO', 'South West': 'SW', 'West': 'WE',
+            };
+            const [regionRows] = await pool.query("SELECT id, code FROM gov_entities WHERE type = 'REGION'");
+            const regionByCode = Object.fromEntries(regionRows.map(r => [r.code, r.id]));
+            for (const p of projects) {
+                const regionId = regionByCode[regionMap[p.region]];
+                if (!regionId) continue;
+                await pool.query('UPDATE projects SET owner_entity_id = ? WHERE id = ?', [mintpRows[0].id, p.id]);
+                await pool.query('INSERT IGNORE INTO project_areas (project_id, entity_id) VALUES (?, ?)', [p.id, regionId]);
+            }
+            console.log('Projects placed in the hierarchy (owner MINTP, region areas).');
+        }
 
         // 4. SEED PROJECT IMAGES (URLs only, no base64 in seed usually unless we mock urls)
         // We will just use the paths from frontend data as URLs. Frontend expects them to be served or valid.

@@ -16,8 +16,14 @@ import { byVarianceAsc } from '../../utils/projectHealth';
  * optimistic object, same addProject/updateProject calls. Only the feedback changed, from
  * a blocking modal on every save to a toast.
  */
-export const AdminProjects = () => {
-  const { projects, contractors, updateProject, addProject } = useAppStore();
+export const AdminProjects = ({ owner = null }) => {
+  const { projects, contractors, updateProject, addProject, fetchContractors } = useAppStore();
+
+  // The contractor list previously filled only after visiting the Contractors
+  // page, leaving this form's dropdown empty on a fresh session.
+  useEffect(() => {
+    fetchContractors();
+  }, []);
   const toast = useToast();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,6 +54,7 @@ export const AdminProjects = () => {
   const filtered = useMemo(() => {
     const term = search.toLowerCase();
     return projects
+      .filter((p) => !owner || p.ownerEntity?.id === owner.id)
       .filter((p) => {
         const matchesSearch =
           !term || p.title?.toLowerCase().includes(term) || p.location?.toLowerCase().includes(term);
@@ -55,7 +62,7 @@ export const AdminProjects = () => {
         return matchesSearch && matchesStatus;
       })
       .sort(byVarianceAsc);
-  }, [projects, search, statusFilter]);
+  }, [projects, search, statusFilter, owner]);
 
   const handleSave = async (e, files) => {
     e.preventDefault();
@@ -192,6 +199,7 @@ export const AdminProjects = () => {
         onSave={handleSave}
         editingProject={editingProject}
         contractors={contractors}
+        ownerEntity={owner}
       />
     </>
   );

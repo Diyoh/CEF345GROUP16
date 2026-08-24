@@ -29,9 +29,13 @@ export const Login = () => {
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [regError, setRegError] = useState('');
+  const [issuedPcn, setIssuedPcn] = useState(null);
 
-  if (user) {
+  // A freshly issued PCN blocks the redirect: it exists in this render and
+  // never again, so the account holder confirms saving it before moving on.
+  if (user && !issuedPcn) {
     if (user.role === UserRole.ADMIN) return <Navigate to="/admin" />;
+    if (user.role === UserRole.ENTITY_ADMIN) return <Navigate to="/desk" />;
     if (user.role === UserRole.CONTRACTOR) return <Navigate to="/contractor" />;
     if (user.role === UserRole.DEVELOPER_ADMIN) return <Navigate to="/dev-admin" />;
     return <Navigate to="/" />;
@@ -70,9 +74,34 @@ export const Login = () => {
       return;
     }
 
-    const success = await register(regName, regEmail, regCode, regPassword);
-    if (!success) setRegError(t('auth.registrationFailed'));
+    const result = await register(regName, regEmail, regCode, regPassword);
+    if (!result.success) setRegError(t('auth.registrationFailed'));
+    else if (result.pcn) setIssuedPcn(result.pcn);
   };
+
+  if (issuedPcn) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col justify-center px-4 py-12 md:py-20">
+        <Card padding="lg">
+          <h1 className="text-h2 text-fg">{t('auth.pcnTitle')}</h1>
+          <p className="mt-2 text-body text-fg-secondary">{t('auth.pcnLead')}</p>
+          <p className="mt-5 select-all rounded-sm bg-sunken px-4 py-3 text-center font-mono text-h2 tracking-[0.08em] text-fg">
+            {issuedPcn}
+          </p>
+          <p className="mt-4 text-caption text-danger">{t('auth.pcnWarning')}</p>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            className="mt-6"
+            onClick={() => setIssuedPcn(null)}
+          >
+            {t('auth.pcnAck')}
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex max-w-md flex-col justify-center px-4 py-12 md:py-20">

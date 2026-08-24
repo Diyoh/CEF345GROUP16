@@ -27,19 +27,30 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
-    role ENUM('ADMIN', 'CONTRACTOR', 'DEVELOPER_ADMIN', 'PUBLIC') NOT NULL DEFAULT 'PUBLIC',
+    role ENUM('PLATFORM_ADMIN', 'ENTITY_ADMIN', 'CONTRACTOR', 'DEVELOPER_ADMIN', 'PUBLIC') NOT NULL DEFAULT 'PUBLIC',
+    -- Which institution an ENTITY_ADMIN belongs to. NULL for every other role.
+    entity_id CHAR(36) NULL,
+    -- Private Confirmation Number, bcrypt-hashed. Issued once at account creation
+    -- to entity administrators and contractors; required with the password on
+    -- every financial action from phase G3.
+    pcn_hash VARCHAR(255) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (entity_id) REFERENCES gov_entities(id)
 );
 
 -- 2. ACCESS CODES
 CREATE TABLE IF NOT EXISTS access_codes (
     code VARCHAR(50) PRIMARY KEY,
-    role ENUM('ADMIN', 'CONTRACTOR', 'DEVELOPER_ADMIN', 'PUBLIC') NOT NULL,
+    role ENUM('PLATFORM_ADMIN', 'ENTITY_ADMIN', 'CONTRACTOR', 'DEVELOPER_ADMIN', 'PUBLIC') NOT NULL,
     is_used BOOLEAN DEFAULT FALSE,
+    -- An ENTITY_ADMIN code is bound to one institution; the account it mints
+    -- belongs there and nowhere else.
+    entity_id CHAR(36) NULL,
     generated_by_user_id CHAR(36),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (generated_by_user_id) REFERENCES users(id)
+    FOREIGN KEY (generated_by_user_id) REFERENCES users(id),
+    FOREIGN KEY (entity_id) REFERENCES gov_entities(id)
 );
 
 -- 3. PROJECTS
@@ -166,6 +177,31 @@ BEFORE DELETE ON project_changes
 FOR EACH ROW
 SIGNAL SQLSTATE '45000'
 SET MESSAGE_TEXT = 'project_changes is an append-only audit log: rows cannot be deleted';
+
+-- 8b. CONTRACTOR VERIFICATION (by the Ministry of Public Works)
+-- Only a VERIFIED contractor can be assigned a project or, later, receive a
+-- payment. Mirrored by migrations/008_contractor_verification.sql.
+CREATE TABLE IF NOT EXISTS contractor_profiles (
+    user_id          CHAR(36) PRIMARY KEY,
+    company_name     VARCHAR(255) NOT NULL,
+    rccm_number      VARCHAR(100) NULL,
+    taxpayer_number  VARCHAR(100) NULL,
+    status           ENUM('PENDING','VERIFIED','REJECTED') NOT NULL DEFAULT 'PENDING',
+    verified_by      CHAR(36) NULL,
+    verified_at      TIMESTAMP NULL,
+    rejection_reason TEXT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_contractor_status (status)
+);
+
+CREATE TABLE IF NOT EXISTS contractor_documents (
+    id          CHAR(36) PRIMARY KEY,
+    user_id     CHAR(36) NOT NULL,
+    label       VARCHAR(255) NOT NULL,
+    file_url    TEXT NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
 
 -- 9. TEAM MEMBERS
 CREATE TABLE IF NOT EXISTS team_members (

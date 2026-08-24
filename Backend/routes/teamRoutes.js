@@ -6,8 +6,8 @@ import { upload } from '../middleware/uploadMiddleware.js';
 const router = express.Router();
 
 router.get('/', getTeam);
-router.post('/', protect, authorize('ADMIN', 'DEVELOPER_ADMIN'), upload.single('image'), createTeamMember);
-router.put('/:id', protect, authorize('ADMIN', 'DEVELOPER_ADMIN'), upload.single('image'), updateTeamMember);
-router.delete('/:id', protect, authorize('ADMIN', 'DEVELOPER_ADMIN'), deleteTeamMember);
+router.post('/', protect, authorize('PLATFORM_ADMIN', 'DEVELOPER_ADMIN'), upload.single('image'), createTeamMember);
+router.put('/:id', protect, authorize('PLATFORM_ADMIN', 'DEVELOPER_ADMIN'), upload.single('image'), updateTeamMember);
+router.delete('/:id', protect, authorize('PLATFORM_ADMIN', 'DEVELOPER_ADMIN'), deleteTeamMember);
 
 export default router;

@@ -25,6 +25,7 @@ import { useT } from '../i18n';
 const DASHBOARD_BY_ROLE = {
   [UserRole.ADMIN]: { to: '/admin', labelKey: 'nav.adminDashboard' },
   [UserRole.CONTRACTOR]: { to: '/contractor', labelKey: 'nav.myProjects' },
+  [UserRole.ENTITY_ADMIN]: { to: '/desk', labelKey: 'nav.entityDesk' },
   [UserRole.DEVELOPER_ADMIN]: { to: '/dev-admin', labelKey: 'nav.developerPanel' },
 };
 

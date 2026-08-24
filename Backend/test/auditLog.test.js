@@ -33,7 +33,7 @@ const { updateProject } = await import('../services/projectService.js');
 const pool = (await import('../config/db.js')).default;
 
 const CONTRACTOR = { id: 'con1', name: 'BTP Cameroun S.A.', role: 'CONTRACTOR' };
-const ADMIN = { id: 'adm1', name: 'Admin User', role: 'ADMIN' };
+const ADMIN = { id: 'adm1', name: 'Admin User', role: 'PLATFORM_ADMIN' };
 
 const PROJECT = {
     id: 'proj-1',
@@ -133,7 +133,7 @@ describe('change logging', () => {
             field: 'budget',
             oldValue: '1000',
             newValue: '5000',
-            actorRole: 'ADMIN'
+            actorRole: 'PLATFORM_ADMIN'
         });
     });
 

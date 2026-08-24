@@ -162,8 +162,8 @@ export const api = {
     },
 
     // Admin
-    generateAccessCode: async (role) => {
-        const res = await fetch(`${BASE_URL}/admin/access-codes`, getOptions('POST', { role }));
+    generateAccessCode: async (role, entityId = null) => {
+        const res = await fetch(`${BASE_URL}/admin/access-codes`, getOptions('POST', { role, entityId }));
         return await res.json();
     },
 
@@ -172,6 +172,32 @@ export const api = {
         return await res.json();
     },
     
+    // Contractor account: profile, documents, and the MINTP verification queue.
+    getContractorProfile: async () => {
+        const res = await fetch(`${BASE_URL}/contractor/profile`, getOptions('GET'));
+        return await res.json();
+    },
+
+    saveContractorProfile: async (data) => {
+        const res = await fetch(`${BASE_URL}/contractor/profile`, getOptions('PUT', data));
+        return await res.json();
+    },
+
+    addContractorDocument: async (formData) => {
+        const res = await fetch(`${BASE_URL}/contractor/documents`, getOptions('POST', formData));
+        return await res.json();
+    },
+
+    getContractorQueue: async () => {
+        const res = await fetch(`${BASE_URL}/contractor/queue`, getOptions('GET'));
+        return await res.json();
+    },
+
+    verifyContractor: async (userId, decision, reason = '') => {
+        const res = await fetch(`${BASE_URL}/contractor/${userId}/verify`, getOptions('POST', { decision, reason }));
+        return await res.json();
+    },
+
     // Government entities (the administrative hierarchy). Public reads.
     getEntities: async () => {
         const res = await fetch(`${BASE_URL}/entities`, getOptions('GET'));

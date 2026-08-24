@@ -54,6 +54,7 @@ export const getProjectById = async (req, res) => {
 export const createProject = async (req, res) => {
     try {
         const project = await projectService.createProject({
+            actor: req.user,
             body: req.body,
             files: req.files || []
         });

@@ -150,7 +150,16 @@ const validateField = (field, rawValue) => {
 export const assertCanEditProject = (actor, project) => {
     if (!actor) throw forbidden('Not authorized');
 
-    if (actor.role === 'ADMIN') return; // Admins oversee every project.
+    if (actor.role === 'PLATFORM_ADMIN') return; // Platform operations oversee everything.
+
+    // An entity administrator manages the projects their institution owns, and
+    // exactly those. Legacy projects without an owner stay platform-managed.
+    if (actor.role === 'ENTITY_ADMIN') {
+        if (!project.owner_entity_id || project.owner_entity_id !== actor.entity_id) {
+            throw forbidden('You can only manage projects owned by your institution');
+        }
+        return;
+    }
 
     if (actor.role === 'CONTRACTOR') {
         if (project.contractor_id !== actor.id) {
@@ -319,6 +328,28 @@ const resolveOwnershipAndAreas = async (ownerEntityId, rawAreaIds) => {
     }
 
     return { owner, areaIds: areaRows.map(a => a.id) };
+};
+
+/**
+ * assertAssignableContractor
+ *
+ * The G2 rule from the plan: only a contractor VERIFIED by the Ministry of
+ * Public Works can be put in charge of public works. An unverified assignment
+ * is refused with the reason, not silently allowed and flagged later.
+ */
+const assertAssignableContractor = async (contractorId) => {
+    const [rows] = await pool.query(
+        `SELECT u.id, u.role, cp.status
+         FROM users u
+         LEFT JOIN contractor_profiles cp ON cp.user_id = u.id
+         WHERE u.id = ?`,
+        [contractorId]
+    );
+    if (rows.length === 0) throw badRequest('Assigned contractor does not exist');
+    if (rows[0].role !== 'CONTRACTOR') throw badRequest('Assigned user is not a contractor');
+    if (rows[0].status !== 'VERIFIED') {
+        throw badRequest('This contractor has not been verified by the Ministry of Public Works yet');
+    }
 };
 
 /** Current area codes of a project, for the audit log's old value. */
@@ -579,7 +610,7 @@ export const getProjectDetail = async (id) => {
  * createProject
  * Admin-only. Validates the definition, then stores it.
  */
-export const createProject = async ({ body = {}, files = [] }) => {
+export const createProject = async ({ actor = null, body = {}, files = [] }) => {
     const title = validateField('title', body.title);
     const description = validateField('description', body.description);
     const location = validateField('location', body.location);
@@ -593,16 +624,20 @@ export const createProject = async ({ body = {}, files = [] }) => {
     // A project must be assigned to a real contractor — otherwise nobody is
     // accountable for it and it can never be updated.
     if (contractorId) {
-        const [rows] = await pool.query('SELECT id, role FROM users WHERE id = ?', [contractorId]);
-        if (rows.length === 0) throw badRequest('Assigned contractor does not exist');
-        if (rows[0].role !== 'CONTRACTOR') throw badRequest('Assigned user is not a contractor');
+        await assertAssignableContractor(contractorId);
     }
 
     // Hierarchy placement is optional during the transition: a request without an
-    // owner behaves exactly as before, so nothing existing breaks.
+    // owner behaves exactly as before, so nothing existing breaks. An entity
+    // administrator does not get the choice: whatever the request says, their
+    // projects belong to their institution.
+    const ownerEntityId = actor && actor.role === 'ENTITY_ADMIN'
+        ? actor.entity_id
+        : body.ownerEntityId;
+
     let ownership = null;
-    if (body.ownerEntityId) {
-        ownership = await resolveOwnershipAndAreas(body.ownerEntityId, body.areaEntityIds);
+    if (ownerEntityId) {
+        ownership = await resolveOwnershipAndAreas(ownerEntityId, body.areaEntityIds);
     }
 
     // Generate the id here rather than with SQL UUID(). Doing it in the database
@@ -669,20 +704,23 @@ export const updateProject = async ({ actor, projectId, body = {}, files = [] })
     }
 
     if (updates.contractorId) {
-        const [rows] = await pool.query('SELECT id, role FROM users WHERE id = ?', [updates.contractorId]);
-        if (rows.length === 0) throw badRequest('Assigned contractor does not exist');
-        if (rows[0].role !== 'CONTRACTOR') throw badRequest('Assigned user is not a contractor');
+        await assertAssignableContractor(updates.contractorId);
     }
 
     const fields = Object.keys(updates);
     const base64Images = collectBase64Images(body);
     const hasNewImages = files.length > 0 || base64Images.length > 0;
 
-    // Hierarchy placement: admin only, contractors report figures, they do not move
-    // a project between owners. Validated before the transaction opens.
+    // Hierarchy placement: contractors report figures, they do not move a project
+    // between owners. An entity administrator may redraw areas but cannot hand
+    // the project to another institution. Validated before the transaction opens.
     let ownership = null;
     if (actor.role !== 'CONTRACTOR' && body.ownerEntityId) {
         ownership = await resolveOwnershipAndAreas(body.ownerEntityId, body.areaEntityIds);
+
+        if (actor.role === 'ENTITY_ADMIN' && ownership.owner.id !== actor.entity_id) {
+            throw forbidden('You cannot move a project to another institution');
+        }
     }
 
     if (fields.length === 0 && !hasNewImages && !ownership) {
@@ -778,6 +816,10 @@ export const updateProject = async ({ actor, projectId, body = {}, files = [] })
 export const deleteProject = async ({ actor, projectId }) => {
     const project = await findProjectRow(projectId);
     if (!project) throw notFound('Project not found');
+
+    // Same scope rule as editing: an institution deletes only its own record,
+    // and the deletion still lands in the audit log either way.
+    assertCanEditProject(actor, project);
 
     // The audit log no longer cascades with the project (migration 004), so the history
     // survives — and the deletion itself is recorded as the final entry. Removing a project

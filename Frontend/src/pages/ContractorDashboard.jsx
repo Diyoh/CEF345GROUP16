@@ -5,6 +5,7 @@ import { UserRole } from '../types';
 import { ContractorProjectCard } from '../components/dashboard/ContractorProjectCard';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { AuthPending } from '../components/AuthPending';
+import { ContractorAccount } from '../components/ContractorAccount';
 import { Button, EmptyState, StatTile, useToast } from '../components/ui';
 import { formatMoney } from '../utils/helpers';
 import { projectHealth } from '../utils/projectHealth';
@@ -153,6 +154,12 @@ export const ContractorDashboard = () => {
           />
         </div>
       )}
+
+      {/* The company file: verification status, identity, documents. Above the
+          project list because until it says VERIFIED, the list stays empty. */}
+      <div className="mb-8">
+        <ContractorAccount />
+      </div>
 
       {myProjects.length === 0 ? (
         <EmptyState

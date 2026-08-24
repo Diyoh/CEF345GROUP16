@@ -110,7 +110,13 @@ export const ChangeHistory = ({ changes = [] }) => {
                 <p className="text-caption text-fg-tertiary">
                   {change.actorName}
                   <span className="ml-1.5 text-fg-disabled">
-                    {t(change.actorRole === 'ADMIN' ? 'project.roleAdmin' : 'project.roleContractor')}
+                    {t(
+                      ['ADMIN', 'PLATFORM_ADMIN'].includes(change.actorRole)
+                        ? 'project.roleAdmin'
+                        : change.actorRole === 'ENTITY_ADMIN'
+                          ? 'project.roleEntityAdmin'
+                          : 'project.roleContractor'
+                    )}
                   </span>
                 </p>
 

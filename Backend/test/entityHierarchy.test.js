@@ -26,7 +26,7 @@ const projectService = await import('../services/projectService.js');
 const entityService = await import('../services/entityService.js');
 const pool = mockPool;
 
-const ADMIN = { id: 'adm1', name: 'Admin User', role: 'ADMIN' };
+const ADMIN = { id: 'adm1', name: 'Admin User', role: 'PLATFORM_ADMIN' };
 const CONTRACTOR = { id: 'con1', name: 'BTP Cameroun S.A.', role: 'CONTRACTOR' };
 
 const ENTITIES = {
@@ -66,8 +66,9 @@ const mockDb = () => {
             areaState = [];
             return Promise.resolve([{}, []]);
         }
-        if (/SELECT id, role FROM users/i.test(sql)) {
-            return Promise.resolve([[{ id: 'con1', role: 'CONTRACTOR' }], []]);
+        if (/FROM users u\s+LEFT JOIN contractor_profiles/i.test(sql)) {
+            // Assignment requires a VERIFIED contractor since G2.
+            return Promise.resolve([[{ id: 'con1', role: 'CONTRACTOR', status: 'VERIFIED' }], []]);
         }
         if (/SELECT id, type, code FROM gov_entities WHERE id = \?/i.test(sql)) {
             const hit = byId[params[0]];

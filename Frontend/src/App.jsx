@@ -29,6 +29,8 @@ import { AdminProjects } from './pages/admin/AdminProjects';
 import { AdminContractors } from './pages/admin/AdminContractors';
 import { AdminReports } from './pages/admin/AdminReports';
 import { DevAccess } from './pages/admin/DevAccess';
+import { DeskProjects } from './pages/desk/DeskProjects';
+import { VerificationQueue } from './pages/desk/VerificationQueue';
 import { DevTeam } from './pages/admin/DevTeam';
 
 const App = () => {
@@ -61,6 +63,16 @@ const App = () => {
               <Route path="projects" element={<AdminProjects />} />
               <Route path="contractors" element={<AdminContractors />} />
               <Route path="reports" element={<AdminReports />} />
+            </Route>
+
+            {/* Entity desk: council and ministry administrators. */}
+            <Route
+              path="/desk"
+              element={<AdminLayout role={UserRole.ENTITY_ADMIN} variant="entity" title="Desk" />}
+            >
+              <Route index element={<Navigate to="projects" replace />} />
+              <Route path="projects" element={<DeskProjects />} />
+              <Route path="verification" element={<VerificationQueue />} />
             </Route>
 
             {/* Developer control panel. */}

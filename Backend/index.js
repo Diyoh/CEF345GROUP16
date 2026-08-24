@@ -23,6 +23,7 @@ import teamRoutes from './routes/teamRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import statsRoutes from './routes/statsRoutes.js';
 import entityRoutes from './routes/entityRoutes.js';
+import contractorRoutes from './routes/contractorRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
 
 // Load environment variables
@@ -105,6 +106,7 @@ app.use('/api/v1/team', teamRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/stats', statsRoutes);
 app.use('/api/v1/entities', entityRoutes);
+app.use('/api/v1/contractor', contractorRoutes);
 
 // Root Endpoint
 app.get('/', (req, res) => {

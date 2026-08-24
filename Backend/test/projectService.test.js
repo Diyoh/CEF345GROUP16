@@ -27,7 +27,7 @@ const projectService = await import('../services/projectService.js');
 const { assertCanEditProject, updateProject, PROJECT_STATUSES } = projectService;
 const pool = (await import('../config/db.js')).default;
 
-const ADMIN = { id: 'adm1', name: 'Admin User', role: 'ADMIN' };
+const ADMIN = { id: 'adm1', name: 'Admin User', role: 'PLATFORM_ADMIN' };
 const CONTRACTOR_A = { id: 'con1', name: 'Contractor A', role: 'CONTRACTOR' };
 const CONTRACTOR_B = { id: 'con2', name: 'Contractor B', role: 'CONTRACTOR' };
 const DEVELOPER = { id: 'dev1', name: 'Dev Admin', role: 'DEVELOPER_ADMIN' };

@@ -7,6 +7,7 @@ import pool, { withTransaction } from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { AppError, sendError } from '../utils/AppError.js';
+import { randomCode, groupCode } from '../utils/secureCodes.js';
 
 /**
  * Helper function to generate a JSON Web Token (JWT)
@@ -38,7 +39,11 @@ const sendTokenResponse = (user, statusCode, res) => {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                entityId: user.entityId || user.entity_id || null,
+                // Present exactly once, on registration of an account that gets
+                // one. Never retrievable again: only its hash exists after this.
+                pcn: user.pcn
                 // Token is NOT sent in JSON anymore
             }
         });
@@ -77,6 +82,13 @@ export const register = async (req, res) => {
 
             const role = codes[0].role;
 
+            // An ENTITY_ADMIN account exists to run one institution; a code
+            // without one is a misissued code, refused rather than guessed at.
+            const entityId = codes[0].entity_id || null;
+            if (role === 'ENTITY_ADMIN' && !entityId) {
+                throw new AppError('This access code is not bound to an institution', 400);
+            }
+
             const [users] = await tx.query('SELECT email FROM users WHERE email = ?', [email]);
             if (users.length > 0) {
                 throw new AppError('User already exists', 400);
@@ -92,7 +104,8 @@ export const register = async (req, res) => {
             let prefix = 'user';
             if (role === 'DEVELOPER_ADMIN') prefix = 'dev';
             else if (role === 'CONTRACTOR') prefix = 'con';
-            else if (role === 'ADMIN') prefix = 'adm';
+            else if (role === 'PLATFORM_ADMIN') prefix = 'adm';
+            else if (role === 'ENTITY_ADMIN') prefix = 'ent';
 
             // Find the latest ID with this prefix to determine the next number.
             // Ordered by length first so dev10 sorts after dev9 rather than before it.
@@ -112,14 +125,32 @@ export const register = async (req, res) => {
                 }
             }
 
+            // The Private Confirmation Number: the second factor on every
+            // financial action from phase G3. Generated here, hashed like a
+            // password, and RETURNED EXACTLY ONCE in this response. Entity
+            // administrators and contractors are the accounts that will move
+            // records of money, so they are the ones that get it.
+            const needsPcn = role === 'ENTITY_ADMIN' || role === 'CONTRACTOR';
+            const pcnRaw = needsPcn ? randomCode(12) : null;
+            const pcnHash = pcnRaw ? await bcrypt.hash(pcnRaw, salt) : null;
+
             await tx.query(
-                'INSERT INTO users (id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)',
-                [nextId, name, email, passwordHash, role]
+                'INSERT INTO users (id, name, email, password_hash, role, entity_id, pcn_hash) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [nextId, name, email, passwordHash, role, entityId, pcnHash]
             );
+
+            // Every contractor account opens with a pending verification file,
+            // so the MINTP queue is the single place new companies surface.
+            if (role === 'CONTRACTOR') {
+                await tx.query(
+                    'INSERT INTO contractor_profiles (user_id, company_name) VALUES (?, ?)',
+                    [nextId, name]
+                );
+            }
 
             await tx.query('UPDATE access_codes SET is_used = TRUE WHERE code = ?', [accessCode]);
 
-            return { id: nextId, name, email, role };
+            return { id: nextId, name, email, role, entityId, pcn: pcnRaw ? groupCode(pcnRaw) : undefined };
         });
 
         // Return Cookie

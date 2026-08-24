@@ -14,6 +14,6 @@ router.get('/projects/:id/comments', getComments);
 router.post('/projects/:id/comments', createComment);
 
 // Admin moderation
-router.delete('/comments/:commentId', protect, authorize('ADMIN'), deleteComment);
+router.delete('/comments/:commentId', protect, authorize('PLATFORM_ADMIN'), deleteComment);
 
 export default router;
