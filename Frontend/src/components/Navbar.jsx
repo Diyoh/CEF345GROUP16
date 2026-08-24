@@ -76,7 +76,21 @@ export const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-canvas/95 backdrop-blur supports-[backdrop-filter]:bg-canvas/80">
-      <a href="#main" className="skip-link">
+      <a
+        href="#main"
+        className="skip-link"
+        onClick={(e) => {
+          // HashRouter owns the URL hash: letting this default would navigate
+          // to a nonexistent route instead of skipping to the content.
+          e.preventDefault();
+          const el = document.getElementById('main');
+          if (el) {
+            el.setAttribute('tabindex', '-1');
+            el.focus({ preventScroll: true });
+            el.scrollIntoView();
+          }
+        }}
+      >
         {t('nav.skipToContent')}
       </a>
 

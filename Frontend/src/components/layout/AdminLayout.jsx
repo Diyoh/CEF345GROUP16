@@ -196,7 +196,21 @@ export const AdminLayout = ({ role, variant = 'admin', title = 'Admin' }) => {
               aria-label={t('admin.openSections')}
               leadingIcon={<i className="fas fa-bars" aria-hidden="true" />}
             />
-            <a href="#admin-main" className="skip-link">
+            <a
+        href="#admin-main"
+        className="skip-link"
+        onClick={(e) => {
+          // HashRouter owns the URL hash: letting this default would navigate
+          // to a nonexistent route instead of skipping to the content.
+          e.preventDefault();
+          const el = document.getElementById('admin-main');
+          if (el) {
+            el.setAttribute('tabindex', '-1');
+            el.focus({ preventScroll: true });
+            el.scrollIntoView();
+          }
+        }}
+      >
               {t('nav.skipToContent')}
             </a>
           </div>

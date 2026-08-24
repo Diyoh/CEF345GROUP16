@@ -117,23 +117,28 @@ export const EntityPage = () => {
           {entity.code}
           {projects && ` · ${t('gov.projects', { count: projects.length })}`}
         </p>
-        {/* Section shortcuts, so nobody has to know the money exists to find it. */}
+        {/* Section shortcuts, so nobody has to know the money exists to find
+            it. Buttons that scroll, NOT anchor hrefs: the app routes with
+            HashRouter, so href="#id" would replace the route hash and navigate
+            away from the page instead of scrolling within it. */}
         {data.finance !== null && (
           <nav aria-label={t('gov.onThisPage')} className="mt-4 flex flex-wrap gap-2">
-            <a
-              href="#entity-money-heading"
-              className="inline-flex items-center gap-2 rounded-full bg-sunken px-3 py-1.5 text-caption font-medium text-fg hover:text-accent"
-            >
-              <i className="fas fa-coins" aria-hidden="true" />
-              {t('money.title')}
-            </a>
-            <a
-              href="#entity-projects-heading"
-              className="inline-flex items-center gap-2 rounded-full bg-sunken px-3 py-1.5 text-caption font-medium text-fg hover:text-accent"
-            >
-              <i className="fas fa-diagram-project" aria-hidden="true" />
-              {t('gov.entityProjectsTitle')}
-            </a>
+            {[
+              { target: 'entity-money-heading', icon: 'fa-coins', label: t('money.title') },
+              { target: 'entity-projects-heading', icon: 'fa-diagram-project', label: t('gov.entityProjectsTitle') },
+            ].map(({ target, icon, label }) => (
+              <button
+                key={target}
+                type="button"
+                onClick={() =>
+                  document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+                className="inline-flex items-center gap-2 rounded-full bg-sunken px-3 py-1.5 text-caption font-medium text-fg hover:text-accent"
+              >
+                <i className={`fas ${icon}`} aria-hidden="true" />
+                {label}
+              </button>
+            ))}
           </nav>
         )}
       </header>
