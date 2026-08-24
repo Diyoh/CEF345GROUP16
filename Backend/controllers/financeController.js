@@ -163,6 +163,15 @@ export const getAllBudgets = async (req, res) => {
 
 /* Public: anyone can read the chain head and run a full verification. */
 
+export const getPublicMoney = async (req, res) => {
+    try {
+        const data = await finance.getPublicMoney(req.query.year);
+        res.json({ success: true, data });
+    } catch (error) {
+        sendError(res, error);
+    }
+};
+
 export const getLedgerHead = async (_req, res) => {
     try {
         const data = await ledger.getHead();

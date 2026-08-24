@@ -74,6 +74,24 @@ vi.mock('../api', async () => {
       getAllBudgets: vi.fn().mockResolvedValue({ success: true, data: { budgets: [
         { id: 'b1', fiscalYear: 2026, plannedAmountXaf: 900000000, entityNameEn: 'Bamenda I Council', entityNameFr: 'Commune de Bamenda I', allocatedXaf: 500000000, incomeXaf: 25000000 },
       ] } }),
+      getPublicMoney: vi.fn().mockResolvedValue({
+        success: true,
+        data: {
+          year: 2026,
+          years: [2026, 2025],
+          allocations: [{
+            id: 'a1', fiscalYear: 2026, amountXaf: 500000000, purpose: 'Urban roads programme',
+            toCode: 'NW-BAMENDA-I', toType: 'COUNCIL', toNameEn: 'Bamenda I Council', toNameFr: 'Commune de Bamenda I',
+            disbursedXaf: 300000000, confirmedXaf: 250000000, awaitingConfirmation: 0,
+          }],
+          income: [{
+            entityId: 'e-bam1', entityCode: 'NW-BAMENDA-I', entityType: 'COUNCIL',
+            entityNameEn: 'Bamenda I Council', entityNameFr: 'Commune de Bamenda I',
+            totalXaf: 25000000, lines: [{ label: 'Market fees', amountXaf: 25000000 }],
+          }],
+          totals: { allocatedXaf: 500000000, disbursedXaf: 300000000, confirmedXaf: 250000000, incomeXaf: 25000000, gapXaf: 50000000 },
+        },
+      }),
       getPaymentInbox: vi.fn().mockResolvedValue({
         success: true,
         data: [
@@ -106,6 +124,7 @@ import { MinfiAllocations } from '../pages/desk/MinfiAllocations';
 import { ConfirmSecondFactor } from '../components/ConfirmSecondFactor';
 import { ContractorPayments } from '../components/ContractorPayments';
 import { EntityMoney } from '../components/EntityMoney';
+import { Money } from '../pages/Money';
 
 const renderApp = (ui) =>
   render(
@@ -184,6 +203,23 @@ describe('EntityMoney, the citizens view', () => {
   it('renders nothing when a body has no financial records', () => {
     const { container } = renderApp(<EntityMoney finance={{ budgets: [], income: [], allocations: [], payments: [], totals: {} }} />);
     expect(container.querySelector('section')).toBeNull();
+  });
+});
+
+describe('Money, the national public page', () => {
+  it('lists every allocation and what each institution paid into the coffers', async () => {
+    renderApp(<Money />);
+    expect(await screen.findByRole('heading', { name: /budget allocations, 2026/i })).toBeInTheDocument();
+    expect(screen.getByText('Urban roads programme')).toBeInTheDocument();
+    // The institution links to its page, in both registers.
+    const links = screen.getAllByRole('link', { name: /bamenda i council/i });
+    expect(links.length).toBeGreaterThanOrEqual(2);
+    expect(links[0]).toHaveAttribute('href', '/entity/NW-BAMENDA-I');
+    // The coffers side itemises the income.
+    expect(screen.getByRole('heading', { name: /paid into the coffers/i })).toBeInTheDocument();
+    expect(screen.getByText('Market fees')).toBeInTheDocument();
+    // The year picker offers both recorded years.
+    expect(screen.getByRole('option', { name: '2025' })).toBeInTheDocument();
   });
 });
 

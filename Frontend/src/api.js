@@ -261,6 +261,12 @@ export const api = {
         return await res.json();
     },
 
+    getPublicMoney: async (year) => {
+        const suffix = year ? `?year=${encodeURIComponent(year)}` : '';
+        const res = await fetch(`${BASE_URL}/finance/overview${suffix}`, getOptions('GET'));
+        return await res.json();
+    },
+
     getLedgerHead: async () => {
         const res = await fetch(`${BASE_URL}/finance/ledger/head`, getOptions('GET'));
         return await res.json();

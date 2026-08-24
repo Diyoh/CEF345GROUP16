@@ -95,6 +95,9 @@ export const Navbar = () => {
           <NavLink to="/projects" className={linkClass}>
             {t('nav.projects')}
           </NavLink>
+          <NavLink to="/money" className={linkClass}>
+            {t('nav.money')}
+          </NavLink>
           <NavLink to="/governance" className={linkClass}>
             {t('nav.institutions')}
           </NavLink>
@@ -152,6 +155,9 @@ export const Navbar = () => {
           <div className="flex flex-col gap-1">
             <NavLink to="/projects" className="rounded-sm px-2 py-3 text-body font-medium text-fg hover:bg-sunken">
               {t('nav.projects')}
+            </NavLink>
+            <NavLink to="/money" className="rounded-sm px-2 py-3 text-body font-medium text-fg hover:bg-sunken">
+              {t('nav.money')}
             </NavLink>
             <NavLink to="/governance" className="rounded-sm px-2 py-3 text-body font-medium text-fg hover:bg-sunken">
               {t('nav.institutions')}

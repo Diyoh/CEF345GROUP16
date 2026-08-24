@@ -509,6 +509,82 @@ export const getAllBudgets = async (actor) => {
     return { budgets: rows };
 };
 
+/**
+ * The national money view, public, by fiscal year.
+ *
+ * Three answers for a citizen: every budget allocation made to every ministry
+ * and council (with how much was sent and how much the receiver confirmed),
+ * what each institution paid into the government coffers as its own recorded
+ * income, and the year-by-year totals. No login: this page IS the product.
+ */
+export const getPublicMoney = async (fiscalYear) => {
+    const [yearRows] = await pool.query(
+        `SELECT DISTINCT fiscal_year AS y FROM allocations
+         UNION SELECT DISTINCT fiscal_year FROM entity_income
+         UNION SELECT DISTINCT fiscal_year FROM budgets
+         ORDER BY y DESC`
+    );
+    const years = yearRows.map((r) => Number(r.y));
+    const year = years.includes(Number(fiscalYear)) ? Number(fiscalYear) : (years[0] || new Date().getFullYear());
+
+    // The allocation register: every commitment for the year, receiver named.
+    const [allocations] = await pool.query(
+        `SELECT a.id, a.fiscal_year, a.amount_xaf, a.purpose, a.created_at,
+                e.code AS to_code, e.type AS to_type, e.name_en AS to_name_en, e.name_fr AS to_name_fr,
+                COALESCE(SUM(d.amount_xaf), 0) AS disbursed_xaf,
+                COALESCE(SUM(d.amount_confirmed_xaf), 0) AS confirmed_xaf,
+                SUM(CASE WHEN d.id IS NOT NULL AND d.amount_confirmed_xaf IS NULL THEN 1 ELSE 0 END) AS awaiting_confirmation
+         FROM allocations a
+         JOIN gov_entities e ON a.to_entity_id = e.id
+         LEFT JOIN disbursements d ON d.allocation_id = a.id
+         WHERE a.fiscal_year = ?
+         GROUP BY a.id, a.fiscal_year, a.amount_xaf, a.purpose, a.created_at, e.code, e.type, e.name_en, e.name_fr
+         ORDER BY a.amount_xaf DESC, a.created_at DESC`,
+        [year]
+    );
+
+    // What each institution paid into the coffers: its recorded income, with
+    // the individual lines so a total is never a black box.
+    const [incomeRows] = await pool.query(
+        `SELECT i.entity_id, i.label, i.amount_xaf, i.created_at,
+                e.code AS entity_code, e.type AS entity_type, e.name_en AS entity_name_en, e.name_fr AS entity_name_fr
+         FROM entity_income i
+         JOIN gov_entities e ON i.entity_id = e.id
+         WHERE i.fiscal_year = ?
+         ORDER BY e.type, e.code, i.created_at DESC`,
+        [year]
+    );
+    const incomeByEntity = [];
+    for (const row of incomeRows) {
+        let bucket = incomeByEntity.find((b) => b.entity_id === row.entity_id);
+        if (!bucket) {
+            bucket = {
+                entity_id: row.entity_id,
+                entity_code: row.entity_code,
+                entity_type: row.entity_type,
+                entity_name_en: row.entity_name_en,
+                entity_name_fr: row.entity_name_fr,
+                total_xaf: 0,
+                lines: [],
+            };
+            incomeByEntity.push(bucket);
+        }
+        bucket.total_xaf += Number(row.amount_xaf);
+        bucket.lines.push({ label: row.label, amount_xaf: Number(row.amount_xaf), created_at: row.created_at });
+    }
+    incomeByEntity.sort((a, b) => b.total_xaf - a.total_xaf);
+
+    const totals = {
+        allocated_xaf: allocations.reduce((t, a) => t + Number(a.amount_xaf), 0),
+        disbursed_xaf: allocations.reduce((t, a) => t + Number(a.disbursed_xaf), 0),
+        confirmed_xaf: allocations.reduce((t, a) => t + Number(a.confirmed_xaf), 0),
+        income_xaf: incomeByEntity.reduce((t, b) => t + b.total_xaf, 0),
+    };
+    totals.gap_xaf = totals.disbursed_xaf - totals.confirmed_xaf;
+
+    return { year, years, allocations, income: incomeByEntity, totals };
+};
+
 /** MINFI's outbound view: every allocation it made, with confirmation status. */
 export const getMinfiOverview = async (actor) => {
     requireMinfi(actor);
