@@ -1,47 +1,83 @@
-version: "3.8"
-
 services:
-  # MySQL Database
+
+  # MySQL. Published on 3310 because this machine already runs MySQL listeners on
+  # both 3306 and 3307; inside the compose network it is still db:3306. The old ./Database init mount is gone on purpose: it replayed
+  # stale backup dumps into every fresh database, resurrecting the pre-migration
+  # schema. Schema now comes from our own scripts, the same path every other
+  # environment uses: db:init, migrate, seed:entities, seed.
   db:
     image: mysql:8.0
     container_name: buildright-db
     restart: unless-stopped
+    # Required for the append-only triggers on the audit log: MySQL 8 ships with
+    # binary logging on, and without this flag CREATE TRIGGER demands SUPER,
+    # which the application user deliberately does not have. Managed hosts
+    # (Aiven) preset the equivalent, which is why it never surfaced before.
+    command: --log-bin-trust-function-creators=1
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: buildright_db1
       MYSQL_USER: buildright_user
       MYSQL_PASSWORD: buildright_pass
     ports:
-      - "3306:3306"
+      - "3310:3306"
     volumes:
       - db_data:/var/lib/mysql
-      - ./Database:/docker-entrypoint-initdb.d
     networks:
       - buildright-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpassword"]
+      interval: 5s
       timeout: 20s
+      retries: 20
+
+  # Redis. Not wired into the code yet; it is here so the G2 and G3 work
+  # (shared rate-limit counters for the confirmation endpoints, read cache for
+  # the public lists) lands into an environment that already runs it.
+  redis:
+    image: redis:7-alpine
+    container_name: buildright-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - buildright-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
       retries: 10
 
-  # Backend API
   backend:
     build:
       context: ./Backend
       dockerfile: Dockerfile
-    container_name: buildright-backend
+    container_name: buildright
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      # 5001 on the host: a dev server (node) usually holds 5000 on this machine.
+      # Inside the network the app still listens on 5000.
+      - "5001:5000"
+    # env_file brings the secrets that are not in this repo (Cloudinary, JWT).
+    # The environment block below overrides every database key, so whatever the
+    # host .env points at, the container always talks to the compose database.
+    env_file:
+      - ./Backend/.env
     environment:
       PORT: 5000
       DB_HOST: db
+      DB_PORT: 3306
       DB_USER: buildright_user
       DB_PASS: buildright_pass
+      DB_PASSWORD: buildright_pass
       DB_NAME: buildright_db1
-      JWT_SECRET: your_secure_jwt_secret_change_in_production
-      NODE_ENV: production
-    env_file:
-      - ./Backend/.env
+      DB_SSL: "false"
+      # development, deliberately: the local stack should use the dev CORS
+      # defaults (localhost origins) and skip the SSL that production forces.
+      NODE_ENV: development
+      CORS_ORIGINS: http://localhost:8080,http://localhost:5173
     depends_on:
       db:
         condition: service_healthy
@@ -49,14 +85,18 @@ services:
       - buildright-network
     volumes:
       - ./Backend/public:/app/public
+      # The image contains only Backend/. The schema scripts read
+      # ../../Database from Backend/scripts, which resolves to /Database here,
+      # so migrations and seeds can run inside the container:
+      #   docker compose exec backend npm run db:init
+      - ./Database:/Database:ro
 
-  # Frontend
   frontend:
     build:
       context: ./Frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://localhost:5000/api/v1
+        VITE_API_URL: http://localhost:5001/api/v1
     container_name: buildright-frontend
     restart: unless-stopped
     ports:
@@ -68,6 +108,8 @@ services:
 
 volumes:
   db_data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:
