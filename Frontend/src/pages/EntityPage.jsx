@@ -117,6 +117,25 @@ export const EntityPage = () => {
           {entity.code}
           {projects && ` · ${t('gov.projects', { count: projects.length })}`}
         </p>
+        {/* Section shortcuts, so nobody has to know the money exists to find it. */}
+        {data.finance !== null && (
+          <nav aria-label={t('gov.onThisPage')} className="mt-4 flex flex-wrap gap-2">
+            <a
+              href="#entity-money-heading"
+              className="inline-flex items-center gap-2 rounded-full bg-sunken px-3 py-1.5 text-caption font-medium text-fg hover:text-accent"
+            >
+              <i className="fas fa-coins" aria-hidden="true" />
+              {t('money.title')}
+            </a>
+            <a
+              href="#entity-projects-heading"
+              className="inline-flex items-center gap-2 rounded-full bg-sunken px-3 py-1.5 text-caption font-medium text-fg hover:text-accent"
+            >
+              <i className="fas fa-diagram-project" aria-hidden="true" />
+              {t('gov.entityProjectsTitle')}
+            </a>
+          </nav>
+        )}
       </header>
 
       {entity.type === 'REGION' && children.length > 0 && (

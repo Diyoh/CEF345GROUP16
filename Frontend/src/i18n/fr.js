@@ -120,6 +120,7 @@ export const fr = {
         projects_one: '{count} projet',
         projects_other: '{count} projets',
         typeNATIONAL: 'National',
+        onThisPage: 'Sur cette page',
         typeMINISTRY: 'Ministère',
         typeREGION: 'Région',
         typeCOUNCIL: 'Commune',
@@ -510,6 +511,8 @@ export const fr = {
     money: {
         title: 'Finances publiques',
         lead: "Ce que le ministère des Finances a engagé et envoyé, ce que cette institution a confirmé avoir reçu, ce qu'elle a payé à ses entrepreneurs et ce qu'ils attestent. Chaque chiffre est inscrit au registre public signé ; les écarts sont publiés, pas cachés.",
+        empty: 'Aucun enregistrement financier pour le moment',
+        emptyBody: "Quand le ministère des Finances alloue à cette institution, ou qu'elle déclare un budget, enregistre des recettes ou paie un entrepreneur, chaque enregistrement apparaît ici, inscrit au registre public signé.",
         budgetOf: 'Budget prévu {year}',
         budgetNone: 'Aucun budget déclaré',
         allocatedLabel: 'Alloué par le MINFI',

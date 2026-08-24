@@ -211,8 +211,16 @@ describe('EntityMoney, the citizens view', () => {
     expect(screen.getByText((text) => /45.*affirmed/i.test(text))).toBeInTheDocument();
   });
 
-  it('renders nothing when a body has no financial records', () => {
-    const { container } = renderApp(<EntityMoney finance={{ budgets: [], income: [], allocations: [], payments: [], totals: {} }} />);
+  it('states the empty case honestly instead of hiding the section', () => {
+    // A missing money section reads as "their money is not tracked". The
+    // section must stay findable on every ministry and council page.
+    renderApp(<EntityMoney finance={{ budgets: [], income: [], allocations: [], payments: [], totals: {} }} />);
+    expect(screen.getByRole('heading', { name: /public finances/i })).toBeInTheDocument();
+    expect(screen.getByText(/no financial records yet/i)).toBeInTheDocument();
+  });
+
+  it('renders nothing only when the body holds no money at all (regions)', () => {
+    const { container } = renderApp(<EntityMoney finance={null} />);
     expect(container.querySelector('section')).toBeNull();
   });
 });

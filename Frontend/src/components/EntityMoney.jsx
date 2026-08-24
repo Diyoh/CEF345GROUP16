@@ -1,6 +1,6 @@
 import React from 'react';
 import { useT, useI18n } from '../i18n';
-import { Card, Badge, StatTile } from './ui';
+import { Card, Badge, StatTile, EmptyState } from './ui';
 import { formatMoney, formatDate } from '../utils/helpers';
 
 /**
@@ -20,7 +20,21 @@ export const EntityMoney = ({ finance }) => {
   const { budgets = [], income = [], allocations = [], payments = [], totals = {} } = finance;
   const empty =
     budgets.length === 0 && income.length === 0 && allocations.length === 0 && payments.length === 0;
-  if (empty) return null;
+
+  // The section stays on the page even with nothing to show. A missing money
+  // section reads as "this platform does not track their money"; an explicit
+  // empty state reads as the truth: nothing has been recorded yet.
+  if (empty) {
+    return (
+      <section aria-labelledby="entity-money-heading" className="mb-10">
+        <h2 id="entity-money-heading" className="mb-1 text-h2 text-fg">
+          {t('money.title')}
+        </h2>
+        <p className="mb-5 max-w-prose text-caption text-fg-secondary">{t('money.lead')}</p>
+        <EmptyState icon="fa-coins" title={t('money.empty')} body={t('money.emptyBody')} />
+      </section>
+    );
+  }
 
   const year = new Date().getFullYear();
   const budget = budgets.find((b) => b.fiscalYear === year) || budgets[0];

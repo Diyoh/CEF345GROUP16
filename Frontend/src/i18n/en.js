@@ -114,6 +114,7 @@ export const en = {
         projects_one: '{count} project',
         projects_other: '{count} projects',
         typeNATIONAL: 'National',
+        onThisPage: 'On this page',
         typeMINISTRY: 'Ministry',
         typeREGION: 'Region',
         typeCOUNCIL: 'Council',
@@ -503,6 +504,8 @@ export const en = {
     money: {
         title: 'Public finances',
         lead: 'What the Ministry of Finance committed and sent, what this institution confirmed receiving, what it paid its contractors and what they affirm. Every figure is written to the signed public ledger; the gaps are published, not hidden.',
+        empty: 'No financial records yet',
+        emptyBody: 'When the Ministry of Finance allocates to this institution, or it declares a budget, records income, or pays a contractor, every record appears here, written to the signed public ledger.',
         budgetOf: 'Planned budget {year}',
         budgetNone: 'No budget declared',
         allocatedLabel: 'Allocated by MINFI',
