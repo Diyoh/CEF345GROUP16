@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api';
+import { useAppStore } from '../../useAppStore';
 import { useT, useI18n } from '../../i18n';
 import { PageHeader } from '../../components/layout/AdminLayout';
 import { ConfirmSecondFactor } from '../../components/ConfirmSecondFactor';
-import { Card, Button, Badge, Input, StatTile, EmptyState, Skeleton, SkeletonRegion, useToast } from '../../components/ui';
+import { Card, Button, Badge, Input, Select, StatTile, EmptyState, Skeleton, SkeletonRegion, useToast } from '../../components/ui';
 import { formatMoney } from '../../utils/helpers';
 
 /**
@@ -21,11 +22,15 @@ export const DeskFinance = () => {
   const t = useT();
   const { locale } = useI18n();
   const toast = useToast();
+  const { user, projects } = useAppStore();
 
   const [data, setData] = useState(null);
   const [budgetInput, setBudgetInput] = useState('');
   const [incomeLabel, setIncomeLabel] = useState('');
   const [incomeAmount, setIncomeAmount] = useState('');
+  const [payProjectId, setPayProjectId] = useState('');
+  const [payAmount, setPayAmount] = useState('');
+  const [payNote, setPayNote] = useState('');
   // One pending action at a time: { kind, summary, run(secondFactor) }
   const [pending, setPending] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -44,6 +49,8 @@ export const DeskFinance = () => {
     if (res?.success) {
       setPending(null);
       toast.success(t(pending.doneKey));
+      setPayAmount('');
+      setPayNote('');
       load();
     } else {
       // The modal stays open: a mistyped PCN should not cost the typed figures.
@@ -83,6 +90,25 @@ export const DeskFinance = () => {
       summary: t('desk.incomeSummary', { amount: formatMoney(amount, 'full'), label: incomeLabel.trim() }),
       doneKey: 'desk.incomeSaved',
       run: (sf) => api.recordIncome({ fiscalYear: thisYear, label: incomeLabel.trim(), amountXaf: amount, ...sf }),
+    });
+  };
+
+  // Only this institution's projects with a contractor can be paid.
+  const payableProjects = (projects || []).filter(
+    (p) => p.ownerEntity?.id === user?.entityId && (p.contractorId || p.contractor_id)
+  );
+
+  const askPay = () => {
+    const amount = Number(payAmount);
+    const project = payableProjects.find((p) => p.id === payProjectId);
+    if (!project || !Number.isFinite(amount) || amount <= 0) return;
+    setPending({
+      summary: t('payments.paySummary', {
+        amount: formatMoney(amount, 'full'),
+        contractor: project.contractorName || '',
+      }),
+      doneKey: 'payments.paidToast',
+      run: (sf) => api.initiateProjectPayment(project.id, { amountXaf: amount, note: payNote.trim() || undefined, ...sf }),
     });
   };
 
@@ -172,6 +198,74 @@ export const DeskFinance = () => {
           )}
         </Card>
       </div>
+
+      {payableProjects.length > 0 && (
+        <Card padding="lg" className="mt-6">
+          <h2 className="text-h3 text-fg">{t('payments.payTitle')}</h2>
+          <p className="mt-1 max-w-prose text-caption text-fg-secondary">{t('payments.payLead')}</p>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <Select
+              label={t('payments.projectLabel')}
+              value={payProjectId}
+              onChange={(e) => setPayProjectId(e.target.value)}
+              fieldClassName="w-full sm:w-80"
+            >
+              <option value="">{t('payments.projectPlaceholder')}</option>
+              {payableProjects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.title} ({p.contractorName})
+                </option>
+              ))}
+            </Select>
+            <Input
+              label={t('minfi.amount')}
+              type="number"
+              min="1"
+              value={payAmount}
+              onChange={(e) => setPayAmount(e.target.value)}
+              fieldClassName="w-full sm:w-44"
+            />
+            <Input
+              label={t('payments.noteLabel')}
+              placeholder={t('payments.notePlaceholder')}
+              value={payNote}
+              onChange={(e) => setPayNote(e.target.value)}
+              fieldClassName="w-full sm:w-64"
+            />
+            <Button variant="primary" size="md" onClick={askPay} disabled={!payProjectId || !payAmount}>
+              {t('payments.pay')}
+            </Button>
+          </div>
+
+          {data.payments?.length > 0 && (
+            <ul className="mt-4 flex flex-col gap-1 border-t border-line-subtle pt-3">
+              {data.payments.slice(0, 8).map((row) => {
+                const affirmed = Boolean(row.affirmedAt);
+                const gap = affirmed ? Number(row.amountXaf) - Number(row.amountAffirmedXaf) : 0;
+                return (
+                  <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-1.5 text-caption">
+                    <span className="min-w-0 text-fg-secondary">
+                      {row.projectTitle} · {row.contractorName}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="tabular text-fg">{formatMoney(Number(row.amountXaf), 'full')}</span>
+                      {affirmed ? (
+                        <Badge tone={gap === 0 ? 'done' : 'over'} size="sm">
+                          {gap === 0
+                            ? t('payments.affirmedFull')
+                            : t('payments.affirmedPartial', { amount: formatMoney(Number(row.amountAffirmedXaf), 'full') })}
+                        </Badge>
+                      ) : (
+                        <Badge tone="delayed" size="sm">{t('payments.awaitingAffirmation')}</Badge>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+      )}
 
       <h2 className="mb-4 mt-10 text-h3 text-fg">{t('desk.allocationsTitle')}</h2>
       {data.allocations.length === 0 ? (

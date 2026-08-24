@@ -56,20 +56,22 @@ const seedDatabase = async () => {
 
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash('password', salt); // Default password for all
+        const DEMO_PCN = 'AB23CD45EF67';
+        const pcnHash = await bcrypt.hash(DEMO_PCN, salt);
 
         for (const u of users) {
+             // Contractors carry the shared demo PCN: affirming payments (G4)
+             // needs the second factor, exactly like the entity desks.
              await pool.query(
-                'INSERT INTO users (id, name, email, role, password_hash) VALUES (?, ?, ?, ?, ?)',
-                [u.id, u.name, u.email, u.role, passwordHash]
+                'INSERT INTO users (id, name, email, role, password_hash, pcn_hash) VALUES (?, ?, ?, ?, ?, ?)',
+                [u.id, u.name, u.email, u.role, passwordHash, u.role === 'CONTRACTOR' ? pcnHash : null]
              );
         }
-        console.log('Users seeded.');
+        console.log('Users seeded. Contractor demo PCN: AB23-CD45-EF67');
 
         // Entity administrator demo accounts, when the hierarchy is seeded
         // (run seed:entities first). Their shared demo PCN is printed below so
         // the G3 confirmation flow can be exercised without registering anew.
-        const DEMO_PCN = 'AB23CD45EF67';
-        const pcnHash = await bcrypt.hash(DEMO_PCN, salt);
         const [entityRows] = await pool.query(
             "SELECT id, code FROM gov_entities WHERE code IN ('MINFI','MINTP','NW-BAMENDA-I')"
         );

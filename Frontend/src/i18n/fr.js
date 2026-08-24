@@ -466,6 +466,30 @@ export const fr = {
         allConfirmed: 'Tous les paiements confirmés en totalité',
     },
 
+
+    payments: {
+        inboxTitle: 'Paiements à votre entreprise',
+        inboxLead: "Chaque paiement qu'une institution enregistre pour votre entreprise attend une réponse : combien est réellement arrivé. Votre réponse est ce qui fait bouger le chiffre public des dépenses.",
+        openCount_one: '{count} en attente de votre réponse',
+        openCount_other: '{count} en attente de votre réponse',
+        affirm: 'Attester la réception',
+        affirmAmountLabel: 'Montant réellement reçu (FCFA)',
+        affirmSummary: '{payer} déclare {amount} payés à votre entreprise. Indiquez ce qui est réellement arrivé.',
+        affirmedToast: 'Réception attestée et inscrite au registre.',
+        affirmedFull: 'Attesté en totalité',
+        affirmedPartial: 'Attesté {amount}',
+        awaitingAffirmation: 'En attente d\'attestation',
+        payTitle: 'Payer un entrepreneur',
+        payLead: "Enregistrer un paiement à l'entrepreneur d'un de vos projets. L'entrepreneur doit attester ce qui est arrivé, et la différence est publiée.",
+        projectLabel: 'Projet',
+        projectPlaceholder: 'Choisir un projet',
+        noteLabel: 'Note',
+        notePlaceholder: 'Première tranche, règlement final',
+        pay: 'Enregistrer le paiement',
+        paySummary: 'Enregistrer {amount} payés à {contractor}.',
+        paidToast: "Paiement enregistré. L'entrepreneur doit maintenant l'attester.",
+    },
+
     verify: {
         title: 'Vérification des entreprises',
         lead: 'Entreprises en attente de décision. La vérification conditionne l\u2019attribution des travaux publics.',

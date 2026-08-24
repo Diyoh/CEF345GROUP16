@@ -84,6 +84,44 @@ export const getMinfiOverview = async (req, res) => {
     }
 };
 
+export const initiatePayment = async (req, res) => {
+    try {
+        const { amountXaf, note, password, pcn } = req.body;
+        const data = await finance.initiatePayment({ actor: req.user, projectId: req.params.projectId, amountXaf, note, password, pcn });
+        res.status(201).json({ success: true, data });
+    } catch (error) {
+        sendError(res, error);
+    }
+};
+
+export const affirmPayment = async (req, res) => {
+    try {
+        const { amountAffirmedXaf, password, pcn } = req.body;
+        const data = await finance.affirmPayment({ actor: req.user, paymentId: req.params.id, amountAffirmedXaf, password, pcn });
+        res.json({ success: true, data });
+    } catch (error) {
+        sendError(res, error);
+    }
+};
+
+export const getPaymentInbox = async (req, res) => {
+    try {
+        const data = await finance.getContractorPayments(req.user);
+        res.json({ success: true, data });
+    } catch (error) {
+        sendError(res, error);
+    }
+};
+
+export const getProjectPayments = async (req, res) => {
+    try {
+        const data = await finance.listProjectPayments(req.params.projectId);
+        res.json({ success: true, data });
+    } catch (error) {
+        sendError(res, error);
+    }
+};
+
 /* Public: anyone can read the chain head and run a full verification. */
 
 export const getLedgerHead = async (_req, res) => {

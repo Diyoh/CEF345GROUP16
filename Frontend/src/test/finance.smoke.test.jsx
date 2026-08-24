@@ -52,6 +52,17 @@ const { myFinance, minfiOverview } = vi.hoisted(() => ({
   },
 }));
 
+// DeskFinance reads the session and project list from the store to offer the
+// pay-a-contractor form; one owned project with a contractor exercises it.
+vi.mock('../useAppStore', () => ({
+  useAppStore: () => ({
+    user: { id: 'ent3', role: 'ENTITY_ADMIN', entityId: 'e-bam1', entityCode: 'NW-BAMENDA-I' },
+    projects: [
+      { id: 'p1', title: 'Market Rehab', ownerEntity: { id: 'e-bam1' }, contractorId: 'u2', contractorName: 'BTP Cameroun S.A.' },
+    ],
+  }),
+}));
+
 vi.mock('../api', async () => {
   const actual = await vi.importActual('../api');
   return {
@@ -60,6 +71,13 @@ vi.mock('../api', async () => {
       ...actual.api,
       getMyFinance: vi.fn().mockResolvedValue({ success: true, data: myFinance }),
       getMinfiOverview: vi.fn().mockResolvedValue({ success: true, data: minfiOverview }),
+      getPaymentInbox: vi.fn().mockResolvedValue({
+        success: true,
+        data: [
+          { id: 'pay1', projectTitle: 'Market Rehab', amountXaf: 60000000, note: 'First tranche', initiatedAt: '2026-08-01', affirmedAt: null, payerNameEn: 'Bamenda I Council', payerNameFr: 'Commune de Bamenda I' },
+          { id: 'pay2', projectTitle: 'Market Rehab', amountXaf: 20000000, initiatedAt: '2026-07-01', affirmedAt: '2026-07-10', amountAffirmedXaf: 15000000, payerNameEn: 'Bamenda I Council', payerNameFr: 'Commune de Bamenda I' },
+        ],
+      }),
       getEntities: vi.fn().mockResolvedValue({
         success: true,
         data: {
@@ -83,6 +101,7 @@ vi.mock('../api', async () => {
 import { DeskFinance } from '../pages/desk/DeskFinance';
 import { MinfiAllocations } from '../pages/desk/MinfiAllocations';
 import { ConfirmSecondFactor } from '../components/ConfirmSecondFactor';
+import { ContractorPayments } from '../components/ContractorPayments';
 
 const renderApp = (ui) =>
   render(
@@ -122,6 +141,16 @@ describe('MinfiAllocations', () => {
     const labels = Array.from(picker.querySelectorAll('option')).map((o) => o.textContent);
     expect(labels).toContain('Ministry of Public Works');
     expect(labels).not.toContain('Ministry of Finance');
+  });
+});
+
+describe('ContractorPayments', () => {
+  it('offers affirm on the open payment and shows the partial on the answered one', async () => {
+    renderApp(<ContractorPayments />);
+    expect(await screen.findByRole('button', { name: /affirm receipt/i })).toBeInTheDocument();
+    expect(screen.getByText(/awaiting your answer/i)).toBeInTheDocument();
+    // The answered payment shows what was affirmed, not a green tick.
+    expect(screen.getByText(/affirmed 15/i)).toBeInTheDocument();
   });
 });
 

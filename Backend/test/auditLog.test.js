@@ -96,8 +96,10 @@ describe('change logging', () => {
     });
 
     test('writes one row per changed field', async () => {
+        // Admin actor: 'spent' left the contractor's hands in G4, but the log
+        // must still capture it when the audited admin correction path moves it.
         await updateProject({
-            actor: CONTRACTOR,
+            actor: ADMIN,
             projectId: 'proj-1',
             body: { progress: 45, spent: 500, status: 'Stalled' }
         });
@@ -107,7 +109,7 @@ describe('change logging', () => {
 
     test('does not log a field submitted with its existing value', async () => {
         await updateProject({
-            actor: CONTRACTOR,
+            actor: ADMIN,
             projectId: 'proj-1',
             body: { progress: 30, spent: 500 } // progress unchanged
         });

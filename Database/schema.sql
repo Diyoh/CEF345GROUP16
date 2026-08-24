@@ -291,6 +291,25 @@ FOR EACH ROW
 SIGNAL SQLSTATE '45000'
 SET MESSAGE_TEXT = 'the financial ledger is append-only: entries cannot be deleted';
 
+-- 8e. PROJECT PAYMENTS (entity pays contractor, contractor affirms)
+CREATE TABLE IF NOT EXISTS project_payments (
+    id                  CHAR(36) PRIMARY KEY,
+    project_id          CHAR(36) NOT NULL,
+    payer_entity_id     CHAR(36) NOT NULL,
+    contractor_id       CHAR(36) NOT NULL,
+    amount_xaf          DECIMAL(18,2) NOT NULL,
+    note                VARCHAR(500) NULL,
+    initiated_by        CHAR(36) NOT NULL,
+    initiated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    amount_affirmed_xaf DECIMAL(18,2) NULL,
+    affirmed_at         TIMESTAMP NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id),
+    FOREIGN KEY (payer_entity_id) REFERENCES gov_entities(id),
+    FOREIGN KEY (contractor_id) REFERENCES users(id),
+    INDEX idx_payments_contractor (contractor_id),
+    INDEX idx_payments_project (project_id)
+);
+
 -- 9. TEAM MEMBERS
 CREATE TABLE IF NOT EXISTS team_members (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),

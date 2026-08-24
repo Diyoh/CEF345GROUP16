@@ -15,6 +15,10 @@ import rateLimit from 'express-rate-limit';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 import {
     createAllocation,
+    initiatePayment,
+    affirmPayment,
+    getPaymentInbox,
+    getProjectPayments,
     createDisbursement,
     confirmDisbursement,
     setBudget,
@@ -37,19 +41,26 @@ const secondFactorLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-// Public chain checks, before any auth.
+// Public reads, before any auth: the chain checks and a project's payments.
 router.get('/ledger/head', getLedgerHead);
 router.get('/ledger/verify', verifyLedger);
+router.get('/projects/:projectId/payments', getProjectPayments);
 
-router.use(protect, authorize('ENTITY_ADMIN'));
+router.use(protect);
 
-router.get('/mine', getMine);
-router.get('/minfi', getMinfiOverview);
+// Institution desks.
+router.get('/mine', authorize('ENTITY_ADMIN'), getMine);
+router.get('/minfi', authorize('ENTITY_ADMIN'), getMinfiOverview);
 
-router.post('/allocations', secondFactorLimiter, createAllocation);
-router.post('/allocations/:id/disbursements', secondFactorLimiter, createDisbursement);
-router.post('/disbursements/:id/confirm', secondFactorLimiter, confirmDisbursement);
-router.put('/budget', secondFactorLimiter, setBudget);
-router.post('/income', secondFactorLimiter, recordIncome);
+router.post('/allocations', authorize('ENTITY_ADMIN'), secondFactorLimiter, createAllocation);
+router.post('/allocations/:id/disbursements', authorize('ENTITY_ADMIN'), secondFactorLimiter, createDisbursement);
+router.post('/disbursements/:id/confirm', authorize('ENTITY_ADMIN'), secondFactorLimiter, confirmDisbursement);
+router.put('/budget', authorize('ENTITY_ADMIN'), secondFactorLimiter, setBudget);
+router.post('/income', authorize('ENTITY_ADMIN'), secondFactorLimiter, recordIncome);
+router.post('/projects/:projectId/payments', authorize('ENTITY_ADMIN'), secondFactorLimiter, initiatePayment);
+
+// The contractor's side of the pair of records.
+router.get('/payments/inbox', authorize('CONTRACTOR'), getPaymentInbox);
+router.post('/payments/:id/affirm', authorize('CONTRACTOR'), secondFactorLimiter, affirmPayment);
 
 export default router;

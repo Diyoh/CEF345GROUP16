@@ -459,6 +459,30 @@ export const en = {
         allConfirmed: 'All payments confirmed in full',
     },
 
+
+    payments: {
+        inboxTitle: 'Payments to your company',
+        inboxLead: 'Each payment an institution records against your company waits for one answer: how much actually arrived. Your answer is what moves the public spent figure.',
+        openCount_one: '{count} awaiting your answer',
+        openCount_other: '{count} awaiting your answer',
+        affirm: 'Affirm receipt',
+        affirmAmountLabel: 'Amount actually received (FCFA)',
+        affirmSummary: '{payer} records {amount} paid to your company. State what actually arrived.',
+        affirmedToast: 'Receipt affirmed and recorded in the ledger.',
+        affirmedFull: 'Affirmed in full',
+        affirmedPartial: 'Affirmed {amount}',
+        awaitingAffirmation: 'Awaiting affirmation',
+        payTitle: 'Pay a contractor',
+        payLead: 'Record a payment to the contractor of one of your projects. The contractor must affirm what arrived, and the difference is published.',
+        projectLabel: 'Project',
+        projectPlaceholder: 'Select a project',
+        noteLabel: 'Note',
+        notePlaceholder: 'First tranche, final settlement',
+        pay: 'Record payment',
+        paySummary: 'Record {amount} paid to {contractor}.',
+        paidToast: 'Payment recorded. The contractor must now affirm it.',
+    },
+
     verify: {
         title: 'Contractor verification',
         lead: 'Companies awaiting a decision. Verification is what lets a contractor be assigned public works.',

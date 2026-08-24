@@ -24,6 +24,7 @@ import pool, { withTransaction } from '../config/db.js';
 import { badRequest, forbidden, notFound } from '../utils/AppError.js';
 import { verifySecondFactor } from './secondFactor.js';
 import { appendEntry } from './ledgerService.js';
+import { recordChanges } from './projectService.js';
 
 /* ------------------------------------------------------------------ guards */
 
@@ -267,6 +268,162 @@ export const recordIncome = async ({ actor, fiscalYear, label, amountXaf, passwo
     return { id, fiscalYear: year, label: what, amountXaf: amount, ledgerSeq: ledger.seq };
 };
 
+/**
+ * The owning institution records a payment to its project's contractor.
+ * Initiation is a claim, not a fact: the fact arrives when the contractor
+ * affirms what they received, and the platform publishes the difference.
+ */
+export const initiatePayment = async ({ actor, projectId, amountXaf, note, password, pcn }) => {
+    requireOwnEntity(actor);
+    await verifySecondFactor(actor, { password, pcn });
+
+    const amount = parseAmount(amountXaf, 'Payment');
+    const id = randomUUID();
+    let result;
+
+    await withTransaction(async (tx) => {
+        const [rows] = await tx.query(
+            `SELECT p.id, p.title, p.owner_entity_id, p.contractor_id, cp.status AS contractor_status
+             FROM projects p
+             LEFT JOIN contractor_profiles cp ON cp.user_id = p.contractor_id
+             WHERE p.id = ? FOR UPDATE`,
+            [projectId]
+        );
+        const project = rows[0];
+        if (!project) throw notFound('Project not found');
+        if (project.owner_entity_id !== actor.entity_id) {
+            throw forbidden('You can only pay contractors on projects owned by your institution');
+        }
+        if (!project.contractor_id) throw badRequest('This project has no assigned contractor to pay');
+        if (project.contractor_status !== 'VERIFIED') {
+            throw forbidden('This contractor has not been verified by the Ministry of Public Works');
+        }
+
+        await tx.query(
+            `INSERT INTO project_payments (id, project_id, payer_entity_id, contractor_id, amount_xaf, note, initiated_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [id, projectId, actor.entity_id, project.contractor_id, amount, note || null, actor.id]
+        );
+        const ledger = await appendEntry(tx, {
+            entryType: 'payment.initiated',
+            refTable: 'project_payments',
+            refId: id,
+            actor,
+            amountXaf: amount,
+            data: { projectId, projectTitle: project.title, contractorId: project.contractor_id, note: note || null },
+        });
+        result = { id, projectId, contractorId: project.contractor_id, amountXaf: amount, ledgerSeq: ledger.seq };
+    });
+
+    return result;
+};
+
+/**
+ * The contractor affirms what actually arrived, exactly once per payment.
+ * This is also the moment the project's spent figure moves: it becomes the sum
+ * of affirmed amounts, recomputed here and logged in project_changes, so the
+ * public number and its provenance land in one transaction.
+ */
+export const affirmPayment = async ({ actor, paymentId, amountAffirmedXaf, password, pcn }) => {
+    if (actor?.role !== 'CONTRACTOR') throw forbidden('Only the paid contractor can affirm a payment');
+    await verifySecondFactor(actor, { password, pcn });
+
+    const affirmed = Number(amountAffirmedXaf);
+    if (!Number.isFinite(affirmed) || affirmed < 0) {
+        throw badRequest('Affirmed amount must be zero or a positive amount in FCFA');
+    }
+
+    let result;
+    await withTransaction(async (tx) => {
+        const [rows] = await tx.query(
+            'SELECT id, project_id, contractor_id, amount_xaf, affirmed_at FROM project_payments WHERE id = ? FOR UPDATE',
+            [paymentId]
+        );
+        const payment = rows[0];
+        if (!payment) throw notFound('Payment not found');
+        if (payment.contractor_id !== actor.id) throw forbidden('Only the paid contractor can affirm this payment');
+        if (payment.affirmed_at !== null) throw badRequest('This payment has already been affirmed');
+
+        await tx.query(
+            'UPDATE project_payments SET amount_affirmed_xaf = ?, affirmed_at = NOW() WHERE id = ?',
+            [affirmed, paymentId]
+        );
+
+        // Derive spent from what contractors affirm, never from what anyone types.
+        const [projects] = await tx.query(
+            'SELECT spent FROM projects WHERE id = ? FOR UPDATE',
+            [payment.project_id]
+        );
+        const oldSpent = Number(projects[0]?.spent || 0);
+        const [sums] = await tx.query(
+            'SELECT COALESCE(SUM(amount_affirmed_xaf), 0) AS affirmed FROM project_payments WHERE project_id = ? AND affirmed_at IS NOT NULL',
+            [payment.project_id]
+        );
+        const newSpent = Number(sums[0].affirmed);
+        await tx.query('UPDATE projects SET spent = ? WHERE id = ?', [newSpent, payment.project_id]);
+        if (newSpent !== oldSpent) {
+            await recordChanges({
+                tx,
+                projectId: payment.project_id,
+                actor,
+                changes: [{ field: 'spent', oldValue: String(oldSpent), newValue: String(newSpent) }],
+            });
+        }
+
+        const gap = Math.round((Number(payment.amount_xaf) - affirmed) * 100) / 100;
+        const ledger = await appendEntry(tx, {
+            entryType: 'payment.affirmed',
+            refTable: 'project_payments',
+            refId: paymentId,
+            actor,
+            amountXaf: affirmed,
+            data: { projectId: payment.project_id, paidXaf: Number(payment.amount_xaf), affirmedXaf: affirmed, gapXaf: gap },
+        });
+        result = {
+            id: paymentId,
+            projectId: payment.project_id,
+            paidXaf: Number(payment.amount_xaf),
+            affirmedXaf: affirmed,
+            gapXaf: gap,
+            spentXaf: newSpent,
+            ledgerSeq: ledger.seq,
+        };
+    });
+
+    return result;
+};
+
+/** A project's payment history: public, like everything else about the money. */
+export const listProjectPayments = async (projectId) => {
+    const [rows] = await pool.query(
+        `SELECT pp.id, pp.amount_xaf, pp.note, pp.initiated_at, pp.amount_affirmed_xaf, pp.affirmed_at,
+                e.code AS payer_code, e.name_en AS payer_name_en, e.name_fr AS payer_name_fr,
+                u.name AS contractor_name
+         FROM project_payments pp
+         JOIN gov_entities e ON pp.payer_entity_id = e.id
+         JOIN users u ON pp.contractor_id = u.id
+         WHERE pp.project_id = ? ORDER BY pp.initiated_at DESC`,
+        [projectId]
+    );
+    return rows;
+};
+
+/** The contractor's inbox: what they have been paid, unanswered first. */
+export const getContractorPayments = async (actor) => {
+    const [rows] = await pool.query(
+        `SELECT pp.id, pp.amount_xaf, pp.note, pp.initiated_at, pp.amount_affirmed_xaf, pp.affirmed_at,
+                p.title AS project_title,
+                e.code AS payer_code, e.name_en AS payer_name_en, e.name_fr AS payer_name_fr
+         FROM project_payments pp
+         JOIN projects p ON pp.project_id = p.id
+         JOIN gov_entities e ON pp.payer_entity_id = e.id
+         WHERE pp.contractor_id = ?
+         ORDER BY (pp.affirmed_at IS NULL) DESC, pp.initiated_at DESC`,
+        [actor.id]
+    );
+    return rows;
+};
+
 /* ---------------------------------------------------------------- queries */
 
 /** Everything one institution's desk needs: budget, income, incoming money. */
@@ -310,7 +467,20 @@ export const getEntityFinance = async (entityId) => {
         .filter((d) => d.amount_confirmed_xaf !== null)
         .reduce((s, d) => s + (Number(d.amount_xaf) - Number(d.amount_confirmed_xaf)), 0);
 
-    return { budgets, income, allocations, totals };
+    const [payments] = await pool.query(
+        `SELECT pp.id, pp.amount_xaf, pp.initiated_at, pp.amount_affirmed_xaf, pp.affirmed_at,
+                p.title AS project_title, u.name AS contractor_name
+         FROM project_payments pp
+         JOIN projects p ON pp.project_id = p.id
+         JOIN users u ON pp.contractor_id = u.id
+         WHERE pp.payer_entity_id = ?
+         ORDER BY pp.initiated_at DESC`,
+        [entityId]
+    );
+    totals.paid_xaf = payments.reduce((s, r) => s + Number(r.amount_xaf), 0);
+    totals.paid_affirmed_xaf = payments.reduce((s, r) => s + Number(r.amount_affirmed_xaf || 0), 0);
+
+    return { budgets, income, allocations, payments, totals };
 };
 
 /** MINFI's outbound view: every allocation it made, with confirmation status. */

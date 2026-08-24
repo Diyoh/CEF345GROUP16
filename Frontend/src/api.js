@@ -236,6 +236,26 @@ export const api = {
         return await res.json();
     },
 
+    initiateProjectPayment: async (projectId, payload) => {
+        const res = await fetch(`${BASE_URL}/finance/projects/${projectId}/payments`, getOptions('POST', payload));
+        return await res.json();
+    },
+
+    affirmPayment: async (paymentId, payload) => {
+        const res = await fetch(`${BASE_URL}/finance/payments/${paymentId}/affirm`, getOptions('POST', payload));
+        return await res.json();
+    },
+
+    getPaymentInbox: async () => {
+        const res = await fetch(`${BASE_URL}/finance/payments/inbox`, getOptions('GET'));
+        return await res.json();
+    },
+
+    getProjectPayments: async (projectId) => {
+        const res = await fetch(`${BASE_URL}/finance/projects/${projectId}/payments`, getOptions('GET'));
+        return await res.json();
+    },
+
     getLedgerHead: async () => {
         const res = await fetch(`${BASE_URL}/finance/ledger/head`, getOptions('GET'));
         return await res.json();

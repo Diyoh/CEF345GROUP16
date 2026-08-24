@@ -6,6 +6,7 @@ import { ContractorProjectCard } from '../components/dashboard/ContractorProject
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { AuthPending } from '../components/AuthPending';
 import { ContractorAccount } from '../components/ContractorAccount';
+import { ContractorPayments } from '../components/ContractorPayments';
 import { Button, EmptyState, StatTile, useToast } from '../components/ui';
 import { formatMoney } from '../utils/helpers';
 import { projectHealth } from '../utils/projectHealth';
@@ -88,9 +89,9 @@ export const ContractorDashboard = () => {
     // contractor, progress out of range — previously still showed "the public page now
     // shows your changes", so a contractor believed they had reported when the record
     // said otherwise.
+    // spent is no longer part of this form: it derives from affirmed payments.
     const result = await updateProject({
       ...project,
-      spent: Number(formData.get('spent')),
       progress: Number(formData.get('progress')),
       status: formData.get('status'),
       description: formData.get('description'),
@@ -157,8 +158,11 @@ export const ContractorDashboard = () => {
 
       {/* The company file: verification status, identity, documents. Above the
           project list because until it says VERIFIED, the list stays empty. */}
-      <div className="mb-8">
+      <div className="mb-8 flex flex-col gap-6">
         <ContractorAccount />
+        {/* Payments recorded against this company, each awaiting one answer:
+            how much actually arrived. That answer is what moves public spent. */}
+        <ContractorPayments />
       </div>
 
       {myProjects.length === 0 ? (

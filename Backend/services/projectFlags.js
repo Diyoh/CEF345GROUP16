@@ -34,6 +34,9 @@ const VARIANCE_CRITICAL = -20;
 /** A project untouched this long is not being reported on, whatever its status says. */
 const DORMANT_DAYS = 90;
 
+/** How long a payment may sit unaffirmed before silence itself is the finding. */
+const AFFIRM_DAYS = 14;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const num = (value) => {
@@ -175,6 +178,57 @@ const DEFINITIONS = [
         test: (h, p) => h.progress >= 25 && Array.isArray(p.images) && p.images.length === 0,
         detail: (h) => `${h.progress}% of work reported with no site photographs.`,
         params: (h) => ({ progress: h.progress })
+    },
+    {
+        code: 'payment_mismatch',
+        severity: 'critical',
+        label: 'Contractor affirms less than was paid',
+        // paymentsPaidAffirmed: sum of payments the contractor has answered;
+        // paymentsAffirmed: what they say arrived. Aggregates joined by the
+        // project queries; absent columns mean the row was fetched without
+        // payment data, and silence must not fire a critical flag.
+        test: (h, p) => {
+            const paid = p.payments_paid_affirmed ?? p.paymentsPaidAffirmed;
+            const affirmed = p.payments_affirmed ?? p.paymentsAffirmed;
+            return paid !== undefined && paid !== null && num(affirmed) < num(paid);
+        },
+        detail: (h, p) => {
+            const paid = num(p.payments_paid_affirmed ?? p.paymentsPaidAffirmed);
+            const affirmed = num(p.payments_affirmed ?? p.paymentsAffirmed);
+            return `The institution recorded ${paid.toLocaleString('en-GB')} FCFA paid; the contractor affirms ${affirmed.toLocaleString('en-GB')} FCFA received.`;
+        },
+        params: (h, p) => ({
+            paid: num(p.payments_paid_affirmed ?? p.paymentsPaidAffirmed),
+            affirmed: num(p.payments_affirmed ?? p.paymentsAffirmed)
+        })
+    },
+    {
+        code: 'payment_unconfirmed',
+        severity: 'warning',
+        label: 'Payment awaiting contractor affirmation',
+        test: (h, p, now) => {
+            const oldest = p.oldest_unaffirmed_at ?? p.oldestUnaffirmedAt;
+            if (!oldest) return false;
+            const age = daysSince(oldest, now);
+            return age !== null && age >= AFFIRM_DAYS;
+        },
+        detail: (h, p, now) => `A recorded payment has waited ${daysSince(p.oldest_unaffirmed_at ?? p.oldestUnaffirmedAt, now)} days without the contractor affirming receipt.`,
+        params: (h, p, now) => ({ days: daysSince(p.oldest_unaffirmed_at ?? p.oldestUnaffirmedAt, now) })
+    },
+    {
+        code: 'contractor_unverified',
+        severity: 'critical',
+        label: 'Contractor not verified by MINTP',
+        // Assignment of unverified contractors is blocked at the service, so
+        // this fires only for records that predate the rule, and it should:
+        // an unchecked company holding public works is exactly the finding.
+        test: (h, p) => {
+            const status = p.contractor_verification ?? p.contractorVerification;
+            const contractorId = p.contractor_id ?? p.contractorId;
+            return Boolean(contractorId) && status !== undefined && status !== 'VERIFIED';
+        },
+        detail: () => 'The assigned contractor has not been verified by the Ministry of Public Works.',
+        params: (h, p) => ({ status: (p.contractor_verification ?? p.contractorVerification) || 'NONE' })
     }
 ];
 
@@ -246,8 +300,20 @@ const SQL_DORMANT = `(
     AND p.updated_at < DATE_SUB(NOW(), INTERVAL ${DORMANT_DAYS} DAY)
 )`;
 
+const SQL_PAYMENT_MISMATCH = `EXISTS (
+    SELECT 1 FROM project_payments pp WHERE pp.project_id = p.id
+    AND pp.affirmed_at IS NOT NULL AND pp.amount_affirmed_xaf < pp.amount_xaf
+)`;
+const SQL_PAYMENT_UNCONFIRMED = `EXISTS (
+    SELECT 1 FROM project_payments pp WHERE pp.project_id = p.id
+    AND pp.affirmed_at IS NULL AND pp.initiated_at < DATE_SUB(NOW(), INTERVAL ${AFFIRM_DAYS} DAY)
+)`;
+const SQL_CONTRACTOR_UNVERIFIED = `(p.contractor_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM contractor_profiles cp WHERE cp.user_id = p.contractor_id AND cp.status = 'VERIFIED'
+))`;
+
 /** Money is gone or unaccounted for. `?flagged=critical` */
-export const CRITICAL_SQL = `(${SQL_OVER_BUDGET} OR ${SQL_SPENDING_AHEAD})`;
+export const CRITICAL_SQL = `(${SQL_OVER_BUDGET} OR ${SQL_SPENDING_AHEAD} OR ${SQL_PAYMENT_MISMATCH} OR ${SQL_CONTRACTOR_UNVERIFIED})`;
 
 /**
  * At least one flag of any severity. `?flagged=true`
@@ -256,6 +322,6 @@ export const CRITICAL_SQL = `(${SQL_OVER_BUDGET} OR ${SQL_SPENDING_AHEAD})`;
  * nothing while the cards it was meant to filter visibly carried warning badges. "Flagged"
  * has to mean what a reader assumes it means.
  */
-export const FLAGGED_SQL = `(${CRITICAL_SQL} OR ${SQL_PAST_DUE} OR ${SQL_STALLED} OR ${SQL_DORMANT})`;
+export const FLAGGED_SQL = `(${CRITICAL_SQL} OR ${SQL_PAST_DUE} OR ${SQL_STALLED} OR ${SQL_DORMANT} OR ${SQL_PAYMENT_UNCONFIRMED})`;
 
-export const THRESHOLDS = { VARIANCE_WATCH, VARIANCE_CRITICAL, DORMANT_DAYS };
+export const THRESHOLDS = { VARIANCE_WATCH, VARIANCE_CRITICAL, DORMANT_DAYS, AFFIRM_DAYS };

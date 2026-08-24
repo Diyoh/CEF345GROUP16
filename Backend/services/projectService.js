@@ -20,6 +20,23 @@ import { AppError, badRequest, forbidden, notFound } from '../utils/AppError.js'
 import { saveBase64Image } from '../utils/fileHandler.js';
 import { attachFlags, FLAGGED_SQL, CRITICAL_SQL } from './projectFlags.js';
 
+/**
+ * Payment aggregates joined onto every project row, feeding the payment flags
+ * and the derived spent figure's provenance. Subselects rather than JOINs so
+ * pagination and grouping stay untouched.
+ */
+export const PAYMENT_AGGREGATES = `
+    (SELECT COALESCE(SUM(pp.amount_xaf), 0) FROM project_payments pp
+        WHERE pp.project_id = p.id) AS payments_total,
+    (SELECT COALESCE(SUM(pp.amount_affirmed_xaf), 0) FROM project_payments pp
+        WHERE pp.project_id = p.id AND pp.affirmed_at IS NOT NULL) AS payments_affirmed,
+    (SELECT COALESCE(SUM(pp.amount_xaf), 0) FROM project_payments pp
+        WHERE pp.project_id = p.id AND pp.affirmed_at IS NOT NULL) AS payments_paid_affirmed,
+    (SELECT MIN(pp.initiated_at) FROM project_payments pp
+        WHERE pp.project_id = p.id AND pp.affirmed_at IS NULL) AS oldest_unaffirmed_at,
+    (SELECT cp.status FROM contractor_profiles cp
+        WHERE cp.user_id = p.contractor_id) AS contractor_verification`;
+
 /** Valid values for projects.status — must stay in sync with the ENUM in schema.sql */
 export const PROJECT_STATUSES = ['Planned', 'Ongoing', 'Stalled', 'Completed'];
 
@@ -30,11 +47,15 @@ export const PROJECT_STATUSES = ['Planned', 'Ongoing', 'Stalled', 'Completed'];
  * A contractor may NOT re-scope the project — they cannot change the budget they are
  * measured against, retitle the project, or reassign it to someone else.
  */
-const CONTRACTOR_EDITABLE_FIELDS = ['status', 'progress', 'spent', 'description'];
+// 'spent' left this list in phase G4: the figure is derived from payments the
+// contractor AFFIRMS (financeService.affirmPayment), not typed into a form.
+// Self-reporting the money side was the platform's largest credibility hole.
+const CONTRACTOR_EDITABLE_FIELDS = ['status', 'progress', 'description'];
 
 /** An admin owns the definition of the project itself, so they may edit everything. */
 const ADMIN_EDITABLE_FIELDS = [
     ...CONTRACTOR_EDITABLE_FIELDS,
+    'spent', // audited correction path for records that predate derived spend
     'title', 'location', 'region', 'budget', 'contractorId', 'startDate', 'completionDate'
 ];
 
@@ -365,7 +386,7 @@ const getAreaCodes = async (projectId, db = pool) => {
 /** Fetches one project row (with contractor name) or null. */
 const findProjectRow = async (id) => {
     const [rows] = await pool.query(
-        `SELECT p.*, u.name AS contractorName
+        `SELECT p.*, u.name AS contractorName, ${PAYMENT_AGGREGATES}
          FROM projects p
          LEFT JOIN users u ON p.contractor_id = u.id
          WHERE p.id = ?`,
@@ -459,7 +480,7 @@ const diffFields = (project, updates) => {
  * actor_name and actor_role are stored, not referenced, so renaming or deleting a user
  * cannot retroactively rewrite who did what.
  */
-const recordChanges = async ({ tx, projectId, actor, changes }) => {
+export const recordChanges = async ({ tx, projectId, actor, changes }) => {
     if (!changes || changes.length === 0) return 0;
 
     for (const change of changes) {
@@ -532,7 +553,7 @@ export const listProjects = async ({ status, search, flagged, entityIds, limit =
     const offset = (safePage - 1) * safeLimit;
 
     let query = `
-        SELECT p.*, u.name AS contractorName
+        SELECT p.*, u.name AS contractorName, ${PAYMENT_AGGREGATES}
         FROM projects p
         LEFT JOIN users u ON p.contractor_id = u.id
         WHERE 1=1
