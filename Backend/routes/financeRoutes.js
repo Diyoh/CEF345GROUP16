@@ -27,6 +27,7 @@ import {
     getMinfiOverview,
     getAllBudgets,
     getLedgerHead,
+    listLedgerEntries,
     getPublicMoney,
     verifyLedger,
 } from '../controllers/financeController.js';
@@ -46,6 +47,7 @@ const secondFactorLimiter = rateLimit({
 // Public reads, before any auth: the chain checks and a project's payments.
 router.get('/ledger/head', getLedgerHead);
 router.get('/ledger/verify', verifyLedger);
+router.get('/ledger/entries', listLedgerEntries);
 router.get('/projects/:projectId/payments', getProjectPayments);
 router.get('/overview', getPublicMoney);
 

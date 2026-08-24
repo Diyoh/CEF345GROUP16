@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { getComments, createComment, deleteComment } from '../controllers/commentController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 
@@ -11,7 +12,19 @@ const router = express.Router();
 // So let's define specific paths here to match index.js mount info
 
 router.get('/projects/:id/comments', getComments);
-router.post('/projects/:id/comments', createComment);
+// Citizen reports are deliberately unauthenticated: that openness is the
+// check on contractor self-reporting. It is also the platform's only
+// unauthenticated write, so it carries its own limiter: ten reports per
+// fifteen minutes per IP is generous for a citizen and useless for a spammer.
+const reportLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { success: false, error: 'Too many reports from this connection. Try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+router.post('/projects/:id/comments', reportLimiter, createComment);
 
 // Admin moderation
 router.delete('/comments/:commentId', protect, authorize('PLATFORM_ADMIN'), deleteComment);

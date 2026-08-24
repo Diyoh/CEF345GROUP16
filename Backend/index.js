@@ -115,6 +115,12 @@ app.get('/', (req, res) => {
     res.send({ message: 'BuildRight API is running', version: '1.0.0' });
 });
 
+// Unknown API paths answer as JSON 404 instead of falling through to the
+// error handler: a wrong URL is the caller's mistake, not a server fault.
+app.use('/api', (req, res) => {
+    res.status(404).json({ success: false, error: `No such endpoint: ${req.method} ${req.originalUrl}` });
+});
+
 // --- ERROR HANDLING ---
 app.use((err, req, res, next) => {
     // A blocked cross-origin request is a rejected caller, not a server fault.
@@ -148,4 +154,18 @@ app.set('io', io);
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Accepting browser requests from: ${allowedOrigins.join(', ') || '(none configured)'}`);
+
+    // The server checks its own ledger on every boot and says so out loud.
+    // A broken chain at startup is the loudest possible alarm; a healthy one
+    // prints the head so operators can compare it with the published value.
+    import('./services/ledgerService.js')
+        .then((ledger) => ledger.verifyChain())
+        .then((result) => {
+            if (result.ok) {
+                console.log(`Ledger self-check: chain intact, ${result.entries} entries, head ${String(result.headHash).slice(0, 16)}`);
+            } else {
+                console.error(`LEDGER SELF-CHECK FAILED at seq ${result.brokenAtSeq}: ${result.problem}. Treat every figure as suspect until resolved.`);
+            }
+        })
+        .catch((err) => console.warn('Ledger self-check skipped:', err.message));
 });

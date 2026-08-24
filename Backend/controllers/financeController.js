@@ -181,6 +181,15 @@ export const getLedgerHead = async (_req, res) => {
     }
 };
 
+export const listLedgerEntries = async (req, res) => {
+    try {
+        const data = await ledger.listEntries(req.query.limit, req.query.before ?? null);
+        res.json({ success: true, data });
+    } catch (error) {
+        sendError(res, error);
+    }
+};
+
 export const verifyLedger = async (_req, res) => {
     try {
         const data = await ledger.verifyChain();

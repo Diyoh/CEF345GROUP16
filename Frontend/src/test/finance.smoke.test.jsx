@@ -92,6 +92,15 @@ vi.mock('../api', async () => {
           totals: { allocatedXaf: 500000000, disbursedXaf: 300000000, confirmedXaf: 250000000, incomeXaf: 25000000, gapXaf: 50000000 },
         },
       }),
+      getLedgerHead: vi.fn().mockResolvedValue({ success: true, data: { seq: 8, entryHash: 'a'.repeat(64) } }),
+      getLedgerVerify: vi.fn().mockResolvedValue({ success: true, data: { ok: true, entries: 8, headSeq: 8 } }),
+      getLedgerEntries: vi.fn().mockResolvedValue({ success: true, data: [
+        { seq: 8, entryType: 'payment.affirmed', amountXaf: 45000000, occurredAt: '2026-08-24', entryHash: 'b'.repeat(64) },
+        { seq: 7, entryType: 'allocation.created', amountXaf: 500000000, occurredAt: '2026-08-24', entryHash: 'c'.repeat(64) },
+      ] }),
+      getProjectPayments: vi.fn().mockResolvedValue({ success: true, data: [
+        { id: 'pay1', amountXaf: 60000000, note: 'First tranche', initiatedAt: '2026-08-01', affirmedAt: '2026-08-10', amountAffirmedXaf: 45000000 },
+      ] }),
       getPaymentInbox: vi.fn().mockResolvedValue({
         success: true,
         data: [
@@ -125,6 +134,8 @@ import { ConfirmSecondFactor } from '../components/ConfirmSecondFactor';
 import { ContractorPayments } from '../components/ContractorPayments';
 import { EntityMoney } from '../components/EntityMoney';
 import { Money } from '../pages/Money';
+import { Ledger } from '../pages/Ledger';
+import { MoneyTrail } from '../components/MoneyTrail';
 
 const renderApp = (ui) =>
   render(
@@ -220,6 +231,30 @@ describe('Money, the national public page', () => {
     expect(screen.getByText('Market fees')).toBeInTheDocument();
     // The year picker offers both recorded years.
     expect(screen.getByRole('option', { name: '2025' })).toBeInTheDocument();
+  });
+});
+
+describe('Ledger, the public explorer', () => {
+  it('shows the head, verifies on demand, and translates the feed', async () => {
+    renderApp(<Ledger />);
+    expect(await screen.findByText(new RegExp('a'.repeat(64)))).toBeInTheDocument();
+    expect(screen.getByText('Budget allocated')).toBeInTheDocument();
+    expect(screen.getByText('Payment affirmed')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /verify the chain now/i }));
+    expect(await screen.findByText(/chain intact\. all 8 entries/i)).toBeInTheDocument();
+  });
+});
+
+describe('MoneyTrail, follow the money on a project', () => {
+  it('shows the custody chips and the affirmation gap', async () => {
+    renderApp(
+      <MoneyTrail project={{ id: 'p1', contractorName: 'BTP Cameroun S.A.', ownerEntity: { code: 'NW-BAMENDA-I', nameEn: 'Bamenda I Council', nameFr: 'Commune de Bamenda I' } }} />
+    );
+    expect(await screen.findByRole('heading', { name: /follow the money/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /bamenda i council/i })).toHaveAttribute('href', '/entity/NW-BAMENDA-I');
+    // Both the summary line and the per-payment badge state the affirmed figure.
+    expect(screen.getAllByText((text) => /45.*affirmed/i.test(text)).length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: /verify it yourself/i })).toHaveAttribute('href', '/ledger');
   });
 });
 

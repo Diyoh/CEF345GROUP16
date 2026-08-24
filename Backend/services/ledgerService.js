@@ -102,6 +102,26 @@ export const getHead = async () => {
 };
 
 /**
+ * The public feed: recent entries, newest first. Everything in the ledger is
+ * public by design; hashes are included so a reader can spot-check linkage.
+ */
+export const listEntries = async (limit = 25, before = null) => {
+    const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 25, 1), 100);
+    const params = [];
+    let where = '';
+    if (before !== null && Number.isFinite(Number(before))) {
+        where = 'WHERE seq < ?';
+        params.push(Number(before));
+    }
+    const [rows] = await pool.query(
+        `SELECT seq, occurred_at, entry_type, ref_table, ref_id, actor_entity_id, amount_xaf, prev_hash, entry_hash, signature
+         FROM ledger_entries ${where} ORDER BY seq DESC LIMIT ?`,
+        [...params, safeLimit]
+    );
+    return rows.map((r) => ({ ...r, seq: Number(r.seq) }));
+};
+
+/**
  * Walk the whole chain and recompute everything. Returns the first broken seq
  * rather than throwing: a broken chain is a finding to report, not a crash.
  */

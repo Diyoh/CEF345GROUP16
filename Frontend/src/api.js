@@ -267,6 +267,16 @@ export const api = {
         return await res.json();
     },
 
+    getLedgerVerify: async () => {
+        const res = await fetch(`${BASE_URL}/finance/ledger/verify`, getOptions('GET'));
+        return await res.json();
+    },
+
+    getLedgerEntries: async (limit = 25) => {
+        const res = await fetch(`${BASE_URL}/finance/ledger/entries?limit=${limit}`, getOptions('GET'));
+        return await res.json();
+    },
+
     getLedgerHead: async () => {
         const res = await fetch(`${BASE_URL}/finance/ledger/head`, getOptions('GET'));
         return await res.json();
