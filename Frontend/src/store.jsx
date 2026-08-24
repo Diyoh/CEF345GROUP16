@@ -124,10 +124,10 @@ export const AppProvider = ({ children }) => {
 
     // --- ACTIONS ---
 
-    const login = async (email, password = 'password') => {
+    const login = async (email, password = 'password', role) => {
         setLoading(true);
         try {
-            const res = await api.login(email, password);
+            const res = await api.login(email, password, role);
             if (res.success) {
                 const currentUser = res.data;
                 setUser(currentUser); 

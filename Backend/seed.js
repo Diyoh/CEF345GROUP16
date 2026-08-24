@@ -1,5 +1,7 @@
-import pool from './config/db.js';
+import pool, { withTransaction } from './config/db.js';
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
+import { appendEntry } from './services/ledgerService.js';
 
 /**
  * Seed dates are RELATIVE to the day the seed runs.
@@ -30,6 +32,13 @@ const seedDatabase = async () => {
         await pool.query('DELETE FROM project_updates');
         await pool.query('DELETE FROM project_images');
         await pool.query('DELETE FROM project_areas');
+        await pool.query('DELETE FROM project_payments');
+        await pool.query('DELETE FROM disbursements');
+        await pool.query('DELETE FROM allocations');
+        await pool.query('DELETE FROM budgets');
+        await pool.query('DELETE FROM entity_income');
+        // ledger_entries is deliberately untouched: it rejects DELETE at the
+        // database, and a reseed appending on top of old entries is the proof.
         await pool.query('DELETE FROM contractor_documents');
         await pool.query('DELETE FROM contractor_profiles');
         await pool.query('DELETE FROM projects');
@@ -233,6 +242,102 @@ const seedDatabase = async () => {
             console.log('Projects placed in the hierarchy (owner MINTP, region areas).');
         }
 
+        // DEMO MONEY STORY. One of each thing the finance pages can show, so
+        // the three demo desks open onto something real: an allocation partly
+        // disbursed and partly confirmed (a published 50M gap), one still
+        // awaiting confirmation, a budget, own income, and a project payment
+        // partially affirmed (a published 15M gap, spent derived to 45M).
+        // Every row is written with its ledger entry in one transaction, the
+        // same way the live services do it, so the chain stays truthful.
+        const [finRows] = await pool.query(
+            "SELECT id, code FROM gov_entities WHERE code IN ('MINFI','MINTP','NW-BAMENDA-I')"
+        );
+        const fin = Object.fromEntries(finRows.map(e => [e.code, e.id]));
+        if (fin.MINFI && fin.MINTP && fin['NW-BAMENDA-I']) {
+            const minfiActor = { id: 'ent1', entity_id: fin.MINFI };
+            const councilActor = { id: 'ent3', entity_id: fin['NW-BAMENDA-I'] };
+            const contractorActor = { id: 'u2' };
+
+            // A council-owned project, so the council desk has something to pay.
+            const councilProjectId = 'p-bam-market';
+            await pool.query(
+                `INSERT INTO projects (id, title, description, location, region, budget, spent, progress, status, contractor_id, start_date, completion_date, owner_entity_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [councilProjectId, 'Bamenda Central Market Rehabilitation',
+                 'Rebuilding the market sheds and drainage, funded by the 2026 urban programme allocation.',
+                 'Bamenda', 'North West', 120000000, 45000000, 35, 'Ongoing', 'u2',
+                 daysAgo(60), daysAhead(120), fin['NW-BAMENDA-I']]
+            );
+            await pool.query('INSERT IGNORE INTO project_areas (project_id, entity_id) VALUES (?, ?)',
+                [councilProjectId, fin['NW-BAMENDA-I']]);
+
+            await withTransaction(async (tx) => {
+                // Allocation to the council: disbursed 300M, confirmed 250M.
+                const alloc1 = randomUUID();
+                await tx.query(
+                    'INSERT INTO allocations (id, from_entity_id, to_entity_id, fiscal_year, amount_xaf, purpose, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [alloc1, fin.MINFI, fin['NW-BAMENDA-I'], 2026, 500000000, 'Urban roads and drainage programme', 'ent1']
+                );
+                await appendEntry(tx, { entryType: 'allocation.created', refTable: 'allocations', refId: alloc1, actor: minfiActor, amountXaf: 500000000, data: { toEntity: 'NW-BAMENDA-I', fiscalYear: 2026, purpose: 'Urban roads and drainage programme', seeded: true } });
+
+                const disb1 = randomUUID();
+                await tx.query(
+                    'INSERT INTO disbursements (id, allocation_id, amount_xaf, sent_by, amount_confirmed_xaf, confirmed_by, confirmed_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+                    [disb1, alloc1, 300000000, 'ent1', 250000000, 'ent3']
+                );
+                await appendEntry(tx, { entryType: 'disbursement.sent', refTable: 'disbursements', refId: disb1, actor: minfiActor, amountXaf: 300000000, data: { allocationId: alloc1, fiscalYear: 2026, seeded: true } });
+                await appendEntry(tx, { entryType: 'disbursement.confirmed', refTable: 'disbursements', refId: disb1, actor: councilActor, amountXaf: 250000000, data: { sentXaf: 300000000, confirmedXaf: 250000000, gapXaf: 50000000, seeded: true } });
+
+                // Allocation to MINTP: 1bn sent, nothing confirmed yet.
+                const alloc2 = randomUUID();
+                await tx.query(
+                    'INSERT INTO allocations (id, from_entity_id, to_entity_id, fiscal_year, amount_xaf, purpose, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [alloc2, fin.MINFI, fin.MINTP, 2026, 2000000000, 'Trunk road rehabilitation programme', 'ent1']
+                );
+                await appendEntry(tx, { entryType: 'allocation.created', refTable: 'allocations', refId: alloc2, actor: minfiActor, amountXaf: 2000000000, data: { toEntity: 'MINTP', fiscalYear: 2026, purpose: 'Trunk road rehabilitation programme', seeded: true } });
+
+                const disb2 = randomUUID();
+                await tx.query(
+                    'INSERT INTO disbursements (id, allocation_id, amount_xaf, sent_by) VALUES (?, ?, ?, ?)',
+                    [disb2, alloc2, 1000000000, 'ent1']
+                );
+                await appendEntry(tx, { entryType: 'disbursement.sent', refTable: 'disbursements', refId: disb2, actor: minfiActor, amountXaf: 1000000000, data: { allocationId: alloc2, fiscalYear: 2026, seeded: true } });
+
+                // The council's own book: budget and income.
+                const budget1 = randomUUID();
+                await tx.query(
+                    'INSERT INTO budgets (id, entity_id, fiscal_year, planned_amount, note, recorded_by) VALUES (?, ?, ?, ?, ?, ?)',
+                    [budget1, fin['NW-BAMENDA-I'], 2026, 900000000, 'Adopted municipal budget', 'ent3']
+                );
+                await appendEntry(tx, { entryType: 'budget.set', refTable: 'budgets', refId: budget1, actor: councilActor, amountXaf: 900000000, data: { fiscalYear: 2026, note: 'Adopted municipal budget', seeded: true } });
+
+                const income1 = randomUUID();
+                await tx.query(
+                    'INSERT INTO entity_income (id, entity_id, fiscal_year, label, amount_xaf, recorded_by) VALUES (?, ?, ?, ?, ?, ?)',
+                    [income1, fin['NW-BAMENDA-I'], 2026, 'Market fees and local taxes', 25000000, 'ent3']
+                );
+                await appendEntry(tx, { entryType: 'income.recorded', refTable: 'entity_income', refId: income1, actor: councilActor, amountXaf: 25000000, data: { fiscalYear: 2026, label: 'Market fees and local taxes', seeded: true } });
+
+                // The council pays its contractor 60M; the contractor affirms 45M.
+                // The project's spent above is 45M for exactly this reason.
+                const pay1 = randomUUID();
+                await tx.query(
+                    'INSERT INTO project_payments (id, project_id, payer_entity_id, contractor_id, amount_xaf, note, initiated_by, amount_affirmed_xaf, affirmed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+                    [pay1, councilProjectId, fin['NW-BAMENDA-I'], 'u2', 60000000, 'First tranche', 'ent3', 45000000]
+                );
+                await appendEntry(tx, { entryType: 'payment.initiated', refTable: 'project_payments', refId: pay1, actor: councilActor, amountXaf: 60000000, data: { projectId: councilProjectId, projectTitle: 'Bamenda Central Market Rehabilitation', contractorId: 'u2', note: 'First tranche', seeded: true } });
+                await appendEntry(tx, { entryType: 'payment.affirmed', refTable: 'project_payments', refId: pay1, actor: contractorActor, amountXaf: 45000000, data: { projectId: councilProjectId, paidXaf: 60000000, affirmedXaf: 45000000, gapXaf: 15000000, seeded: true } });
+            });
+
+            console.log('Demo money story seeded: allocations, gaps, budget, income, a partially affirmed payment.');
+            console.log('');
+            console.log('DEMO DESKS (password: "password", PCN: AB23-CD45-EF67):');
+            console.log('  Ministry of Finance   finance@minfi.cm    -> /desk (Allocations)');
+            console.log('  Ministry (MINTP)      works@mintp.cm      -> /desk (Verification)');
+            console.log('  Bamenda I Council     council@bamenda1.cm -> /desk (Finances)');
+            console.log('  Contractor            contact@btpcameroun.cm -> payment inbox');
+        }
+
         // 4. SEED PROJECT IMAGES (URLs only, no base64 in seed usually unless we mock urls)
         // We will just use the paths from frontend data as URLs. Frontend expects them to be served or valid.
         // Frontend paths: '/pictures/...'
@@ -321,7 +426,7 @@ const seedDatabase = async () => {
         // 8. SEED ACCESS CODES
         const accessCodes = [
             { code: 'DEV123', role: 'DEVELOPER_ADMIN' },
-            { code: 'ADMIN123', role: 'ADMIN' },
+            { code: 'ADMIN123', role: 'PLATFORM_ADMIN' },
             { code: 'CONTR123', role: 'CONTRACTOR' }
         ];
 

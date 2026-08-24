@@ -325,6 +325,13 @@ export const fr = {
     },
 
     auth: {
+        roleLabel: 'Je me connecte en tant que',
+        rolePlaceholder: 'Choisissez votre rôle',
+        rolePlatform: 'Administrateur de la plateforme',
+        roleEntity: "Administrateur d'institution (ministère ou commune)",
+        roleContractor: 'Entrepreneur',
+        roleDeveloper: 'Développeur',
+        selectRole: 'Choisissez le rôle avec lequel vous vous connectez.',
         staffSignIn: 'Connexion du personnel',
         staffSignInLead: 'Pour les administrateurs, les entreprises et le personnel de la plateforme.',
         createAccount: 'Créer votre compte',

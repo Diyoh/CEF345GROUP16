@@ -318,6 +318,13 @@ export const en = {
     },
 
     auth: {
+        roleLabel: 'I am signing in as',
+        rolePlaceholder: 'Select your role',
+        rolePlatform: 'Platform administrator',
+        roleEntity: 'Institution administrator (ministry or council)',
+        roleContractor: 'Contractor',
+        roleDeveloper: 'Developer',
+        selectRole: 'Select the role you are signing in as.',
         staffSignIn: 'Staff sign in',
         staffSignInLead: 'For government administrators, contractors, and platform staff.',
         createAccount: 'Create your account',

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
 import { UserRole } from '../types';
-import { Button, Card, Input, Field } from '../components/ui';
+import { Button, Card, Input, Select, Field } from '../components/ui';
 import { useT } from '../i18n';
 
 /**
@@ -30,6 +30,16 @@ export const Login = () => {
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [regError, setRegError] = useState('');
   const [issuedPcn, setIssuedPcn] = useState(null);
+  const [loginRole, setLoginRole] = useState('');
+
+  // The person states who they are; the server checks the statement against
+  // the account and refuses a mismatch even with correct credentials.
+  const LOGIN_ROLES = [
+    { value: UserRole.ADMIN, labelKey: 'auth.rolePlatform' },
+    { value: UserRole.ENTITY_ADMIN, labelKey: 'auth.roleEntity' },
+    { value: UserRole.CONTRACTOR, labelKey: 'auth.roleContractor' },
+    { value: UserRole.DEVELOPER_ADMIN, labelKey: 'auth.roleDeveloper' },
+  ];
 
   // A freshly issued PCN blocks the redirect: it exists in this render and
   // never again, so the account holder confirms saving it before moving on.
@@ -45,6 +55,11 @@ export const Login = () => {
     e.preventDefault();
     setLoginError('');
 
+    if (!loginRole) {
+      setLoginError(t('auth.selectRole'));
+      return;
+    }
+
     // Demo fallback, unchanged: known demo accounts sign in without typing the password.
     let password = loginPassword;
     if (!password) {
@@ -56,7 +71,7 @@ export const Login = () => {
       }
     }
 
-    await login(loginEmail, password);
+    await login(loginEmail, password, loginRole);
   };
 
   const handleRegister = async (e) => {
@@ -186,6 +201,20 @@ export const Login = () => {
           </form>
         ) : (
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <Select
+              label={t('auth.roleLabel')}
+              required
+              value={loginRole}
+              onChange={(e) => setLoginRole(e.target.value)}
+            >
+              <option value="">{t('auth.rolePlaceholder')}</option>
+              {LOGIN_ROLES.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {t(r.labelKey)}
+                </option>
+              ))}
+            </Select>
+
             <Input
               label={t('auth.email')}
               type="email"

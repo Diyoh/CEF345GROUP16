@@ -161,11 +161,21 @@ export const register = async (req, res) => {
     }
 };
 
+// The login form asks the person to state who they are. The statement is
+// checked, not trusted: if the declared role does not match the account, the
+// login is refused even with correct credentials. This catches the everyday
+// mistake (a contractor on the administrator tab) before it becomes a support
+// question, and it costs an attacker one more thing to know.
+const LOGIN_ROLES = ['PLATFORM_ADMIN', 'ENTITY_ADMIN', 'CONTRACTOR', 'DEVELOPER_ADMIN'];
+
 export const login = async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
     if (!email || !password) {
         return res.status(400).json({ success: false, error: 'Please provide email and password' });
+    }
+    if (role !== undefined && !LOGIN_ROLES.includes(role)) {
+        return res.status(400).json({ success: false, error: 'Unknown role' });
     }
 
     try {
@@ -180,6 +190,13 @@ export const login = async (req, res) => {
 
         if (!isMatch) {
             return res.status(401).json({ success: false, error: 'Invalid credentials' });
+        }
+
+        // The declared role must match the account. Checked only after the
+        // password, so this message never leaks whether credentials were right
+        // for some other role of a guessed account.
+        if (role !== undefined && user.role !== role) {
+            return res.status(403).json({ success: false, error: 'This account is not registered under the role you selected' });
         }
 
         // Return Cookie

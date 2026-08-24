@@ -77,8 +77,8 @@ const getOptions = (method = 'GET', body = null) => {
 
 export const api = {
     // Auth
-    login: async (email, password) => {
-        const res = await fetch(`${BASE_URL}/auth/login`, getOptions('POST', { email, password }));
+    login: async (email, password, role) => {
+        const res = await fetch(`${BASE_URL}/auth/login`, getOptions('POST', { email, password, role }));
         return await res.json();
     },
 

@@ -126,6 +126,39 @@ Before running the project, ensure you have:
   - `/src/components`: Reusable UI components
   - `/src/store.jsx`: Global state management
 
+## Demo accounts
+
+Seeded by `cd Backend && npm run seed` (run `npm run seed:entities` first for the
+government hierarchy). The sign-in form asks for your role; pick the one listed here,
+because a mismatched declaration is refused even with the right password.
+
+| Sign in as | Email | Password | PCN (for money actions) |
+|---|---|---|---|
+| Platform administrator | admin@buildright.cm | password | none |
+| Institution administrator (Ministry of Finance) | finance@minfi.cm | password | AB23-CD45-EF67 |
+| Institution administrator (Ministry of Public Works) | works@mintp.cm | password | AB23-CD45-EF67 |
+| Institution administrator (Bamenda I Council) | council@bamenda1.cm | password | AB23-CD45-EF67 |
+| Contractor | contact@btpcameroun.cm | password | AB23-CD45-EF67 |
+| Developer | dev@buildright.cm | password | none |
+
+What each desk opens onto (the seed includes a working money story):
+
+- **finance@minfi.cm**: the Allocations desk, with 2bn FCFA committed to MINTP (1bn sent,
+  still awaiting confirmation) and 500M to Bamenda I (300M sent, 250M confirmed, the 50M
+  gap published).
+- **council@bamenda1.cm**: the Finances desk, with the council's 900M budget, its own
+  income, the incoming allocation with its confirmation record, and a 60M payment to its
+  market contractor of which only 45M is affirmed.
+- **works@mintp.cm**: the contractor Verification queue (BuildFast is pending) plus the
+  ministry's own projects.
+- **contact@btpcameroun.cm**: the payment inbox showing the 60M/45M payment, the company
+  verification file, and the assigned projects, where `spent` is now read-only because it
+  derives from affirmed payments.
+
+The PCN (Private Confirmation Number) is the second factor demanded by every money
+action, together with the password. Real accounts receive theirs exactly once, at
+registration.
+
 ## Contributing
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to this project.
