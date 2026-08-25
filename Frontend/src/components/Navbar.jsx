@@ -25,6 +25,7 @@ import { useT } from '../i18n';
 const DASHBOARD_BY_ROLE = {
   [UserRole.ADMIN]: { to: '/admin', labelKey: 'nav.adminDashboard' },
   [UserRole.CONTRACTOR]: { to: '/contractor', labelKey: 'nav.myProjects' },
+  [UserRole.ENTITY_ADMIN]: { to: '/desk', labelKey: 'nav.entityDesk' },
   [UserRole.DEVELOPER_ADMIN]: { to: '/dev-admin', labelKey: 'nav.developerPanel' },
 };
 
@@ -75,7 +76,21 @@ export const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-canvas/95 backdrop-blur supports-[backdrop-filter]:bg-canvas/80">
-      <a href="#main" className="skip-link">
+      <a
+        href="#main"
+        className="skip-link"
+        onClick={(e) => {
+          // HashRouter owns the URL hash: letting this default would navigate
+          // to a nonexistent route instead of skipping to the content.
+          e.preventDefault();
+          const el = document.getElementById('main');
+          if (el) {
+            el.setAttribute('tabindex', '-1');
+            el.focus({ preventScroll: true });
+            el.scrollIntoView();
+          }
+        }}
+      >
         {t('nav.skipToContent')}
       </a>
 
@@ -93,6 +108,12 @@ export const Navbar = () => {
         <div className="hidden items-center gap-7 md:flex">
           <NavLink to="/projects" className={linkClass}>
             {t('nav.projects')}
+          </NavLink>
+          <NavLink to="/money" className={linkClass}>
+            {t('nav.money')}
+          </NavLink>
+          <NavLink to="/governance" className={linkClass}>
+            {t('nav.institutions')}
           </NavLink>
           <NavLink to="/developers" className={linkClass}>
             {t('nav.about')}
@@ -149,6 +170,12 @@ export const Navbar = () => {
             <NavLink to="/projects" className="rounded-sm px-2 py-3 text-body font-medium text-fg hover:bg-sunken">
               {t('nav.projects')}
             </NavLink>
+            <NavLink to="/money" className="rounded-sm px-2 py-3 text-body font-medium text-fg hover:bg-sunken">
+              {t('nav.money')}
+            </NavLink>
+            <NavLink to="/governance" className="rounded-sm px-2 py-3 text-body font-medium text-fg hover:bg-sunken">
+              {t('nav.institutions')}
+            </NavLink>
             <NavLink to="/developers" className="rounded-sm px-2 py-3 text-body font-medium text-fg hover:bg-sunken">
               {t('nav.about')}
             </NavLink>
@@ -158,7 +185,7 @@ export const Navbar = () => {
             {user ? (
               <div className="flex flex-col gap-3">
                 <p className="text-caption text-fg-tertiary">
-                  Signed in as <span className="font-medium text-fg">{user.name}</span>
+                  {t('nav.signedInAs')} <span className="font-medium text-fg">{user.name}</span>
                 </p>
                 {dashboard && (
                   <Button as={Link} to={dashboard.to} variant="secondary" size="lg" fullWidth>

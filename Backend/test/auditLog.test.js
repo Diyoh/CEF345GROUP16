@@ -33,7 +33,7 @@ const { updateProject } = await import('../services/projectService.js');
 const pool = (await import('../config/db.js')).default;
 
 const CONTRACTOR = { id: 'con1', name: 'BTP Cameroun S.A.', role: 'CONTRACTOR' };
-const ADMIN = { id: 'adm1', name: 'Admin User', role: 'ADMIN' };
+const ADMIN = { id: 'adm1', name: 'Admin User', role: 'PLATFORM_ADMIN' };
 
 const PROJECT = {
     id: 'proj-1',
@@ -96,8 +96,10 @@ describe('change logging', () => {
     });
 
     test('writes one row per changed field', async () => {
+        // Admin actor: 'spent' left the contractor's hands in G4, but the log
+        // must still capture it when the audited admin correction path moves it.
         await updateProject({
-            actor: CONTRACTOR,
+            actor: ADMIN,
             projectId: 'proj-1',
             body: { progress: 45, spent: 500, status: 'Stalled' }
         });
@@ -107,7 +109,7 @@ describe('change logging', () => {
 
     test('does not log a field submitted with its existing value', async () => {
         await updateProject({
-            actor: CONTRACTOR,
+            actor: ADMIN,
             projectId: 'proj-1',
             body: { progress: 30, spent: 500 } // progress unchanged
         });
@@ -133,7 +135,7 @@ describe('change logging', () => {
             field: 'budget',
             oldValue: '1000',
             newValue: '5000',
-            actorRole: 'ADMIN'
+            actorRole: 'PLATFORM_ADMIN'
         });
     });
 

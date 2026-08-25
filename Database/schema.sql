@@ -4,25 +4,53 @@
 -- Disable foreign key checks temporarily
 SET foreign_key_checks = 0;
 
+-- 0. GOVERNMENT ENTITIES (the administrative hierarchy)
+-- One typed table for every level of the state. Depth is fixed at two: councils
+-- point at their region, ministries and regions point at the national root.
+-- Mirrored by migrations/005_gov_entities.sql for existing databases.
+CREATE TABLE IF NOT EXISTS gov_entities (
+    id          CHAR(36) PRIMARY KEY,
+    type        ENUM('NATIONAL','MINISTRY','REGION','COUNCIL') NOT NULL,
+    code        VARCHAR(30) UNIQUE NOT NULL,
+    name_en     VARCHAR(255) NOT NULL,
+    name_fr     VARCHAR(255) NOT NULL,
+    parent_id   CHAR(36) NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_id) REFERENCES gov_entities(id),
+    INDEX idx_entities_parent (parent_id),
+    INDEX idx_entities_type (type)
+);
+
 -- 1. USERS
 CREATE TABLE IF NOT EXISTS users (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
-    role ENUM('ADMIN', 'CONTRACTOR', 'DEVELOPER_ADMIN', 'PUBLIC') NOT NULL DEFAULT 'PUBLIC',
+    role ENUM('PLATFORM_ADMIN', 'ENTITY_ADMIN', 'CONTRACTOR', 'DEVELOPER_ADMIN', 'PUBLIC') NOT NULL DEFAULT 'PUBLIC',
+    -- Which institution an ENTITY_ADMIN belongs to. NULL for every other role.
+    entity_id CHAR(36) NULL,
+    -- Private Confirmation Number, bcrypt-hashed. Issued once at account creation
+    -- to entity administrators and contractors; required with the password on
+    -- every financial action from phase G3.
+    pcn_hash VARCHAR(255) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (entity_id) REFERENCES gov_entities(id)
 );
 
 -- 2. ACCESS CODES
 CREATE TABLE IF NOT EXISTS access_codes (
     code VARCHAR(50) PRIMARY KEY,
-    role ENUM('ADMIN', 'CONTRACTOR', 'DEVELOPER_ADMIN', 'PUBLIC') NOT NULL,
+    role ENUM('PLATFORM_ADMIN', 'ENTITY_ADMIN', 'CONTRACTOR', 'DEVELOPER_ADMIN', 'PUBLIC') NOT NULL,
     is_used BOOLEAN DEFAULT FALSE,
+    -- An ENTITY_ADMIN code is bound to one institution; the account it mints
+    -- belongs there and nowhere else.
+    entity_id CHAR(36) NULL,
     generated_by_user_id CHAR(36),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (generated_by_user_id) REFERENCES users(id)
+    FOREIGN KEY (generated_by_user_id) REFERENCES users(id),
+    FOREIGN KEY (entity_id) REFERENCES gov_entities(id)
 );
 
 -- 3. PROJECTS
@@ -38,11 +66,15 @@ CREATE TABLE IF NOT EXISTS projects (
     CONSTRAINT chk_progress CHECK (progress >= 0 AND progress <= 100),
     status ENUM('Planned', 'Ongoing', 'Stalled', 'Completed') DEFAULT 'Planned',
     contractor_id CHAR(36),
+    -- The council or ministry that commissions and manages the project. Nullable
+    -- during the transition from the free-text region column.
+    owner_entity_id CHAR(36) NULL,
     start_date DATE,
     completion_date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (contractor_id) REFERENCES users(id),
+    FOREIGN KEY (owner_entity_id) REFERENCES gov_entities(id),
 
     -- Query indexes. Mirrored by Database/migrations/001_add_query_indexes.sql for
     -- databases that already exist. Keep the two in sync.
@@ -50,6 +82,19 @@ CREATE TABLE IF NOT EXISTS projects (
     INDEX idx_projects_status (status),                 -- status filter + stats counts
     INDEX idx_projects_region (region),                 -- region filter, public browse
     INDEX idx_projects_status_created (status, created_at DESC) -- "filtered, newest first"
+);
+
+-- 3b. PROJECT AREAS (where a project happens)
+-- A council project covers its council. A ministerial project covers one or more
+-- regions, or the national root for country-wide works. The service enforces the
+-- legal combinations; this table only stores them.
+CREATE TABLE IF NOT EXISTS project_areas (
+    project_id CHAR(36) NOT NULL,
+    entity_id  CHAR(36) NOT NULL,
+    PRIMARY KEY (project_id, entity_id),
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (entity_id) REFERENCES gov_entities(id),
+    INDEX idx_areas_entity (entity_id)
 );
 
 -- 4. PROJECT IMAGES
@@ -132,6 +177,138 @@ BEFORE DELETE ON project_changes
 FOR EACH ROW
 SIGNAL SQLSTATE '45000'
 SET MESSAGE_TEXT = 'project_changes is an append-only audit log: rows cannot be deleted';
+
+-- 8b. CONTRACTOR VERIFICATION (by the Ministry of Public Works)
+-- Only a VERIFIED contractor can be assigned a project or, later, receive a
+-- payment. Mirrored by migrations/008_contractor_verification.sql.
+CREATE TABLE IF NOT EXISTS contractor_profiles (
+    user_id          CHAR(36) PRIMARY KEY,
+    company_name     VARCHAR(255) NOT NULL,
+    rccm_number      VARCHAR(100) NULL,
+    taxpayer_number  VARCHAR(100) NULL,
+    status           ENUM('PENDING','VERIFIED','REJECTED') NOT NULL DEFAULT 'PENDING',
+    verified_by      CHAR(36) NULL,
+    verified_at      TIMESTAMP NULL,
+    rejection_reason TEXT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_contractor_status (status)
+);
+
+CREATE TABLE IF NOT EXISTS contractor_documents (
+    id          CHAR(36) PRIMARY KEY,
+    user_id     CHAR(36) NOT NULL,
+    label       VARCHAR(255) NOT NULL,
+    file_url    TEXT NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- 8c. FINANCE CORE (budgets, allocations, disbursements, income)
+CREATE TABLE IF NOT EXISTS budgets (
+    id             CHAR(36) PRIMARY KEY,
+    entity_id      CHAR(36) NOT NULL,
+    fiscal_year    SMALLINT NOT NULL,
+    planned_amount DECIMAL(18,2) NOT NULL,
+    note           VARCHAR(500) NULL,
+    recorded_by    CHAR(36) NOT NULL,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_budget_entity_year (entity_id, fiscal_year),
+    FOREIGN KEY (entity_id) REFERENCES gov_entities(id)
+);
+
+CREATE TABLE IF NOT EXISTS allocations (
+    id             CHAR(36) PRIMARY KEY,
+    from_entity_id CHAR(36) NOT NULL,
+    to_entity_id   CHAR(36) NOT NULL,
+    fiscal_year    SMALLINT NOT NULL,
+    amount_xaf     DECIMAL(18,2) NOT NULL,
+    purpose        VARCHAR(500) NOT NULL,
+    created_by     CHAR(36) NOT NULL,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (from_entity_id) REFERENCES gov_entities(id),
+    FOREIGN KEY (to_entity_id)   REFERENCES gov_entities(id),
+    INDEX idx_alloc_to (to_entity_id, fiscal_year),
+    INDEX idx_alloc_from (from_entity_id, fiscal_year)
+);
+
+CREATE TABLE IF NOT EXISTS disbursements (
+    id                   CHAR(36) PRIMARY KEY,
+    allocation_id        CHAR(36) NOT NULL,
+    amount_xaf           DECIMAL(18,2) NOT NULL,
+    sent_by              CHAR(36) NOT NULL,
+    sent_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    amount_confirmed_xaf DECIMAL(18,2) NULL,
+    confirmed_by         CHAR(36) NULL,
+    confirmed_at         TIMESTAMP NULL,
+    FOREIGN KEY (allocation_id) REFERENCES allocations(id),
+    INDEX idx_disb_allocation (allocation_id)
+);
+
+CREATE TABLE IF NOT EXISTS entity_income (
+    id          CHAR(36) PRIMARY KEY,
+    entity_id   CHAR(36) NOT NULL,
+    fiscal_year SMALLINT NOT NULL,
+    label       VARCHAR(255) NOT NULL,
+    amount_xaf  DECIMAL(18,2) NOT NULL,
+    recorded_by CHAR(36) NOT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (entity_id) REFERENCES gov_entities(id),
+    INDEX idx_income_entity (entity_id, fiscal_year)
+);
+
+-- 8d. FINANCIAL LEDGER (append-only, hash-chained, signed)
+CREATE TABLE IF NOT EXISTS ledger_entries (
+    seq             BIGINT PRIMARY KEY,
+    occurred_at     TIMESTAMP(3) NOT NULL,
+    entry_type      VARCHAR(50) NOT NULL,
+    ref_table       VARCHAR(50) NOT NULL,
+    ref_id          CHAR(36) NOT NULL,
+    actor_user_id   CHAR(36) NOT NULL,
+    actor_entity_id CHAR(36) NULL,
+    amount_xaf      DECIMAL(18,2) NULL,
+    details_json    TEXT NOT NULL,
+    prev_hash       CHAR(64) NOT NULL,
+    entry_hash      CHAR(64) NOT NULL,
+    signature       CHAR(64) NOT NULL,
+    INDEX idx_ledger_ref (ref_table, ref_id),
+    INDEX idx_ledger_actor (actor_user_id)
+);
+
+DROP TRIGGER IF EXISTS ledger_no_update;
+
+CREATE TRIGGER ledger_no_update
+BEFORE UPDATE ON ledger_entries
+FOR EACH ROW
+SIGNAL SQLSTATE '45000'
+SET MESSAGE_TEXT = 'the financial ledger is append-only: entries cannot be modified';
+
+DROP TRIGGER IF EXISTS ledger_no_delete;
+
+CREATE TRIGGER ledger_no_delete
+BEFORE DELETE ON ledger_entries
+FOR EACH ROW
+SIGNAL SQLSTATE '45000'
+SET MESSAGE_TEXT = 'the financial ledger is append-only: entries cannot be deleted';
+
+-- 8e. PROJECT PAYMENTS (entity pays contractor, contractor affirms)
+CREATE TABLE IF NOT EXISTS project_payments (
+    id                  CHAR(36) PRIMARY KEY,
+    project_id          CHAR(36) NOT NULL,
+    payer_entity_id     CHAR(36) NOT NULL,
+    contractor_id       CHAR(36) NOT NULL,
+    amount_xaf          DECIMAL(18,2) NOT NULL,
+    note                VARCHAR(500) NULL,
+    initiated_by        CHAR(36) NOT NULL,
+    initiated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    amount_affirmed_xaf DECIMAL(18,2) NULL,
+    affirmed_at         TIMESTAMP NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id),
+    FOREIGN KEY (payer_entity_id) REFERENCES gov_entities(id),
+    FOREIGN KEY (contractor_id) REFERENCES users(id),
+    INDEX idx_payments_contractor (contractor_id),
+    INDEX idx_payments_project (project_id)
+);
 
 -- 9. TEAM MEMBERS
 CREATE TABLE IF NOT EXISTS team_members (

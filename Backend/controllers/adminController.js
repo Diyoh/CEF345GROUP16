@@ -1,15 +1,14 @@
-import { randomInt } from 'crypto';
 import pool from '../config/db.js';
+import { randomCode } from '../utils/secureCodes.js';
 
 /** Roles an access code may grant. Must match the users.role / access_codes.role ENUM. */
-const ASSIGNABLE_ROLES = ['ADMIN', 'CONTRACTOR', 'DEVELOPER_ADMIN', 'PUBLIC'];
+const ASSIGNABLE_ROLES = ['PLATFORM_ADMIN', 'ENTITY_ADMIN', 'CONTRACTOR', 'DEVELOPER_ADMIN'];
 
 /**
  * Crockford-style alphabet: no 0/O, no 1/I/L. These codes get read off a screen and typed
  * into a phone, often transcribed by hand first, so ambiguous glyphs cost real support time.
  */
-const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-const CODE_LENGTH = 10; // 31^10 ≈ 2^49 — brute force is not viable even without rate limiting
+const CODE_LENGTH = 10; // 31^10 is about 2^49: brute force is not viable even without rate limiting
 
 /**
  * generateSecureCode
@@ -22,17 +21,14 @@ const CODE_LENGTH = 10; // 31^10 ≈ 2^49 — brute force is not viable even wit
  * authorization boundary. Guessing one grants a role — including ADMIN.
  */
 const generateSecureCode = () => {
-    let code = '';
-    for (let i = 0; i < CODE_LENGTH; i++) {
-        code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
-    }
+    const code = randomCode(CODE_LENGTH);
     // Grouped for legibility when read aloud or copied by hand.
     return `${code.slice(0, 5)}-${code.slice(5)}`;
 };
 
 export const generateAccessCode = async (req, res) => {
     try {
-        const { role } = req.body;
+        const { role, entityId } = req.body;
 
         // Previously `role.substring(0,5)` threw a 500 when role was missing, and any
         // string was accepted as a role.
@@ -41,6 +37,25 @@ export const generateAccessCode = async (req, res) => {
                 success: false,
                 error: `Role must be one of: ${ASSIGNABLE_ROLES.join(', ')}`
             });
+        }
+
+        // An entity administrator is an administrator OF something. The code
+        // carries the institution, so the account it mints cannot choose one.
+        let boundEntityId = null;
+        if (role === 'ENTITY_ADMIN') {
+            if (!entityId) {
+                return res.status(400).json({ success: false, error: 'An ENTITY_ADMIN code must name its institution' });
+            }
+            const [entities] = await pool.query(
+                'SELECT id, type FROM gov_entities WHERE id = ?', [entityId]
+            );
+            if (entities.length === 0) {
+                return res.status(400).json({ success: false, error: 'That institution does not exist' });
+            }
+            if (entities[0].type !== 'MINISTRY' && entities[0].type !== 'COUNCIL') {
+                return res.status(400).json({ success: false, error: 'Administrators belong to a ministry or a council' });
+            }
+            boundEntityId = entities[0].id;
         }
 
         // The code no longer encodes the role it grants. A prefix like "ADMIN-" told an
@@ -58,11 +73,11 @@ export const generateAccessCode = async (req, res) => {
         }
 
         await pool.query(
-            'INSERT INTO access_codes (code, role, generated_by_user_id) VALUES (?, ?, ?)',
-            [code, role, req.user.id]
+            'INSERT INTO access_codes (code, role, entity_id, generated_by_user_id) VALUES (?, ?, ?, ?)',
+            [code, role, boundEntityId, req.user.id]
         );
 
-        res.status(201).json({ success: true, data: { code, role } });
+        res.status(201).json({ success: true, data: { code, role, entityId: boundEntityId } });
 
     } catch (error) {
         console.error(error);
@@ -91,8 +106,13 @@ export const getAccessCodes = async (req, res) => {
 
 export const getContractors = async (req, res) => {
     try {
+        // Verification status rides along so an assignment form can refuse an
+        // unverified contractor before the server has to.
         const [contractors] = await pool.query(
-            'SELECT id, name, email, role FROM users WHERE role = ?', 
+            `SELECT u.id, u.name, u.email, u.role, cp.status AS verification_status
+             FROM users u
+             LEFT JOIN contractor_profiles cp ON cp.user_id = u.id
+             WHERE u.role = ?`,
             ['CONTRACTOR']
         );
         res.json({ success: true, data: contractors });

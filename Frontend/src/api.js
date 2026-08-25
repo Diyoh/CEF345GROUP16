@@ -77,8 +77,8 @@ const getOptions = (method = 'GET', body = null) => {
 
 export const api = {
     // Auth
-    login: async (email, password) => {
-        const res = await fetch(`${BASE_URL}/auth/login`, getOptions('POST', { email, password }));
+    login: async (email, password, role) => {
+        const res = await fetch(`${BASE_URL}/auth/login`, getOptions('POST', { email, password, role }));
         return await res.json();
     },
 
@@ -162,8 +162,8 @@ export const api = {
     },
 
     // Admin
-    generateAccessCode: async (role) => {
-        const res = await fetch(`${BASE_URL}/admin/access-codes`, getOptions('POST', { role }));
+    generateAccessCode: async (role, entityId = null) => {
+        const res = await fetch(`${BASE_URL}/admin/access-codes`, getOptions('POST', { role, entityId }));
         return await res.json();
     },
 
@@ -172,6 +172,127 @@ export const api = {
         return await res.json();
     },
     
+    // Contractor account: profile, documents, and the MINTP verification queue.
+    getContractorProfile: async () => {
+        const res = await fetch(`${BASE_URL}/contractor/profile`, getOptions('GET'));
+        return await res.json();
+    },
+
+    saveContractorProfile: async (data) => {
+        const res = await fetch(`${BASE_URL}/contractor/profile`, getOptions('PUT', data));
+        return await res.json();
+    },
+
+    addContractorDocument: async (formData) => {
+        const res = await fetch(`${BASE_URL}/contractor/documents`, getOptions('POST', formData));
+        return await res.json();
+    },
+
+    getContractorQueue: async () => {
+        const res = await fetch(`${BASE_URL}/contractor/queue`, getOptions('GET'));
+        return await res.json();
+    },
+
+    verifyContractor: async (userId, decision, reason = '') => {
+        const res = await fetch(`${BASE_URL}/contractor/${userId}/verify`, getOptions('POST', { decision, reason }));
+        return await res.json();
+    },
+
+    // Finance (phase G3). Every mutation carries the second factor: the
+    // caller's password and Private Confirmation Number travel in the body of
+    // that one request and are never stored on the client.
+    getMyFinance: async () => {
+        const res = await fetch(`${BASE_URL}/finance/mine`, getOptions('GET'));
+        return await res.json();
+    },
+
+    getAllBudgets: async () => {
+        const res = await fetch(`${BASE_URL}/finance/budgets`, getOptions('GET'));
+        return await res.json();
+    },
+
+    getMinfiOverview: async () => {
+        const res = await fetch(`${BASE_URL}/finance/minfi`, getOptions('GET'));
+        return await res.json();
+    },
+
+    createAllocation: async (payload) => {
+        const res = await fetch(`${BASE_URL}/finance/allocations`, getOptions('POST', payload));
+        return await res.json();
+    },
+
+    createDisbursement: async (allocationId, payload) => {
+        const res = await fetch(`${BASE_URL}/finance/allocations/${allocationId}/disbursements`, getOptions('POST', payload));
+        return await res.json();
+    },
+
+    confirmDisbursement: async (disbursementId, payload) => {
+        const res = await fetch(`${BASE_URL}/finance/disbursements/${disbursementId}/confirm`, getOptions('POST', payload));
+        return await res.json();
+    },
+
+    setBudget: async (payload) => {
+        const res = await fetch(`${BASE_URL}/finance/budget`, getOptions('PUT', payload));
+        return await res.json();
+    },
+
+    recordIncome: async (payload) => {
+        const res = await fetch(`${BASE_URL}/finance/income`, getOptions('POST', payload));
+        return await res.json();
+    },
+
+    initiateProjectPayment: async (projectId, payload) => {
+        const res = await fetch(`${BASE_URL}/finance/projects/${projectId}/payments`, getOptions('POST', payload));
+        return await res.json();
+    },
+
+    affirmPayment: async (paymentId, payload) => {
+        const res = await fetch(`${BASE_URL}/finance/payments/${paymentId}/affirm`, getOptions('POST', payload));
+        return await res.json();
+    },
+
+    getPaymentInbox: async () => {
+        const res = await fetch(`${BASE_URL}/finance/payments/inbox`, getOptions('GET'));
+        return await res.json();
+    },
+
+    getProjectPayments: async (projectId) => {
+        const res = await fetch(`${BASE_URL}/finance/projects/${projectId}/payments`, getOptions('GET'));
+        return await res.json();
+    },
+
+    getPublicMoney: async (year) => {
+        const suffix = year ? `?year=${encodeURIComponent(year)}` : '';
+        const res = await fetch(`${BASE_URL}/finance/overview${suffix}`, getOptions('GET'));
+        return await res.json();
+    },
+
+    getLedgerVerify: async () => {
+        const res = await fetch(`${BASE_URL}/finance/ledger/verify`, getOptions('GET'));
+        return await res.json();
+    },
+
+    getLedgerEntries: async (limit = 25) => {
+        const res = await fetch(`${BASE_URL}/finance/ledger/entries?limit=${limit}`, getOptions('GET'));
+        return await res.json();
+    },
+
+    getLedgerHead: async () => {
+        const res = await fetch(`${BASE_URL}/finance/ledger/head`, getOptions('GET'));
+        return await res.json();
+    },
+
+    // Government entities (the administrative hierarchy). Public reads.
+    getEntities: async () => {
+        const res = await fetch(`${BASE_URL}/entities`, getOptions('GET'));
+        return await res.json();
+    },
+
+    getEntity: async (code) => {
+        const res = await fetch(`${BASE_URL}/entities/${encodeURIComponent(code)}`, getOptions('GET'));
+        return await res.json();
+    },
+
     // Stats
     getStats: async () => {
         const res = await fetch(`${BASE_URL}/stats/global`);

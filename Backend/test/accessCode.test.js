@@ -55,7 +55,7 @@ describe('generateAccessCode', () => {
     });
 
     test('does not leak the granted role in the code', async () => {
-        const res = await generate('ADMIN');
+        const res = await generate('PLATFORM_ADMIN');
         const { code } = res.json.mock.calls[0][0].data;
 
         // The old format was `ADMIN-XXXXXX`, telling an attacker which codes were worth guessing.
@@ -88,8 +88,10 @@ describe('generateAccessCode', () => {
         const insert = pool.query.mock.calls.find(([sql]) => /INSERT INTO access_codes/i.test(sql));
 
         expect(insert).toBeDefined();
+        // Params: code, role, entity_id, generated_by_user_id.
         expect(insert[1][1]).toBe('CONTRACTOR');
-        expect(insert[1][2]).toBe('adm1');
+        expect(insert[1][2]).toBeNull();
+        expect(insert[1][3]).toBe('adm1');
         expect(res.status).toHaveBeenCalledWith(201);
     });
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
 import { UserRole } from '../types';
-import { Button, Card, Input, Field } from '../components/ui';
+import { Button, Card, Input, Select, Field } from '../components/ui';
 import { useT } from '../i18n';
 
 /**
@@ -29,9 +29,23 @@ export const Login = () => {
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [regError, setRegError] = useState('');
+  const [issuedPcn, setIssuedPcn] = useState(null);
+  const [loginRole, setLoginRole] = useState('');
 
-  if (user) {
+  // The person states who they are; the server checks the statement against
+  // the account and refuses a mismatch even with correct credentials.
+  const LOGIN_ROLES = [
+    { value: UserRole.ADMIN, labelKey: 'auth.rolePlatform' },
+    { value: UserRole.ENTITY_ADMIN, labelKey: 'auth.roleEntity' },
+    { value: UserRole.CONTRACTOR, labelKey: 'auth.roleContractor' },
+    { value: UserRole.DEVELOPER_ADMIN, labelKey: 'auth.roleDeveloper' },
+  ];
+
+  // A freshly issued PCN blocks the redirect: it exists in this render and
+  // never again, so the account holder confirms saving it before moving on.
+  if (user && !issuedPcn) {
     if (user.role === UserRole.ADMIN) return <Navigate to="/admin" />;
+    if (user.role === UserRole.ENTITY_ADMIN) return <Navigate to="/desk" />;
     if (user.role === UserRole.CONTRACTOR) return <Navigate to="/contractor" />;
     if (user.role === UserRole.DEVELOPER_ADMIN) return <Navigate to="/dev-admin" />;
     return <Navigate to="/" />;
@@ -40,6 +54,11 @@ export const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
+
+    if (!loginRole) {
+      setLoginError(t('auth.selectRole'));
+      return;
+    }
 
     // Demo fallback, unchanged: known demo accounts sign in without typing the password.
     let password = loginPassword;
@@ -52,7 +71,7 @@ export const Login = () => {
       }
     }
 
-    await login(loginEmail, password);
+    await login(loginEmail, password, loginRole);
   };
 
   const handleRegister = async (e) => {
@@ -70,9 +89,34 @@ export const Login = () => {
       return;
     }
 
-    const success = await register(regName, regEmail, regCode, regPassword);
-    if (!success) setRegError(t('auth.registrationFailed'));
+    const result = await register(regName, regEmail, regCode, regPassword);
+    if (!result.success) setRegError(t('auth.registrationFailed'));
+    else if (result.pcn) setIssuedPcn(result.pcn);
   };
+
+  if (issuedPcn) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col justify-center px-4 py-12 md:py-20">
+        <Card padding="lg">
+          <h1 className="text-h2 text-fg">{t('auth.pcnTitle')}</h1>
+          <p className="mt-2 text-body text-fg-secondary">{t('auth.pcnLead')}</p>
+          <p className="mt-5 select-all rounded-sm bg-sunken px-4 py-3 text-center font-mono text-h2 tracking-[0.08em] text-fg">
+            {issuedPcn}
+          </p>
+          <p className="mt-4 text-caption text-danger">{t('auth.pcnWarning')}</p>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            className="mt-6"
+            onClick={() => setIssuedPcn(null)}
+          >
+            {t('auth.pcnAck')}
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex max-w-md flex-col justify-center px-4 py-12 md:py-20">
@@ -157,6 +201,20 @@ export const Login = () => {
           </form>
         ) : (
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <Select
+              label={t('auth.roleLabel')}
+              required
+              value={loginRole}
+              onChange={(e) => setLoginRole(e.target.value)}
+            >
+              <option value="">{t('auth.rolePlaceholder')}</option>
+              {LOGIN_ROLES.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {t(r.labelKey)}
+                </option>
+              ))}
+            </Select>
+
             <Input
               label={t('auth.email')}
               type="email"

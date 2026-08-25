@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
-import { csvExportUrl } from '../api';
-import { useT } from '../i18n';
+import { api, csvExportUrl } from '../api';
+import { useI18n } from '../i18n';
+import { entityName } from '../utils/entities';
+import { matchesMinistry, matchesRegion, matchesCouncil } from '../utils/projectFilters';
 import { ProjectCard } from '../components/ProjectCard';
 import { Button, Card, Select, EmptyState, Badge, Skeleton, SkeletonRegion, Pagination } from '../components/ui';
 import { ProjectStatus } from '../types';
@@ -29,7 +31,7 @@ const SORTS = {
 };
 
 export const ProjectsPage = () => {
-  const t = useT();
+  const { t, locale } = useI18n();
   const { projects, loading } = useAppStore();
   const [params, setParams] = useSearchParams();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -37,8 +39,24 @@ export const ProjectsPage = () => {
   const search = params.get('q') || '';
   const statusFilter = params.get('status') || 'All';
   const regionFilter = params.get('region') || 'All';
+  const ministryFilter = params.get('ministry') || 'All';
+  const councilFilter = params.get('council') || 'All';
   const contractorFilter = params.get('contractor') || 'All';
   const sort = params.get('sort') || 'attention';
+
+  // The hierarchy drives the ministry, region and council selects. Reference
+  // data, fetched once; while it loads (or if it fails) the page falls back to
+  // the legacy region names derived from the projects themselves.
+  const [tree, setTree] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    api.getEntities()
+      .then((res) => !cancelled && res.success && setTree(res.data))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const setParam = (key, value) => {
     const next = new URLSearchParams(params);
@@ -47,15 +65,37 @@ export const ProjectsPage = () => {
     // Any change to what is being listed invalidates the position within it. Staying on
     // page 4 while narrowing to 9 results shows an empty grid that reads as "no matches".
     if (key !== 'page') next.delete('page');
+    // A council belongs to a region: changing the region orphans the council filter.
+    if (key === 'region') next.delete('council');
     setParams(next, { replace: true });
   };
 
   const clearAll = () => setParams(new URLSearchParams(), { replace: true });
 
-  const regions = useMemo(() => {
+  // Hierarchy-backed options, with the legacy free-text list as the fallback so
+  // the filter never disappears while the tree loads.
+  const regionOptions = useMemo(() => {
+    if (tree) return tree.regions.map((r) => ({ value: r.code, label: entityName(r, locale) }));
     const unique = new Set(projects.map((p) => p.region).filter(Boolean));
-    return ['All', ...Array.from(unique)];
-  }, [projects]);
+    return Array.from(unique).map((name) => ({ value: name, label: name }));
+  }, [tree, projects, locale]);
+
+  const councilOptions = useMemo(() => {
+    if (!tree) return [];
+    const source = regionFilter !== 'All'
+      ? tree.regions.filter((r) => r.code === regionFilter)
+      : tree.regions;
+    return source.map((r) => ({
+      region: entityName(r, locale),
+      councils: r.councils.map((c) => ({ value: c.code, label: entityName(c, locale) })),
+    }));
+  }, [tree, regionFilter, locale]);
+
+  const regionNameEnByCode = useMemo(() => {
+    const map = {};
+    if (tree) for (const r of tree.regions) map[r.code] = r.nameEn;
+    return map;
+  }, [tree]);
 
   const contractors = useMemo(() => {
     const unique = new Map();
@@ -75,15 +115,21 @@ export const ProjectsPage = () => {
           p.title?.toLowerCase().includes(term) ||
           p.location?.toLowerCase().includes(term);
         const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
-        const matchesRegion = regionFilter === 'All' || p.region === regionFilter;
         const matchesContractor =
           contractorFilter === 'All' ||
           p.contractorId === contractorFilter ||
           p.contractor_id === contractorFilter;
-        return matchesSearch && matchesStatus && matchesRegion && matchesContractor;
+        return (
+          matchesSearch &&
+          matchesStatus &&
+          matchesMinistry(p, ministryFilter) &&
+          matchesRegion(p, regionFilter, regionNameEnByCode[regionFilter]) &&
+          matchesCouncil(p, councilFilter) &&
+          matchesContractor
+        );
       })
       .sort(SORTS[sort]?.fn || SORTS.attention.fn);
-  }, [projects, search, statusFilter, regionFilter, contractorFilter, sort]);
+  }, [projects, search, statusFilter, regionFilter, ministryFilter, councilFilter, contractorFilter, sort, regionNameEnByCode]);
 
   const pageCount = Math.max(1, Math.ceil(filteredProjects.length / PAGE_SIZE));
 
@@ -107,9 +153,25 @@ export const ProjectsPage = () => {
     }
   }, [page]);
 
+  const ministryLabel = (code) => {
+    const hit = tree && tree.ministries.find((m) => m.code === code);
+    return hit ? entityName(hit, locale) : code;
+  };
+  const regionLabel = (code) =>
+    regionOptions.find((o) => o.value === code)?.label || code;
+  const councilLabel = (code) => {
+    for (const group of councilOptions) {
+      const hit = group.councils.find((c) => c.value === code);
+      if (hit) return hit.label;
+    }
+    return code;
+  };
+
   const activeFilters = [
     statusFilter !== 'All' && { key: 'status', label: t(`status.${statusFilter}`) },
-    regionFilter !== 'All' && { key: 'region', label: regionFilter },
+    ministryFilter !== 'All' && { key: 'ministry', label: ministryLabel(ministryFilter) },
+    regionFilter !== 'All' && { key: 'region', label: regionLabel(regionFilter) },
+    councilFilter !== 'All' && { key: 'council', label: councilLabel(councilFilter) },
     contractorFilter !== 'All' && {
       key: 'contractor',
       label: contractors.find((c) => c.id === contractorFilter)?.name || t('projects.contractor'),
@@ -174,13 +236,48 @@ export const ProjectsPage = () => {
         </div>
       </fieldset>
 
+      {tree && (
+        <Select
+          label={t('projects.ministry')}
+          value={ministryFilter}
+          onChange={(e) => setParam('ministry', e.target.value)}
+        >
+          <option value="All">{t('projects.allMinistries')}</option>
+          {tree.ministries.map((m) => (
+            <option key={m.code} value={m.code}>
+              {entityName(m, locale)}
+            </option>
+          ))}
+        </Select>
+      )}
+
       <Select label={t('projects.region')} value={regionFilter} onChange={(e) => setParam('region', e.target.value)}>
-        {regions.map((r) => (
-          <option key={r} value={r}>
-            {r === 'All' ? t('projects.allRegions') : r}
+        <option value="All">{t('projects.allRegions')}</option>
+        {regionOptions.map((r) => (
+          <option key={r.value} value={r.value}>
+            {r.label}
           </option>
         ))}
       </Select>
+
+      {tree && (
+        <Select
+          label={t('projects.council')}
+          value={councilFilter}
+          onChange={(e) => setParam('council', e.target.value)}
+        >
+          <option value="All">{t('projects.allCouncils')}</option>
+          {councilOptions.map((group) => (
+            <optgroup key={group.region} label={group.region}>
+              {group.councils.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </Select>
+      )}
 
       <Select
         label={t('projects.contractor')}
@@ -227,7 +324,13 @@ export const ProjectsPage = () => {
               you export is what you were looking at. */}
           <Button
             as="a"
-            href={csvExportUrl({ status: statusFilter, region: regionFilter, search })}
+            href={csvExportUrl({
+              status: statusFilter,
+              region: regionFilter,
+              ministry: ministryFilter,
+              council: councilFilter,
+              search,
+            })}
             variant="ghost"
             size="md"
             className="hidden sm:inline-flex"

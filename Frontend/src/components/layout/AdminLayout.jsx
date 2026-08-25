@@ -134,6 +134,10 @@ const SECTIONS = {
     { to: '/dev-admin/access', labelKey: 'admin.accessCodes', icon: 'fa-key' },
     { to: '/dev-admin/team', labelKey: 'admin.team', icon: 'fa-users' },
   ],
+  entity: [
+    { to: '/desk/projects', labelKey: 'admin.projects', icon: 'fa-diagram-project' },
+    { to: '/desk/finance', labelKey: 'desk.finance', icon: 'fa-coins' },
+  ],
 };
 
 export const AdminLayout = ({ role, variant = 'admin', title = 'Admin' }) => {
@@ -150,11 +154,25 @@ export const AdminLayout = ({ role, variant = 'admin', title = 'Admin' }) => {
   if (!authChecked) return <AuthPending />;
   if (!user || user.role !== role) return <Navigate to="/login" replace />;
 
+  // The verification queue is a power, not a menu default: it appears only for
+  // the ministry that holds it.
+  const sections = variant === 'entity'
+    ? [
+        ...SECTIONS.entity,
+        ...(user.entityCode === 'MINTP'
+          ? [{ to: '/desk/verification', labelKey: 'admin.verification', icon: 'fa-user-check' }]
+          : []),
+        ...(user.entityCode === 'MINFI'
+          ? [{ to: '/desk/allocations', labelKey: 'desk.allocations', icon: 'fa-money-bill-transfer' }]
+          : []),
+      ]
+    : SECTIONS[variant];
+
   return (
     <div className="flex min-h-screen bg-canvas">
       <Sidebar
-        sections={SECTIONS[variant]}
-        title={title}
+        sections={sections}
+        title={variant === 'entity' ? user.entityCode || title : title}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         user={user}
@@ -178,7 +196,21 @@ export const AdminLayout = ({ role, variant = 'admin', title = 'Admin' }) => {
               aria-label={t('admin.openSections')}
               leadingIcon={<i className="fas fa-bars" aria-hidden="true" />}
             />
-            <a href="#admin-main" className="skip-link">
+            <a
+        href="#admin-main"
+        className="skip-link"
+        onClick={(e) => {
+          // HashRouter owns the URL hash: letting this default would navigate
+          // to a nonexistent route instead of skipping to the content.
+          e.preventDefault();
+          const el = document.getElementById('admin-main');
+          if (el) {
+            el.setAttribute('tabindex', '-1');
+            el.focus({ preventScroll: true });
+            el.scrollIntoView();
+          }
+        }}
+      >
               {t('nav.skipToContent')}
             </a>
           </div>

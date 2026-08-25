@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserRole } from '../../types';
+import { api } from '../../api';
+import { useI18n } from '../../i18n';
+import { entityName } from '../../utils/entities';
 import { Card, Button, Select, Table, THead, TBody, TH, TR, TD, TableEmpty, Badge, useToast } from '../ui';
 
 /**
@@ -13,55 +16,82 @@ import { Card, Button, Select, Table, THead, TBody, TH, TR, TD, TableEmpty, Badg
  * phone, and telling 0 from O is a correctness requirement rather than a style choice.
  */
 
-const ROLE_LABELS = {
-  [UserRole.ADMIN]: 'Government administrator',
-  [UserRole.CONTRACTOR]: 'Contractor',
-  [UserRole.DEVELOPER_ADMIN]: 'Developer',
-};
-
 export const AccessCodeManager = ({ accessCodes = [], onGenerate }) => {
+  const { t, locale } = useI18n();
   const [selectedRole, setSelectedRole] = useState(UserRole.CONTRACTOR);
+  const [selectedEntity, setSelectedEntity] = useState('');
   const [latest, setLatest] = useState(null);
   const [copied, setCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
   const toast = useToast();
 
+  const ROLE_LABELS = {
+    [UserRole.ADMIN]: t('codes.rolePlatform'),
+    [UserRole.ENTITY_ADMIN]: t('codes.roleEntity'),
+    [UserRole.CONTRACTOR]: t('codes.roleContractor'),
+    [UserRole.DEVELOPER_ADMIN]: t('codes.roleDeveloper'),
+  };
+
+  // The hierarchy feeds the institution picker: an ENTITY_ADMIN code is bound
+  // to one ministry or council, and the binding travels inside the code.
+  const [tree, setTree] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    api.getEntities()
+      .then((res) => !cancelled && res.success && setTree(res.data))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const needsEntity = selectedRole === UserRole.ENTITY_ADMIN;
+
   const handleGenerate = async () => {
     setGenerating(true);
     setCopied(false);
-    const result = await onGenerate(selectedRole);
+    const result = await onGenerate(selectedRole, needsEntity ? selectedEntity : null);
     setGenerating(false);
 
-    // The store may return the code, or push it into the list. Handle both.
-    const code = result?.code || result || null;
-    if (typeof code === 'string') setLatest({ code, role: selectedRole });
+    const code = result?.code || null;
+    if (typeof code === 'string') {
+      setLatest({ code, role: selectedRole, entityId: result.entityId || null });
+    }
+  };
+
+  const entityLabel = (id) => {
+    if (!tree || !id) return '';
+    const all = [
+      ...tree.ministries,
+      ...tree.regions.flatMap((r) => r.councils),
+    ];
+    const hit = all.find((e) => e.id === id);
+    return hit ? entityName(hit, locale) : '';
   };
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(latest.code);
       setCopied(true);
-      toast.success('Access code copied to the clipboard.');
+      toast.success(t('codes.copiedToast'));
       setTimeout(() => setCopied(false), 2000);
     } catch (e) {
-      toast.error('Could not copy automatically. Select the code and copy it manually.');
+      toast.error(t('codes.copyFailed'));
     }
   };
 
   return (
     <div className="flex flex-col gap-6">
       <Card padding="lg">
-        <h2 className="text-h3 text-fg">Generate an access code</h2>
-        <p className="mt-1 max-w-prose text-caption text-fg-tertiary">
-          A code lets one person create an account with the role you choose. Each code works once.
-        </p>
+        <h2 className="text-h3 text-fg">{t('codes.title')}</h2>
+        <p className="mt-1 max-w-prose text-caption text-fg-tertiary">{t('codes.lead')}</p>
 
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
           <Select
-            label="Role"
+            label={t('codes.role')}
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value)}
-            fieldClassName="w-full sm:w-72"
+            fieldClassName="w-full sm:w-64"
           >
             {Object.entries(ROLE_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
@@ -69,14 +99,43 @@ export const AccessCodeManager = ({ accessCodes = [], onGenerate }) => {
               </option>
             ))}
           </Select>
+
+          {needsEntity && tree && (
+            <Select
+              label={t('codes.institution')}
+              value={selectedEntity}
+              onChange={(e) => setSelectedEntity(e.target.value)}
+              fieldClassName="w-full sm:w-80"
+            >
+              <option value="">{t('codes.selectInstitution')}</option>
+              <optgroup label={t('gov.ministriesTitle')}>
+                {tree.ministries.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {entityName(m, locale)}
+                  </option>
+                ))}
+              </optgroup>
+              {tree.regions.map((r) => (
+                <optgroup key={r.code} label={entityName(r, locale)}>
+                  {r.councils.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {entityName(c, locale)}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </Select>
+          )}
+
           <Button
             variant="primary"
             size="md"
             onClick={handleGenerate}
             loading={generating}
+            disabled={needsEntity && !selectedEntity}
             leadingIcon={<i className="fas fa-key" aria-hidden="true" />}
           >
-            Generate code
+            {t('codes.generate')}
           </Button>
         </div>
 
@@ -85,7 +144,8 @@ export const AccessCodeManager = ({ accessCodes = [], onGenerate }) => {
           <Card variant="inset" padding="lg" className="mt-6 animate-fade-in">
             <div role="status" aria-live="polite">
               <p className="text-overline uppercase text-fg-tertiary">
-                New code for {ROLE_LABELS[latest.role]}
+                {t('codes.newCodeFor', { role: ROLE_LABELS[latest.role] })}
+                {latest.entityId && ` \u00b7 ${t('codes.boundTo', { entity: entityLabel(latest.entityId) })}`}
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-4">
                 <code className="select-all font-mono text-h2 tracking-[0.08em] text-fg">{latest.code}</code>
@@ -95,7 +155,7 @@ export const AccessCodeManager = ({ accessCodes = [], onGenerate }) => {
                   onClick={copy}
                   leadingIcon={<i className={copied ? 'fas fa-check' : 'fas fa-copy'} aria-hidden="true" />}
                 >
-                  {copied ? 'Copied' : 'Copy'}
+                  {copied ? t('codes.copied') : t('codes.copy')}
                 </Button>
               </div>
               <p className="mt-3 text-caption text-fg-tertiary">

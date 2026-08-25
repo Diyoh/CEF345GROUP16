@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
+import { api } from '../api';
+import { subscribeFinanceChanges } from '../liveFinance';
 import { ProjectCard } from '../components/ProjectCard';
 import { Button, Card, CardRail, StatTile, EmptyState } from '../components/ui';
 import { formatMoney } from '../utils/helpers';
@@ -46,6 +48,16 @@ export const Home = () => {
   const t = useT();
   const { projects } = useAppStore();
   const [search, setSearch] = useState('');
+
+  // The money, on landing. One national line: what was allocated, what the
+  // receivers confirmed, what flowed into the coffers, live like the rest.
+  const [publicMoney, setPublicMoney] = useState(null);
+  useEffect(() => {
+    const load = () =>
+      api.getPublicMoney().then((res) => res.success && setPublicMoney(res.data)).catch(() => {});
+    load();
+    return subscribeFinanceChanges(() => load());
+  }, []);
 
   const totals = useMemo(() => {
     const budget = projects.reduce((acc, p) => acc + (Number(p.budget) || 0), 0);
@@ -219,6 +231,49 @@ export const Home = () => {
           />
         </div>
       </section>
+
+      {/* ---------- The money, nationally ---------- */}
+      {publicMoney && publicMoney.totals.allocatedXaf > 0 && (
+        <section className="mx-auto max-w-content px-4 pb-12 md:px-8 md:pb-16">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 className="text-h2 text-fg">{t('home.moneyTitle', { year: publicMoney.year })}</h2>
+              <p className="mt-1 text-caption text-fg-tertiary">{t('home.moneyLead')}</p>
+            </div>
+            <Button as={Link} to="/money" variant="secondary" size="sm">
+              {t('home.moneyCta')}
+            </Button>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatTile
+              label={t('publicMoney.totalAllocated')}
+              value={formatMoney(publicMoney.totals.allocatedXaf, 'compact')}
+              exact={formatMoney(publicMoney.totals.allocatedXaf, 'full')}
+            />
+            <StatTile
+              label={t('publicMoney.totalSent')}
+              value={formatMoney(publicMoney.totals.disbursedXaf, 'compact')}
+              exact={formatMoney(publicMoney.totals.disbursedXaf, 'full')}
+            />
+            <StatTile
+              label={t('publicMoney.totalConfirmed')}
+              value={formatMoney(publicMoney.totals.confirmedXaf, 'compact')}
+              exact={formatMoney(publicMoney.totals.confirmedXaf, 'full')}
+              delta={publicMoney.totals.gapXaf > 0 ? t('money.gapDelta', { amount: formatMoney(publicMoney.totals.gapXaf, 'compact') }) : undefined}
+              deltaTone="negative"
+            />
+            <StatTile
+              label={t('publicMoney.totalIncome')}
+              value={formatMoney(publicMoney.totals.incomeXaf, 'compact')}
+              exact={formatMoney(publicMoney.totals.incomeXaf, 'full')}
+            />
+          </div>
+          <p className="mt-4 text-caption text-fg-tertiary">
+            {t('home.moneyLedgerNote')}{' '}
+            <Link to="/ledger" className="text-accent hover:underline">{t('trail.ledgerLink')}</Link>
+          </p>
+        </section>
+      )}
 
       {/* ---------- Needs attention ---------- */}
       {needsAttention.length > 0 && (

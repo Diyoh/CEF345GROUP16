@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ProjectStatus } from '../../types';
+import { api } from '../../api';
+import { useI18n } from '../../i18n';
+import { entityName } from '../../utils/entities';
 import { Modal, Button, Input, Textarea, Select, DateField, Card } from '../ui';
 
 /**
@@ -28,7 +31,42 @@ const toDateInput = (value) => {
   return Number.isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
 };
 
-export const ProjectModal = ({ isOpen, onClose, onSave, editingProject, contractors }) => {
+export const ProjectModal = ({ isOpen, onClose, onSave, editingProject, contractors, ownerEntity = null }) => {
+  const { t, locale } = useI18n();
+
+  // Ministerial projects state their coverage: one or more regions, or the
+  // whole country. Council projects cover their council automatically, so the
+  // picker only exists for ministries.
+  const isMinistryOwner = ownerEntity?.type === 'MINISTRY';
+  const [regionTree, setRegionTree] = useState(null);
+  const [areaIds, setAreaIds] = useState([]);
+  const [national, setNational] = useState(false);
+
+  useEffect(() => {
+    if (!isMinistryOwner) return undefined;
+    let cancelled = false;
+    api.getEntities()
+      .then((res) => !cancelled && res.success && setRegionTree(res.data))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isMinistryOwner]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const areas = editingProject?.areas || [];
+    setNational(areas.some((a) => a.type === 'NATIONAL'));
+    setAreaIds(areas.filter((a) => a.type === 'REGION').map((a) => a.id));
+  }, [isOpen, editingProject]);
+
+  const nationalId = regionTree?.national?.id || null;
+  const resolvedAreaIds = national && nationalId ? [nationalId] : areaIds;
+
+  const toggleArea = (id) => {
+    setNational(false);
+    setAreaIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
   const [existingImages, setExistingImages] = useState([]);
   const [newPreviews, setNewPreviews] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -136,6 +174,50 @@ export const ProjectModal = ({ isOpen, onClose, onSave, editingProject, contract
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
+          {/* The hierarchy fields travel as declared form fields, so the parent's
+              FormData handling stays untouched. */}
+          {ownerEntity && <input type="hidden" name="ownerEntityId" value={ownerEntity.id} />}
+          {isMinistryOwner && (
+            <input type="hidden" name="areaEntityIds" value={JSON.stringify(resolvedAreaIds)} />
+          )}
+
+          {isMinistryOwner && (
+            <fieldset className="rounded-lg border border-line p-4">
+              <legend className="px-1 text-caption font-medium text-fg-secondary">
+                {t('project.areasLabel')}
+              </legend>
+              <p className="mb-3 text-caption text-fg-tertiary">{t('project.areasHint')}</p>
+              <label className="mb-2 flex cursor-pointer items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={national}
+                  onChange={(e) => {
+                    setNational(e.target.checked);
+                    if (e.target.checked) setAreaIds([]);
+                  }}
+                  className="h-4 w-4 accent-[rgb(var(--accent))]"
+                />
+                <span className="text-body font-medium text-fg">{t('project.areasNational')}</span>
+              </label>
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                {(regionTree?.regions || []).map((region) => (
+                  <label key={region.id} className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={areaIds.includes(region.id)}
+                      disabled={national}
+                      onChange={() => toggleArea(region.id)}
+                      className="h-4 w-4 accent-[rgb(var(--accent))]"
+                    />
+                    <span className={national ? 'text-caption text-fg-disabled' : 'text-caption text-fg-secondary'}>
+                      {entityName(region, locale)}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+
           <Select
             name="contractorId"
             label="Contractor"
@@ -146,8 +228,9 @@ export const ProjectModal = ({ isOpen, onClose, onSave, editingProject, contract
               Select a contractor
             </option>
             {contractors?.map((c) => (
-              <option key={c.id} value={c.id}>
+              <option key={c.id} value={c.id} disabled={c.verificationStatus !== 'VERIFIED'}>
                 {c.name}
+                {c.verificationStatus !== 'VERIFIED' ? ` ${t('contractor.unverifiedSuffix')}` : ''}
               </option>
             ))}
           </Select>

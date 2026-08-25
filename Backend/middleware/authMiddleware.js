@@ -26,7 +26,18 @@ export const protect = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const [rows] = await pool.query('SELECT id, name, email, role FROM users WHERE id = ?', [decoded.id]);
+        // The actor carries its institution: entity-scoped rules and the MINTP
+        // verification power both read it, and one join here beats one lookup in
+        // every service.
+        const [rows] = await pool.query(
+            `SELECT u.id, u.name, u.email, u.role, u.entity_id,
+                    e.code AS entity_code, e.type AS entity_type,
+                    e.name_en AS entity_name_en, e.name_fr AS entity_name_fr
+             FROM users u
+             LEFT JOIN gov_entities e ON u.entity_id = e.id
+             WHERE u.id = ?`,
+            [decoded.id]
+        );
         
         if (rows.length === 0) {
             return res.status(401).json({ success: false, error: 'Not authorized, user not found' });

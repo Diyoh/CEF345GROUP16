@@ -27,7 +27,7 @@ const projectService = await import('../services/projectService.js');
 const { assertCanEditProject, updateProject, PROJECT_STATUSES } = projectService;
 const pool = (await import('../config/db.js')).default;
 
-const ADMIN = { id: 'adm1', name: 'Admin User', role: 'ADMIN' };
+const ADMIN = { id: 'adm1', name: 'Admin User', role: 'PLATFORM_ADMIN' };
 const CONTRACTOR_A = { id: 'con1', name: 'Contractor A', role: 'CONTRACTOR' };
 const CONTRACTOR_B = { id: 'con2', name: 'Contractor B', role: 'CONTRACTOR' };
 const DEVELOPER = { id: 'dev1', name: 'Dev Admin', role: 'DEVELOPER_ADMIN' };
@@ -119,14 +119,24 @@ describe('updateProject', () => {
         })).rejects.toThrow('Progress must be a whole number between 0 and 100');
     });
 
-    test('rejects negative spending', async () => {
+    test('rejects negative spending (admin correction path)', async () => {
+        mockProjectLookup();
+
+        await expect(updateProject({
+            actor: ADMIN,
+            projectId: 'proj-1',
+            body: { spent: -500 }
+        })).rejects.toThrow('Amount spent cannot be negative');
+    });
+
+    test('IGNORES spent from a contractor: the figure is derived from affirmed payments (G4)', async () => {
         mockProjectLookup();
 
         await expect(updateProject({
             actor: CONTRACTOR_A,
             projectId: 'proj-1',
-            body: { spent: -500 }
-        })).rejects.toThrow('Amount spent cannot be negative');
+            body: { spent: 999999 } // no other field: nothing editable remains
+        })).rejects.toThrow('No valid fields to update');
     });
 
     test('rejects a status outside the allowed set', async () => {
@@ -143,7 +153,7 @@ describe('updateProject', () => {
         mockProjectLookup();
 
         await updateProject({
-            actor: CONTRACTOR_A,
+            actor: ADMIN,
             projectId: 'proj-1',
             body: { spent: 5000 } // budget is 1000
         });
@@ -198,8 +208,9 @@ describe('updateProject', () => {
     test('coerces numeric strings from multipart form submissions', async () => {
         mockProjectLookup();
 
+        // Admin actor: contractors no longer carry 'spent' at all (G4).
         await updateProject({
-            actor: CONTRACTOR_A,
+            actor: ADMIN,
             projectId: 'proj-1',
             body: { progress: '75', spent: '450' } // FormData delivers strings
         });

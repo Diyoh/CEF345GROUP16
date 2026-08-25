@@ -19,6 +19,10 @@ import { Home } from './pages/Home';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetails } from './pages/ProjectDetails';
 import { Developers } from './pages/Developers';
+import { Governance } from './pages/Governance';
+import { Money } from './pages/Money';
+import { Ledger } from './pages/Ledger';
+import { EntityPage } from './pages/EntityPage';
 import { Login } from './pages/Login';
 import { ContractorDashboard } from './pages/ContractorDashboard';
 
@@ -27,6 +31,10 @@ import { AdminProjects } from './pages/admin/AdminProjects';
 import { AdminContractors } from './pages/admin/AdminContractors';
 import { AdminReports } from './pages/admin/AdminReports';
 import { DevAccess } from './pages/admin/DevAccess';
+import { DeskProjects } from './pages/desk/DeskProjects';
+import { VerificationQueue } from './pages/desk/VerificationQueue';
+import { DeskFinance } from './pages/desk/DeskFinance';
+import { MinfiAllocations } from './pages/desk/MinfiAllocations';
 import { DevTeam } from './pages/admin/DevTeam';
 
 const App = () => {
@@ -45,6 +53,10 @@ const App = () => {
               <Route index element={<Home />} />
               <Route path="projects" element={<ProjectsPage />} />
               <Route path="project/:id" element={<ProjectDetails />} />
+              <Route path="governance" element={<Governance />} />
+              <Route path="money" element={<Money />} />
+              <Route path="ledger" element={<Ledger />} />
+              <Route path="entity/:code" element={<EntityPage />} />
               <Route path="developers" element={<Developers />} />
               <Route path="login" element={<Login />} />
               <Route path="contractor" element={<ContractorDashboard />} />
@@ -57,6 +69,18 @@ const App = () => {
               <Route path="projects" element={<AdminProjects />} />
               <Route path="contractors" element={<AdminContractors />} />
               <Route path="reports" element={<AdminReports />} />
+            </Route>
+
+            {/* Entity desk: council and ministry administrators. */}
+            <Route
+              path="/desk"
+              element={<AdminLayout role={UserRole.ENTITY_ADMIN} variant="entity" title="Desk" />}
+            >
+              <Route index element={<Navigate to="projects" replace />} />
+              <Route path="projects" element={<DeskProjects />} />
+              <Route path="verification" element={<VerificationQueue />} />
+              <Route path="finance" element={<DeskFinance />} />
+              <Route path="allocations" element={<MinfiAllocations />} />
             </Route>
 
             {/* Developer control panel. */}

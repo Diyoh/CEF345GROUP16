@@ -16,6 +16,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api, SOCKET_URL } from './api';
+import { publishFinanceChange } from './liveFinance';
+import { UserRole } from './types';
 
 export const AppContext = createContext(undefined);
 
@@ -68,6 +70,13 @@ export const AppProvider = ({ children }) => {
             socket.on('project:deleted', ({ id }) => {
                 setProjects(prev => prev.filter(p => p.id !== id));
             });
+
+            // Money moved somewhere: forward to whichever finance views are
+            // open (public entity pages, desks, the contractor inbox). They
+            // refetch their own slice; the store holds no finance state.
+            socket.on('finance:changed', (payload) => {
+                publishFinanceChange(payload);
+            });
         });
 
         // Cleanup on unmount
@@ -105,7 +114,7 @@ export const AppProvider = ({ children }) => {
                 if (teamRes.success) setTeamMembers(teamRes.data);
 
                 // 3. FETCH PROTECTED DATA: Only if user is ADMIN.
-                if (currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'DEVELOPER_ADMIN')) {
+                if (currentUser && [UserRole.ADMIN, UserRole.DEVELOPER_ADMIN].includes(currentUser.role)) {
                      const codesRes = await api.getAccessCodes();
                      if (codesRes.success) setAccessCodes(codesRes.data);
                 }
@@ -123,16 +132,16 @@ export const AppProvider = ({ children }) => {
 
     // --- ACTIONS ---
 
-    const login = async (email, password = 'password') => {
+    const login = async (email, password = 'password', role) => {
         setLoading(true);
         try {
-            const res = await api.login(email, password);
+            const res = await api.login(email, password, role);
             if (res.success) {
                 const currentUser = res.data;
                 setUser(currentUser); 
                 
                 // [FIX] Fetch protected data immediately after login
-                if (currentUser.role === 'ADMIN' || currentUser.role === 'DEVELOPER_ADMIN') {
+                if ([UserRole.ADMIN, UserRole.DEVELOPER_ADMIN].includes(currentUser.role)) {
                      const codesRes = await api.getAccessCodes();
                      if (codesRes.success) setAccessCodes(codesRes.data);
                 }
@@ -179,14 +188,16 @@ export const AppProvider = ({ children }) => {
             const res = await api.register(name, email, password, code);
             if (res.success) {
                 setUser(res.data);
-                return true;
-            } else {
-                setError(res.error);
-                return false;
+                // The Private Confirmation Number exists in this response and
+                // nowhere else, ever again. The caller shows it before any
+                // redirect gets the chance to lose it.
+                return { success: true, pcn: res.data.pcn };
             }
+            setError(res.error);
+            return { success: false, error: res.error };
         } catch (err) {
             setError(err.message);
-            return false;
+            return { success: false, error: err.message };
         } finally {
             setLoading(false);
         }
@@ -339,13 +350,21 @@ export const AppProvider = ({ children }) => {
         } catch (err) {console.error(err);}
     };
 
-    const generateAccessCode = async (role) => {
+    const generateAccessCode = async (role, entityId = null) => {
         try {
-            const res = await api.generateAccessCode(role);
-            if(res.success) {
+            const res = await api.generateAccessCode(role, entityId);
+            if (res.success) {
                 setAccessCodes(prev => [...prev, { ...res.data, isUsed: false, generatedBy: user.name }]);
+                // Returned so the generator screen can show the code in its
+                // reveal panel; it previously returned nothing and the panel
+                // never appeared.
+                return res.data;
             }
-        } catch (err) {console.error(err);}
+            return null;
+        } catch (err) {
+            console.error(err);
+            return null;
+        }
     };
 
     /**

@@ -20,6 +20,23 @@ import { AppError, badRequest, forbidden, notFound } from '../utils/AppError.js'
 import { saveBase64Image } from '../utils/fileHandler.js';
 import { attachFlags, FLAGGED_SQL, CRITICAL_SQL } from './projectFlags.js';
 
+/**
+ * Payment aggregates joined onto every project row, feeding the payment flags
+ * and the derived spent figure's provenance. Subselects rather than JOINs so
+ * pagination and grouping stay untouched.
+ */
+export const PAYMENT_AGGREGATES = `
+    (SELECT COALESCE(SUM(pp.amount_xaf), 0) FROM project_payments pp
+        WHERE pp.project_id = p.id) AS payments_total,
+    (SELECT COALESCE(SUM(pp.amount_affirmed_xaf), 0) FROM project_payments pp
+        WHERE pp.project_id = p.id AND pp.affirmed_at IS NOT NULL) AS payments_affirmed,
+    (SELECT COALESCE(SUM(pp.amount_xaf), 0) FROM project_payments pp
+        WHERE pp.project_id = p.id AND pp.affirmed_at IS NOT NULL) AS payments_paid_affirmed,
+    (SELECT MIN(pp.initiated_at) FROM project_payments pp
+        WHERE pp.project_id = p.id AND pp.affirmed_at IS NULL) AS oldest_unaffirmed_at,
+    (SELECT cp.status FROM contractor_profiles cp
+        WHERE cp.user_id = p.contractor_id) AS contractor_verification`;
+
 /** Valid values for projects.status — must stay in sync with the ENUM in schema.sql */
 export const PROJECT_STATUSES = ['Planned', 'Ongoing', 'Stalled', 'Completed'];
 
@@ -30,11 +47,15 @@ export const PROJECT_STATUSES = ['Planned', 'Ongoing', 'Stalled', 'Completed'];
  * A contractor may NOT re-scope the project — they cannot change the budget they are
  * measured against, retitle the project, or reassign it to someone else.
  */
-const CONTRACTOR_EDITABLE_FIELDS = ['status', 'progress', 'spent', 'description'];
+// 'spent' left this list in phase G4: the figure is derived from payments the
+// contractor AFFIRMS (financeService.affirmPayment), not typed into a form.
+// Self-reporting the money side was the platform's largest credibility hole.
+const CONTRACTOR_EDITABLE_FIELDS = ['status', 'progress', 'description'];
 
 /** An admin owns the definition of the project itself, so they may edit everything. */
 const ADMIN_EDITABLE_FIELDS = [
     ...CONTRACTOR_EDITABLE_FIELDS,
+    'spent', // audited correction path for records that predate derived spend
     'title', 'location', 'region', 'budget', 'contractorId', 'startDate', 'completionDate'
 ];
 
@@ -150,7 +171,16 @@ const validateField = (field, rawValue) => {
 export const assertCanEditProject = (actor, project) => {
     if (!actor) throw forbidden('Not authorized');
 
-    if (actor.role === 'ADMIN') return; // Admins oversee every project.
+    if (actor.role === 'PLATFORM_ADMIN') return; // Platform operations oversee everything.
+
+    // An entity administrator manages the projects their institution owns, and
+    // exactly those. Legacy projects without an owner stay platform-managed.
+    if (actor.role === 'ENTITY_ADMIN') {
+        if (!project.owner_entity_id || project.owner_entity_id !== actor.entity_id) {
+            throw forbidden('You can only manage projects owned by your institution');
+        }
+        return;
+    }
 
     if (actor.role === 'CONTRACTOR') {
         if (project.contractor_id !== actor.id) {
@@ -201,10 +231,162 @@ const attachImages = async (projects) => {
     return projects;
 };
 
+// ---------------------------------------------------------------------------
+// HIERARCHY: OWNERSHIP, AREAS, DECORATION
+// ---------------------------------------------------------------------------
+
+/**
+ * attachEntities
+ * Decorates a page of projects with their owner entity and area entities, two
+ * batched queries for the whole page, same pattern as attachImages. Fields are
+ * additive: legacy rows without an owner simply carry null and an empty list.
+ */
+const attachEntities = async (projects) => {
+    if (projects.length === 0) return projects;
+
+    // parent_code rides along so a council resolves to its region without another
+    // query: it is what lets a region filter catch council-owned work.
+    const ownerIds = [...new Set(projects.map(p => p.owner_entity_id).filter(Boolean))];
+    const ownersById = new Map();
+    if (ownerIds.length > 0) {
+        const [rows] = await pool.query(
+            `SELECT e.id, e.type, e.code, e.name_en, e.name_fr, pe.code AS parent_code
+             FROM gov_entities e
+             LEFT JOIN gov_entities pe ON e.parent_id = pe.id
+             WHERE e.id IN (${ownerIds.map(() => '?').join(',')})`,
+            ownerIds
+        );
+        for (const row of rows) ownersById.set(row.id, row);
+    }
+
+    const projectIds = projects.map(p => p.id);
+    const areasByProject = new Map();
+    const [areaRows] = await pool.query(
+        `SELECT pa.project_id, e.id, e.type, e.code, e.name_en, e.name_fr, pe.code AS parent_code
+         FROM project_areas pa
+         JOIN gov_entities e ON pa.entity_id = e.id
+         LEFT JOIN gov_entities pe ON e.parent_id = pe.id
+         WHERE pa.project_id IN (${projectIds.map(() => '?').join(',')})
+         ORDER BY e.name_en`,
+        projectIds
+    );
+    for (const row of areaRows) {
+        if (!areasByProject.has(row.project_id)) areasByProject.set(row.project_id, []);
+        const { project_id, ...entity } = row;
+        areasByProject.get(row.project_id).push(entity);
+    }
+
+    for (const project of projects) {
+        project.ownerEntity = ownersById.get(project.owner_entity_id) || null;
+        project.areas = areasByProject.get(project.id) || [];
+    }
+
+    return projects;
+};
+
+/** Multipart forms deliver the area list as a JSON string; JSON bodies as an array. */
+const parseAreaIds = (raw) => {
+    if (raw === undefined || raw === null || raw === '') return [];
+    if (Array.isArray(raw)) return raw.filter(Boolean);
+    try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    } catch {
+        return [String(raw)];
+    }
+};
+
+/**
+ * resolveOwnershipAndAreas
+ *
+ * THE RULES, from the architecture plan:
+ *   council owner   covers exactly its own council, nothing else
+ *   ministry owner  covers one or more regions, or the national root alone
+ *
+ * Everything else is a request shaped wrong, rejected before anything writes.
+ */
+const resolveOwnershipAndAreas = async (ownerEntityId, rawAreaIds) => {
+    const [ownerRows] = await pool.query(
+        'SELECT id, type, code FROM gov_entities WHERE id = ?',
+        [ownerEntityId]
+    );
+    if (ownerRows.length === 0) throw badRequest('Owner entity does not exist');
+
+    const owner = ownerRows[0];
+    if (owner.type !== 'COUNCIL' && owner.type !== 'MINISTRY') {
+        throw badRequest('A project is owned by a council or a ministry');
+    }
+
+    const requested = parseAreaIds(rawAreaIds);
+
+    if (owner.type === 'COUNCIL') {
+        const foreign = requested.filter(id => id !== owner.id);
+        if (foreign.length > 0) {
+            throw badRequest('A council project covers its own council only');
+        }
+        return { owner, areaIds: [owner.id] };
+    }
+
+    if (requested.length === 0) {
+        throw badRequest('A ministerial project must state the regions it covers, or the national root');
+    }
+
+    const [areaRows] = await pool.query(
+        `SELECT id, type, code FROM gov_entities WHERE id IN (${requested.map(() => '?').join(',')})`,
+        requested
+    );
+    if (areaRows.length !== requested.length) {
+        throw badRequest('An area entity does not exist');
+    }
+
+    const national = areaRows.filter(a => a.type === 'NATIONAL');
+    const nonRegion = areaRows.filter(a => a.type !== 'REGION' && a.type !== 'NATIONAL');
+    if (nonRegion.length > 0) {
+        throw badRequest('Ministerial project areas are regions, or the national root');
+    }
+    if (national.length > 0 && areaRows.length > 1) {
+        throw badRequest('A national project covers the national root alone');
+    }
+
+    return { owner, areaIds: areaRows.map(a => a.id) };
+};
+
+/**
+ * assertAssignableContractor
+ *
+ * The G2 rule from the plan: only a contractor VERIFIED by the Ministry of
+ * Public Works can be put in charge of public works. An unverified assignment
+ * is refused with the reason, not silently allowed and flagged later.
+ */
+const assertAssignableContractor = async (contractorId) => {
+    const [rows] = await pool.query(
+        `SELECT u.id, u.role, cp.status
+         FROM users u
+         LEFT JOIN contractor_profiles cp ON cp.user_id = u.id
+         WHERE u.id = ?`,
+        [contractorId]
+    );
+    if (rows.length === 0) throw badRequest('Assigned contractor does not exist');
+    if (rows[0].role !== 'CONTRACTOR') throw badRequest('Assigned user is not a contractor');
+    if (rows[0].status !== 'VERIFIED') {
+        throw badRequest('This contractor has not been verified by the Ministry of Public Works yet');
+    }
+};
+
+/** Current area codes of a project, for the audit log's old value. */
+const getAreaCodes = async (projectId, db = pool) => {
+    const [rows] = await db.query(
+        `SELECT e.code FROM project_areas pa JOIN gov_entities e ON pa.entity_id = e.id
+         WHERE pa.project_id = ? ORDER BY e.code`,
+        [projectId]
+    );
+    return rows.map(r => r.code);
+};
+
 /** Fetches one project row (with contractor name) or null. */
 const findProjectRow = async (id) => {
     const [rows] = await pool.query(
-        `SELECT p.*, u.name AS contractorName
+        `SELECT p.*, u.name AS contractorName, ${PAYMENT_AGGREGATES}
          FROM projects p
          LEFT JOIN users u ON p.contractor_id = u.id
          WHERE p.id = ?`,
@@ -298,7 +480,7 @@ const diffFields = (project, updates) => {
  * actor_name and actor_role are stored, not referenced, so renaming or deleting a user
  * cannot retroactively rewrite who did what.
  */
-const recordChanges = async ({ tx, projectId, actor, changes }) => {
+export const recordChanges = async ({ tx, projectId, actor, changes }) => {
     if (!changes || changes.length === 0) return 0;
 
     for (const change of changes) {
@@ -364,14 +546,14 @@ const collectBase64Images = (body) => {
  * listProjects
  * Public read. Supports status filter, text search and pagination.
  */
-export const listProjects = async ({ status, search, flagged, limit = 10, page = 1 } = {}) => {
+export const listProjects = async ({ status, search, flagged, entityIds, limit = 10, page = 1 } = {}) => {
     // Clamp pagination so a bad/hostile query can't ask for the entire table.
     const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
     const safePage = Math.max(parseInt(page, 10) || 1, 1);
     const offset = (safePage - 1) * safeLimit;
 
     let query = `
-        SELECT p.*, u.name AS contractorName
+        SELECT p.*, u.name AS contractorName, ${PAYMENT_AGGREGATES}
         FROM projects p
         LEFT JOIN users u ON p.contractor_id = u.id
         WHERE 1=1
@@ -400,11 +582,21 @@ export const listProjects = async ({ status, search, flagged, limit = 10, page =
         query += ` AND ${FLAGGED_SQL}`;
     }
 
+    // Scope to an entity and, for a region, its councils: owned by any of them, or
+    // covering any of them as an area. Used by the public entity pages.
+    if (Array.isArray(entityIds) && entityIds.length > 0) {
+        const marks = entityIds.map(() => '?').join(',');
+        query += ` AND (p.owner_entity_id IN (${marks})
+            OR EXISTS (SELECT 1 FROM project_areas pa WHERE pa.project_id = p.id AND pa.entity_id IN (${marks})))`;
+        params.push(...entityIds, ...entityIds);
+    }
+
     query += ' ORDER BY p.created_at DESC LIMIT ? OFFSET ?';
     params.push(safeLimit, offset);
 
     const [projects] = await pool.query(query, params);
     await attachImages(projects);
+    await attachEntities(projects);
     // Flags need the images array, so this must follow attachImages.
     return attachFlags(projects);
 };
@@ -418,6 +610,7 @@ export const getProjectDetail = async (id) => {
     if (!project) throw notFound('Project not found');
 
     await attachImages([project]);
+    await attachEntities([project]);
 
     const [updates] = await pool.query(
         'SELECT * FROM project_updates WHERE project_id = ? ORDER BY update_date DESC',
@@ -438,7 +631,7 @@ export const getProjectDetail = async (id) => {
  * createProject
  * Admin-only. Validates the definition, then stores it.
  */
-export const createProject = async ({ body = {}, files = [] }) => {
+export const createProject = async ({ actor = null, body = {}, files = [] }) => {
     const title = validateField('title', body.title);
     const description = validateField('description', body.description);
     const location = validateField('location', body.location);
@@ -452,9 +645,20 @@ export const createProject = async ({ body = {}, files = [] }) => {
     // A project must be assigned to a real contractor — otherwise nobody is
     // accountable for it and it can never be updated.
     if (contractorId) {
-        const [rows] = await pool.query('SELECT id, role FROM users WHERE id = ?', [contractorId]);
-        if (rows.length === 0) throw badRequest('Assigned contractor does not exist');
-        if (rows[0].role !== 'CONTRACTOR') throw badRequest('Assigned user is not a contractor');
+        await assertAssignableContractor(contractorId);
+    }
+
+    // Hierarchy placement is optional during the transition: a request without an
+    // owner behaves exactly as before, so nothing existing breaks. An entity
+    // administrator does not get the choice: whatever the request says, their
+    // projects belong to their institution.
+    const ownerEntityId = actor && actor.role === 'ENTITY_ADMIN'
+        ? actor.entity_id
+        : body.ownerEntityId;
+
+    let ownership = null;
+    if (ownerEntityId) {
+        ownership = await resolveOwnershipAndAreas(ownerEntityId, body.areaEntityIds);
     }
 
     // Generate the id here rather than with SQL UUID(). Doing it in the database
@@ -468,10 +672,19 @@ export const createProject = async ({ body = {}, files = [] }) => {
     await withTransaction(async (tx) => {
         await tx.query(
             `INSERT INTO projects
-                (id, title, description, location, region, budget, status, contractor_id, start_date, completion_date)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [projectId, title, description, location, region, budget, status, contractorId, startDate, completionDate]
+                (id, title, description, location, region, budget, status, contractor_id, start_date, completion_date, owner_entity_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [projectId, title, description, location, region, budget, status, contractorId, startDate, completionDate, ownership ? ownership.owner.id : null]
         );
+
+        if (ownership) {
+            for (const areaId of ownership.areaIds) {
+                await tx.query(
+                    'INSERT INTO project_areas (project_id, entity_id) VALUES (?, ?)',
+                    [projectId, areaId]
+                );
+            }
+        }
 
         await saveImages({
             projectId,
@@ -512,16 +725,26 @@ export const updateProject = async ({ actor, projectId, body = {}, files = [] })
     }
 
     if (updates.contractorId) {
-        const [rows] = await pool.query('SELECT id, role FROM users WHERE id = ?', [updates.contractorId]);
-        if (rows.length === 0) throw badRequest('Assigned contractor does not exist');
-        if (rows[0].role !== 'CONTRACTOR') throw badRequest('Assigned user is not a contractor');
+        await assertAssignableContractor(updates.contractorId);
     }
 
     const fields = Object.keys(updates);
     const base64Images = collectBase64Images(body);
     const hasNewImages = files.length > 0 || base64Images.length > 0;
 
-    if (fields.length === 0 && !hasNewImages) {
+    // Hierarchy placement: contractors report figures, they do not move a project
+    // between owners. An entity administrator may redraw areas but cannot hand
+    // the project to another institution. Validated before the transaction opens.
+    let ownership = null;
+    if (actor.role !== 'CONTRACTOR' && body.ownerEntityId) {
+        ownership = await resolveOwnershipAndAreas(body.ownerEntityId, body.areaEntityIds);
+
+        if (actor.role === 'ENTITY_ADMIN' && ownership.owner.id !== actor.entity_id) {
+            throw forbidden('You cannot move a project to another institution');
+        }
+    }
+
+    if (fields.length === 0 && !hasNewImages && !ownership) {
         throw badRequest('No valid fields to update');
     }
 
@@ -538,6 +761,38 @@ export const updateProject = async ({ actor, projectId, body = {}, files = [] })
             await tx.query(`UPDATE projects SET ${assignments} WHERE id = ?`, params);
 
             await recordChanges({ tx, projectId, actor, changes });
+        }
+
+        if (ownership) {
+            // The move itself is a figure change: who runs a project and where it
+            // happens are exactly the facts an auditor reads back. Old values are
+            // captured inside the transaction so the log can never skew.
+            const oldAreaCodes = await getAreaCodes(projectId, tx);
+            const [oldOwnerRows] = await tx.query(
+                'SELECT e.code FROM projects p JOIN gov_entities e ON p.owner_entity_id = e.id WHERE p.id = ?',
+                [projectId]
+            );
+            const oldOwnerCode = oldOwnerRows.length > 0 ? oldOwnerRows[0].code : null;
+
+            await tx.query('UPDATE projects SET owner_entity_id = ? WHERE id = ?', [
+                ownership.owner.id, projectId,
+            ]);
+            await tx.query('DELETE FROM project_areas WHERE project_id = ?', [projectId]);
+            for (const areaId of ownership.areaIds) {
+                await tx.query('INSERT INTO project_areas (project_id, entity_id) VALUES (?, ?)', [
+                    projectId, areaId,
+                ]);
+            }
+
+            const newAreaCodes = await getAreaCodes(projectId, tx);
+            const entityChanges = [];
+            if (oldOwnerCode !== ownership.owner.code) {
+                entityChanges.push({ field: 'ownerEntity', oldValue: oldOwnerCode, newValue: ownership.owner.code });
+            }
+            if (oldAreaCodes.join(',') !== newAreaCodes.join(',')) {
+                entityChanges.push({ field: 'areas', oldValue: oldAreaCodes.join(', ') || null, newValue: newAreaCodes.join(', ') });
+            }
+            await recordChanges({ tx, projectId, actor, changes: entityChanges });
         }
 
         if (hasNewImages) {
@@ -582,6 +837,10 @@ export const updateProject = async ({ actor, projectId, body = {}, files = [] })
 export const deleteProject = async ({ actor, projectId }) => {
     const project = await findProjectRow(projectId);
     if (!project) throw notFound('Project not found');
+
+    // Same scope rule as editing: an institution deletes only its own record,
+    // and the deletion still lands in the audit log either way.
+    assertCanEditProject(actor, project);
 
     // The audit log no longer cascades with the project (migration 004), so the history
     // survives — and the deletion itself is recorded as the final entry. Removing a project

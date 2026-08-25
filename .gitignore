@@ -148,7 +148,7 @@ Backend/public/uploads/
 # Documentation
 #
 # `*.md` here was silently discarding real project documentation: the design
-# specification in Frontend/docs/design/, the agent skill in .claude/, SETUP.md, and
+# specification in Frontend/docs/design/, SETUP.md, and
 # several files in Documents/. None of it was ever committed and nobody noticed, because
 # an ignored file produces no warning.
 #
@@ -167,7 +167,6 @@ Backend/public/uploads/
 !Documents/**
 !Frontend/docs/**
 !Database/**/*.md
-!.claude/**
 
 # Microsoft Office Temp Files
 ~$*

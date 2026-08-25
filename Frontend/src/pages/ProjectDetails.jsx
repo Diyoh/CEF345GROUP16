@@ -10,6 +10,7 @@ import { formatMoney, formatDate, formatRelative, fileToBase64 } from '../utils/
 import { projectHealth } from '../utils/projectHealth';
 import { useT } from '../i18n';
 import { imageSrc, imageSrcSet, CARD_WIDTHS } from '../utils/images';
+import { MoneyTrail } from '../components/MoneyTrail';
 
 /**
  * Project detail. Spec: docs/design/02-ia-ux.md section 4.3.
@@ -190,6 +191,10 @@ export const ProjectDetails = () => {
               </p>
             </Card>
           </section>
+
+          {/* 2b. Follow the money: the chain of custody for this project's
+              cash, ending in what the contractor actually affirmed. */}
+          <MoneyTrail project={project} />
 
           {/* 3. Evidence outranks prose in a transparency product. */}
           <section aria-labelledby="photos-heading">

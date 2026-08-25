@@ -90,7 +90,7 @@ export const getIndex = (req, res) => {
             currency: 'XAF (CFA franc BEAC)',
             dateFormat: 'ISO-8601',
             endpoints: [
-                { method: 'GET', path: `${base}/projects`, description: 'Projects as JSON.', query: { region: 'filter by region', status: 'Planned|Ongoing|Stalled|Completed', flagged: 'true | critical', search: 'match title or town', limit: `1-${MAX_PAGE_SIZE}, default 50`, page: '1-based' } },
+                { method: 'GET', path: `${base}/projects`, description: 'Projects as JSON.', query: { region: 'entity code (NW) or region name', ministry: 'owner ministry code (MINTP)', council: 'council code (NW-BAMENDA-I)', status: 'Planned|Ongoing|Stalled|Completed', flagged: 'true | critical', search: 'match title or town', limit: `1-${MAX_PAGE_SIZE}, default 50`, page: '1-based' } },
                 { method: 'GET', path: `${base}/projects.csv`, description: `The same data as CSV, up to ${CSV_MAX_ROWS} rows. Accepts the same query parameters.` },
                 { method: 'GET', path: `${base}/stats`, description: 'National totals and counts by status.' },
             ],
@@ -110,24 +110,57 @@ const readQuery = (req, defaultLimit) => ({
     search: req.query.search,
     flagged: req.query.flagged,
     region: req.query.region,
+    ministry: req.query.ministry,
+    council: req.query.council,
     limit: Math.min(Math.max(parseInt(req.query.limit, 10) || defaultLimit, 1), defaultLimit),
     page: Math.max(parseInt(req.query.page, 10) || 1, 1),
 });
 
 /**
- * Region filtering happens here rather than in the service: it is only meaningful for the
- * open API, and pushing every consumer's convenience filter into the core query would
+ * Hierarchy filtering happens here rather than in the service: it is only meaningful for
+ * the open API, and pushing every consumer's convenience filter into the core query would
  * accumulate into an unmaintainable WHERE clause.
+ *
+ * `region` accepts either the entity code (NW) or the legacy free-text name (North West),
+ * because links published before the hierarchy existed must keep working.
  */
-const applyRegion = (projects, region) =>
-    region ? projects.filter((p) => String(p.region || '').toLowerCase() === String(region).toLowerCase()) : projects;
+const normalise = (v) => String(v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+const applyEntityFilters = (projects, { region, ministry, council }) => {
+    let out = projects;
+
+    if (ministry) {
+        const code = String(ministry).toUpperCase();
+        out = out.filter((p) => p.ownerEntity && p.ownerEntity.type === 'MINISTRY' && p.ownerEntity.code === code);
+    }
+
+    if (council) {
+        const code = String(council).toUpperCase();
+        out = out.filter((p) =>
+            (p.ownerEntity && p.ownerEntity.code === code) ||
+            (Array.isArray(p.areas) && p.areas.some((a) => a.code === code))
+        );
+    }
+
+    if (region) {
+        const code = String(region).toUpperCase();
+        const legacy = normalise(region);
+        out = out.filter((p) =>
+            (Array.isArray(p.areas) && p.areas.some((a) => a.code === code || a.parent_code === code)) ||
+            (p.ownerEntity && p.ownerEntity.parent_code === code) ||
+            normalise(p.region) === legacy
+        );
+    }
+
+    return out;
+};
 
 /** GET /api/v1/public/projects */
 export const getProjects = async (req, res) => {
     try {
         const query = readQuery(req, MAX_PAGE_SIZE);
         const projects = await projectService.listProjects(query);
-        const filtered = applyRegion(projects, query.region);
+        const filtered = applyEntityFilters(projects, query);
 
         res.json({
             success: true,
@@ -149,7 +182,7 @@ export const getProjectsCsv = async (req, res) => {
     try {
         const query = readQuery(req, CSV_MAX_ROWS);
         const projects = await projectService.listProjects({ ...query, limit: CSV_MAX_ROWS });
-        const filtered = applyRegion(projects, query.region);
+        const filtered = applyEntityFilters(projects, query);
 
         const csv = toCsv(
             PROJECT_FIELDS.map((f) => ({ key: f.key, header: f.header })),

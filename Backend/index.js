@@ -22,6 +22,9 @@ import commentRoutes from './routes/commentRoutes.js';
 import teamRoutes from './routes/teamRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import statsRoutes from './routes/statsRoutes.js';
+import entityRoutes from './routes/entityRoutes.js';
+import contractorRoutes from './routes/contractorRoutes.js';
+import financeRoutes from './routes/financeRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
 
 // Load environment variables
@@ -103,10 +106,19 @@ app.use('/api/v1', commentRoutes);
 app.use('/api/v1/team', teamRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/stats', statsRoutes);
+app.use('/api/v1/entities', entityRoutes);
+app.use('/api/v1/contractor', contractorRoutes);
+app.use('/api/v1/finance', financeRoutes);
 
 // Root Endpoint
 app.get('/', (req, res) => {
     res.send({ message: 'BuildRight API is running', version: '1.0.0' });
+});
+
+// Unknown API paths answer as JSON 404 instead of falling through to the
+// error handler: a wrong URL is the caller's mistake, not a server fault.
+app.use('/api', (req, res) => {
+    res.status(404).json({ success: false, error: `No such endpoint: ${req.method} ${req.originalUrl}` });
 });
 
 // --- ERROR HANDLING ---
@@ -142,4 +154,18 @@ app.set('io', io);
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Accepting browser requests from: ${allowedOrigins.join(', ') || '(none configured)'}`);
+
+    // The server checks its own ledger on every boot and says so out loud.
+    // A broken chain at startup is the loudest possible alarm; a healthy one
+    // prints the head so operators can compare it with the published value.
+    import('./services/ledgerService.js')
+        .then((ledger) => ledger.verifyChain())
+        .then((result) => {
+            if (result.ok) {
+                console.log(`Ledger self-check: chain intact, ${result.entries} entries, head ${String(result.headHash).slice(0, 16)}`);
+            } else {
+                console.error(`LEDGER SELF-CHECK FAILED at seq ${result.brokenAtSeq}: ${result.problem}. Treat every figure as suspect until resolved.`);
+            }
+        })
+        .catch((err) => console.warn('Ledger self-check skipped:', err.message));
 });

@@ -12,7 +12,8 @@
     "migrate": "node scripts/migrate.js apply",
     "migrate:status": "node scripts/migrate.js status",
     "migrate:dry": "node scripts/migrate.js dry",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "seed:entities": "node scripts/seedEntities.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

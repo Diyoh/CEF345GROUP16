@@ -34,16 +34,16 @@ router.get('/:id', getProjectById); // GET /api/v1/projects/123
  */
 
 // 1. Create Project: Only ADMINS can create new projects.
-router.post('/', protect, authorize('ADMIN'), upload.array('images', 10), createProject);
+router.post('/', protect, authorize('PLATFORM_ADMIN', 'ENTITY_ADMIN'), upload.array('images', 10), createProject);
 
 // 2. Update Project: Admins can update any project; Contractors ONLY their own
 //    (assignment is verified inside the service).
-router.patch('/:id', protect, authorize('ADMIN', 'CONTRACTOR'), upload.array('images', 10), updateProject);
+router.patch('/:id', protect, authorize('PLATFORM_ADMIN', 'ENTITY_ADMIN', 'CONTRACTOR'), upload.array('images', 10), updateProject);
 
 // 3. Delete Project: Only ADMINS can delete.
-router.delete('/:id', protect, authorize('ADMIN'), deleteProject);
+router.delete('/:id', protect, authorize('PLATFORM_ADMIN', 'ENTITY_ADMIN'), deleteProject);
 
 // 4. Add Timeline Update: Both Admins and Contractors can post updates.
-router.post('/:id/updates', protect, authorize('ADMIN', 'CONTRACTOR'), addProjectUpdate);
+router.post('/:id/updates', protect, authorize('PLATFORM_ADMIN', 'ENTITY_ADMIN', 'CONTRACTOR'), addProjectUpdate);
 
 export default router;

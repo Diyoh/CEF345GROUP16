@@ -55,6 +55,24 @@ const store = {
 
 vi.mock('../useAppStore', () => ({ useAppStore: () => store }));
 
+// These components fetch reference data straight from the api module now: the
+// contractor account card loads its profile, and the access code manager loads
+// the entity tree for its institution picker.
+vi.mock('../api', async () => {
+  const actual = await vi.importActual('../api');
+  return {
+    ...actual,
+    api: {
+      ...actual.api,
+      getEntities: vi.fn().mockResolvedValue({ success: true, data: { national: null, ministries: [], regions: [] } }),
+      getContractorProfile: vi.fn().mockResolvedValue({
+        success: true,
+        data: { profile: { companyName: 'BTP Cameroun S.A.', status: 'VERIFIED' }, documents: [] },
+      }),
+    },
+  };
+});
+
 import { ContractorDashboard } from '../pages/ContractorDashboard';
 import { ProjectTable } from '../components/dashboard/ProjectTable';
 import { ProjectModal } from '../components/dashboard/ProjectModal';

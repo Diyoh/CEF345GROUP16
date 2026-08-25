@@ -131,15 +131,13 @@ export const ContractorProjectCard = ({ project, isEditing, onEditClick, onCance
             hint="How much of the physical work is finished."
           />
 
-          <Input
-            name="spent"
-            type="number"
-            min="0"
-            label="Total spent (FCFA)"
-            defaultValue={project.spent}
-            className="tabular"
-            hint={`Budget is ${formatMoney(health.budget, 'full')}.`}
-          />
+          {/* spent left this form in G4. The figure is now the sum of payments
+              the contractor AFFIRMS in the payment inbox: derived, never typed. */}
+          <div className="flex flex-col justify-end pb-1">
+            <p className="text-caption text-fg-tertiary">Total spent (derived from affirmed payments)</p>
+            <p className="tabular mt-1 text-body text-fg">{formatMoney(health.spent, 'full')}</p>
+            <p className="mt-0.5 text-caption text-fg-tertiary">{`Budget is ${formatMoney(health.budget, 'full')}.`}</p>
+          </div>
 
           <Select name="status" label="Status" defaultValue={project.status}>
             {Object.values(ProjectStatus).map((s) => (
