@@ -3,7 +3,15 @@
  * the ledger must never sign with the development fallback key in production.
  */
 
+import { jest } from '@jest/globals';
 import { findSecretProblems } from '../config/requiredSecrets.js';
+
+// The ledger service imports the real pool, which connects on load. Signing
+// needs no database, so a stub keeps this suite from dialing MySQL.
+jest.unstable_mockModule('../config/db.js', () => ({
+    default: { query: jest.fn() },
+    withTransaction: jest.fn(),
+}));
 
 const strong = (c) => c.repeat(40);
 
