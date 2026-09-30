@@ -6,7 +6,7 @@
  * working path still works: /admin and /dev-admin redirect to their first section.
  */
 
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './store';
 import { Layout } from './components/Layout';
@@ -24,18 +24,41 @@ import { Money } from './pages/Money';
 import { Ledger } from './pages/Ledger';
 import { EntityPage } from './pages/EntityPage';
 import { Login } from './pages/Login';
-import { ContractorDashboard } from './pages/ContractorDashboard';
+import { Skeleton, SkeletonRegion } from './components/ui';
 
-import { AdminOverview } from './pages/admin/AdminOverview';
-import { AdminProjects } from './pages/admin/AdminProjects';
-import { AdminContractors } from './pages/admin/AdminContractors';
-import { AdminReports } from './pages/admin/AdminReports';
-import { DevAccess } from './pages/admin/DevAccess';
-import { DeskProjects } from './pages/desk/DeskProjects';
-import { VerificationQueue } from './pages/desk/VerificationQueue';
-import { DeskFinance } from './pages/desk/DeskFinance';
-import { MinfiAllocations } from './pages/desk/MinfiAllocations';
-import { DevTeam } from './pages/admin/DevTeam';
+/**
+ * Staff pages load on demand. Citizens are nearly every visitor and never open
+ * them, so they no longer pay for them in the first download on a metered
+ * mobile connection.
+ */
+const staffPage = (load, name) => {
+  const Page = lazy(() => load().then((m) => ({ default: m[name] })));
+  const Staff = () => (
+    <Suspense
+      fallback={
+        <SkeletonRegion label="Loading" className="p-6">
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </SkeletonRegion>
+      }
+    >
+      <Page />
+    </Suspense>
+  );
+  Staff.displayName = `Staff(${name})`;
+  return Staff;
+};
+
+const ContractorDashboard = staffPage(() => import('./pages/ContractorDashboard'), 'ContractorDashboard');
+const AdminOverview = staffPage(() => import('./pages/admin/AdminOverview'), 'AdminOverview');
+const AdminProjects = staffPage(() => import('./pages/admin/AdminProjects'), 'AdminProjects');
+const AdminContractors = staffPage(() => import('./pages/admin/AdminContractors'), 'AdminContractors');
+const AdminReports = staffPage(() => import('./pages/admin/AdminReports'), 'AdminReports');
+const DevAccess = staffPage(() => import('./pages/admin/DevAccess'), 'DevAccess');
+const DevTeam = staffPage(() => import('./pages/admin/DevTeam'), 'DevTeam');
+const DeskProjects = staffPage(() => import('./pages/desk/DeskProjects'), 'DeskProjects');
+const VerificationQueue = staffPage(() => import('./pages/desk/VerificationQueue'), 'VerificationQueue');
+const DeskFinance = staffPage(() => import('./pages/desk/DeskFinance'), 'DeskFinance');
+const MinfiAllocations = staffPage(() => import('./pages/desk/MinfiAllocations'), 'MinfiAllocations');
 
 const App = () => {
   return (
