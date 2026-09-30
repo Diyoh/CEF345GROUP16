@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
 import { api, csvExportUrl } from '../api';
@@ -24,6 +24,9 @@ import { projectHealth, byVarianceAsc } from '../utils/projectHealth';
  */
 const PAGE_SIZE = 12;
 
+// Leaflet and its CSS load only when someone opens the map view.
+const ProjectMap = lazy(() => import('../components/ProjectMap'));
+
 const SORTS = {
   attention: { labelKey: 'projects.sortAttention', fn: byVarianceAsc },
   budget: { labelKey: 'projects.sortBudget', fn: (a, b) => (Number(b.budget) || 0) - (Number(a.budget) || 0) },
@@ -43,6 +46,7 @@ export const ProjectsPage = () => {
   const councilFilter = params.get('council') || 'All';
   const contractorFilter = params.get('contractor') || 'All';
   const sort = params.get('sort') || 'attention';
+  const view = params.get('view') === 'map' ? 'map' : 'list';
 
   // The hierarchy drives the ministry, region and council selects. Reference
   // data, fetched once; while it loads (or if it fails) the page falls back to
@@ -306,6 +310,25 @@ export const ProjectsPage = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <div role="group" aria-label={t('projects.viewLabel')} className="flex rounded-md border border-line p-0.5">
+            {[
+              { key: 'list', icon: 'fa-table-cells-large', label: t('projects.viewList') },
+              { key: 'map', icon: 'fa-map-location-dot', label: t('projects.viewMap') },
+            ].map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                aria-pressed={view === option.key}
+                onClick={() => setParam('view', option.key === 'list' ? null : option.key)}
+                className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-caption font-medium ${
+                  view === option.key ? 'bg-sunken text-fg' : 'text-fg-secondary hover:text-fg'
+                }`}
+              >
+                <i className={`fas ${option.icon}`} aria-hidden="true" />
+                {option.label}
+              </button>
+            ))}
+          </div>
           <Select
             aria-label={t('projects.sortLabel')}
             size="sm"
@@ -373,7 +396,7 @@ export const ProjectsPage = () => {
             <p className="tabular text-caption text-fg-tertiary">
               {/* Once the list is split, "24 of 60" beside a grid of 12 is a contradiction
                   the reader has to resolve. Name the slice instead. */}
-              {pageCount > 1
+              {pageCount > 1 && view === 'list'
                 ? t('projects.rangeOf', {
                     from: (page - 1) * PAGE_SIZE + 1,
                     to: (page - 1) * PAGE_SIZE + pagedProjects.length,
@@ -409,6 +432,10 @@ export const ProjectsPage = () => {
                 </Card>
               ))}
             </SkeletonRegion>
+          ) : filteredProjects.length > 0 && view === 'map' ? (
+            <Suspense fallback={<Skeleton className="h-[28rem] w-full rounded-lg md:h-[36rem]" />}>
+              <ProjectMap projects={filteredProjects} />
+            </Suspense>
           ) : filteredProjects.length > 0 ? (
             <>
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">

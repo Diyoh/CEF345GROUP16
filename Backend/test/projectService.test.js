@@ -221,6 +221,51 @@ describe('updateProject', () => {
     });
 });
 
+describe('project coordinates', () => {
+    const mockProjectLookup = () => pool.query.mockResolvedValue([[PROJECT], []]);
+    const updateSql = () => pool.query.mock.calls.find(([sql]) => /^UPDATE projects SET/i.test(sql));
+
+    test('an admin can set a site position inside Cameroon', async () => {
+        mockProjectLookup();
+        await updateProject({
+            actor: ADMIN, projectId: 'proj-1', body: { latitude: '5.9631', longitude: '10.1591' }
+        }).catch(() => {}); // the re-read after commit hits the simple mock; the write is what matters
+
+        const [sql, params] = updateSql();
+        expect(sql).toMatch(/latitude = \?, longitude = \?/);
+        expect(params.slice(0, 2)).toEqual([5.9631, 10.1591]);
+    });
+
+    test('rejects a point outside Cameroon, the usual sign of swapped values', async () => {
+        mockProjectLookup();
+        await expect(updateProject({
+            actor: ADMIN, projectId: 'proj-1', body: { latitude: '10.1591', longitude: '5.9631' }
+        })).rejects.toThrow('inside Cameroon');
+    });
+
+    test('rejects one coordinate without the other', async () => {
+        mockProjectLookup();
+        await expect(updateProject({
+            actor: ADMIN, projectId: 'proj-1', body: { latitude: '5.96' }
+        })).rejects.toThrow('Latitude and longitude must be given together');
+    });
+
+    test('clearing both removes the position', async () => {
+        mockProjectLookup();
+        await updateProject({
+            actor: ADMIN, projectId: 'proj-1', body: { latitude: '', longitude: '' }
+        }).catch(() => {});
+        expect(updateSql()[1].slice(0, 2)).toEqual([null, null]);
+    });
+
+    test('a contractor cannot move the site', async () => {
+        mockProjectLookup();
+        await expect(updateProject({
+            actor: CONTRACTOR_A, projectId: 'proj-1', body: { latitude: '5.96', longitude: '10.15' }
+        })).rejects.toThrow('No valid fields to update');
+    });
+});
+
 describe('PROJECT_STATUSES', () => {
     test('matches the ENUM defined in the database schema', () => {
         expect(PROJECT_STATUSES).toEqual(['Planned', 'Ongoing', 'Stalled', 'Completed']);

@@ -56,7 +56,8 @@ const CONTRACTOR_EDITABLE_FIELDS = ['status', 'progress', 'description'];
 const ADMIN_EDITABLE_FIELDS = [
     ...CONTRACTOR_EDITABLE_FIELDS,
     'spent', // audited correction path for records that predate derived spend
-    'title', 'location', 'region', 'budget', 'contractorId', 'startDate', 'completionDate'
+    'title', 'location', 'region', 'budget', 'contractorId', 'startDate', 'completionDate',
+    'latitude', 'longitude'
 ];
 
 /** Maps an API field name to its database column. */
@@ -71,8 +72,16 @@ const COLUMN_BY_FIELD = {
     budget: 'budget',
     contractorId: 'contractor_id',
     startDate: 'start_date',
-    completionDate: 'completion_date'
+    completionDate: 'completion_date',
+    latitude: 'latitude',
+    longitude: 'longitude'
 };
+
+/**
+ * Cameroon's bounding box with a small margin. A point outside it is almost
+ * always a typing error, most often latitude and longitude swapped.
+ */
+export const CAMEROON_BOUNDS = { minLat: 1.5, maxLat: 13.2, minLng: 8.3, maxLng: 16.3 };
 
 // ---------------------------------------------------------------------------
 // VALIDATION
@@ -101,6 +110,15 @@ const requireText = (value, fieldName) => {
  * validateField
  * Normalises and range-checks a single field. Throws on anything invalid.
  */
+/** Coordinates only make sense together: both set, or both cleared, in one request. */
+const assertCoordinatePair = (values) => {
+    const hasLat = values.latitude !== undefined;
+    const hasLng = values.longitude !== undefined;
+    if (hasLat !== hasLng || (hasLat && (values.latitude === null) !== (values.longitude === null))) {
+        throw badRequest('Latitude and longitude must be given together');
+    }
+};
+
 const validateField = (field, rawValue) => {
     switch (field) {
         case 'progress': {
@@ -149,6 +167,20 @@ const validateField = (field, rawValue) => {
 
         case 'contractorId':
             return rawValue || null;
+
+        case 'latitude':
+        case 'longitude': {
+            // Blank clears the position; the pair rule is checked by assertCoordinatePair.
+            if (rawValue === '') return null;
+            const value = toNumber(rawValue, field === 'latitude' ? 'Latitude' : 'Longitude');
+            const [min, max] = field === 'latitude'
+                ? [CAMEROON_BOUNDS.minLat, CAMEROON_BOUNDS.maxLat]
+                : [CAMEROON_BOUNDS.minLng, CAMEROON_BOUNDS.maxLng];
+            if (value < min || value > max) {
+                throw badRequest(`${field === 'latitude' ? 'Latitude' : 'Longitude'} must be between ${min} and ${max} (inside Cameroon). Check that latitude and longitude are not swapped.`);
+            }
+            return Math.round(value * 1e6) / 1e6;
+        }
 
         default:
             return rawValue;
@@ -641,6 +673,13 @@ export const createProject = async ({ actor = null, body = {}, files = [] }) => 
     const contractorId = validateField('contractorId', body.contractorId);
     const startDate = validateField('startDate', body.startDate);
     const completionDate = validateField('completionDate', body.completionDate);
+    const coordinates = {};
+    for (const field of ['latitude', 'longitude']) {
+        if (body[field] !== undefined && body[field] !== null && body[field] !== '') {
+            coordinates[field] = validateField(field, body[field]);
+        }
+    }
+    assertCoordinatePair(coordinates);
 
     // A project must be assigned to a real contractor — otherwise nobody is
     // accountable for it and it can never be updated.
@@ -672,9 +711,9 @@ export const createProject = async ({ actor = null, body = {}, files = [] }) => 
     await withTransaction(async (tx) => {
         await tx.query(
             `INSERT INTO projects
-                (id, title, description, location, region, budget, status, contractor_id, start_date, completion_date, owner_entity_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [projectId, title, description, location, region, budget, status, contractorId, startDate, completionDate, ownership ? ownership.owner.id : null]
+                (id, title, description, location, region, budget, status, contractor_id, start_date, completion_date, owner_entity_id, latitude, longitude)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [projectId, title, description, location, region, budget, status, contractorId, startDate, completionDate, ownership ? ownership.owner.id : null, coordinates.latitude ?? null, coordinates.longitude ?? null]
         );
 
         if (ownership) {
@@ -723,6 +762,8 @@ export const updateProject = async ({ actor, projectId, body = {}, files = [] })
             updates[field] = validateField(field, body[field]);
         }
     }
+
+    assertCoordinatePair(updates);
 
     if (updates.contractorId) {
         await assertAssignableContractor(updates.contractorId);

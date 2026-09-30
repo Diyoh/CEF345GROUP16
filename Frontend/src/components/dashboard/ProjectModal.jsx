@@ -159,6 +159,33 @@ export const ProjectModal = ({ isOpen, onClose, onSave, editingProject, contract
           </Select>
         </div>
 
+        {/* Optional. Blank places the project at its region's centre on the public map. */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input
+            name="latitude"
+            label="Latitude (optional)"
+            type="number"
+            step="any"
+            min="1.5"
+            max="13.2"
+            inputMode="decimal"
+            defaultValue={editingProject?.latitude ?? ''}
+            placeholder="5.9631"
+            hint="Site position for the map. Leave both blank to use the region."
+          />
+          <Input
+            name="longitude"
+            label="Longitude (optional)"
+            type="number"
+            step="any"
+            min="8.3"
+            max="16.3"
+            inputMode="decimal"
+            defaultValue={editingProject?.longitude ?? ''}
+            placeholder="10.1591"
+          />
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <DateField
             name="startDate"

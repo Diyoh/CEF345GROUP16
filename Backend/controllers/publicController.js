@@ -38,6 +38,8 @@ const PROJECT_FIELDS = [
     { key: 'status', header: 'status', from: (p) => p.status },
     { key: 'region', header: 'region', from: (p) => p.region },
     { key: 'location', header: 'location', from: (p) => p.location },
+    { key: 'latitude', header: 'latitude', from: (p) => (p.latitude == null ? null : Number(p.latitude)) },
+    { key: 'longitude', header: 'longitude', from: (p) => (p.longitude == null ? null : Number(p.longitude)) },
     { key: 'contractor', header: 'contractor', from: (p) => p.contractorName || null },
     { key: 'budget_xaf', header: 'budget_xaf', from: (p) => Number(p.budget) || 0 },
     { key: 'spent_xaf', header: 'spent_xaf', from: (p) => Number(p.spent) || 0 },

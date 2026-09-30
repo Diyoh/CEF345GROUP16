@@ -92,6 +92,8 @@ export const AdminProjects = ({ owner = null }) => {
       contractorName: selectedContractor ? selectedContractor.name : 'Unknown',
       description: formData.get('description'),
       region: formData.get('region') || 'Centre',
+      latitude: formData.get('latitude') ? Number(formData.get('latitude')) : null,
+      longitude: formData.get('longitude') ? Number(formData.get('longitude')) : null,
       spent: editingProject ? editingProject.spent : 0,
       progress: editingProject ? editingProject.progress : 0,
       images: editingProject ? editingProject.images || [] : [],
