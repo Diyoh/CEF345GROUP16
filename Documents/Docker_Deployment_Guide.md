@@ -1,5 +1,10 @@
 # Docker Deployment Guide - BuildRight Platform
 
+> **Out of date in places.** This guide is kept as the course deliverable it was written
+> as. Since then the stack moved to Node 22, the host ports became 5001 (API) and 3310
+> (MySQL), passwords moved to a root `.env`, and the database is built with scripts
+> instead of a mounted dump. For current commands use [SETUP.md](../SETUP.md).
+
 ## Overview
 
 This guide explains how to containerize and deploy the BuildRight Platform using Docker and Docker Compose.
