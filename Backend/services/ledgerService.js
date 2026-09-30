@@ -108,7 +108,10 @@ export const getHead = async () => {
 
 /**
  * The public feed: recent entries, newest first. Everything in the ledger is
- * public by design; hashes are included so a reader can spot-check linkage.
+ * public by design. details_json is the exact hashed string, so any reader can
+ * recompute every entry_hash and every link without trusting this server's
+ * verifier (the Ledger page does exactly that in the browser). Signatures still
+ * need the key and are only checked by verifyChain().
  */
 export const listEntries = async (limit = 25, before = null) => {
     const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 25, 1), 100);
@@ -119,7 +122,7 @@ export const listEntries = async (limit = 25, before = null) => {
         params.push(Number(before));
     }
     const [rows] = await pool.query(
-        `SELECT seq, occurred_at, entry_type, ref_table, ref_id, actor_entity_id, amount_xaf, prev_hash, entry_hash, signature
+        `SELECT seq, occurred_at, entry_type, ref_table, ref_id, actor_entity_id, amount_xaf, details_json, prev_hash, entry_hash, signature
          FROM ledger_entries ${where} ORDER BY seq DESC LIMIT ?`,
         [...params, safeLimit]
     );
@@ -147,8 +150,13 @@ export const verifyChain = async () => {
         // The queryable columns must say the same thing as the hashed payload.
         let payload;
         try { payload = JSON.parse(row.details_json); } catch { return fail('payload is not valid JSON'); }
+        // amount_xaf and actor_entity_id are what the public pages display, so
+        // an edit to either must break verification just like an edit to the payload.
+        const columnAmount = row.amount_xaf === null ? null : Number(row.amount_xaf);
         if (payload.type !== row.entry_type || payload.refTable !== row.ref_table
-            || payload.refId !== row.ref_id || payload.actorUserId !== row.actor_user_id) {
+            || payload.refId !== row.ref_id || payload.actorUserId !== row.actor_user_id
+            || payload.amountXaf !== columnAmount
+            || (payload.actorEntityId ?? null) !== (row.actor_entity_id ?? null)) {
             return fail('queryable columns diverge from the signed payload');
         }
 

@@ -4,6 +4,7 @@ import { useT } from '../i18n';
 import { subscribeFinanceChanges } from '../liveFinance';
 import { Card, Button, Badge, EmptyState, Skeleton, SkeletonRegion, useToast } from '../components/ui';
 import { formatMoney, formatDate } from '../utils/helpers';
+import { fetchAllEntries, checkChain } from '../utils/ledgerCheck';
 
 /**
  * The public ledger explorer.
@@ -35,6 +36,8 @@ export const Ledger = () => {
   const [entries, setEntries] = useState(null);
   const [verifying, setVerifying] = useState(false);
   const [verdict, setVerdict] = useState(null);
+  const [selfChecking, setSelfChecking] = useState(false);
+  const [selfVerdict, setSelfVerdict] = useState(null);
 
   const load = () => {
     api.getLedgerHead().then((res) => res.success && setHead(res.data)).catch(() => {});
@@ -64,6 +67,27 @@ export const Ledger = () => {
     const res = await api.getLedgerVerify().catch(() => null);
     setVerifying(false);
     setVerdict(res?.success ? res.data : { ok: false, problem: t('ledger.verifyFailed') });
+  };
+
+  // Independent of the server's verifier: fetch everything, recompute here.
+  const runSelfCheck = async () => {
+    setSelfChecking(true);
+    setSelfVerdict(null);
+    try {
+      const headRes = await api.getLedgerHead();
+      if (!headRes?.success) throw new Error('head');
+      const fetchPage = async (limit, before) => {
+        const res = await api.getLedgerEntries(limit, before);
+        if (!res?.success) throw new Error('entries');
+        return res.data;
+      };
+      const all = await fetchAllEntries(fetchPage, Number(headRes.data.seq));
+      setSelfVerdict(await checkChain(all, headRes.data));
+    } catch {
+      setSelfVerdict({ failed: true });
+    } finally {
+      setSelfChecking(false);
+    }
   };
 
   return (
@@ -111,6 +135,35 @@ export const Ledger = () => {
                 {verdict.ok
                   ? t('ledger.verdictOk', { count: verdict.entries })
                   : t('ledger.verdictBroken', { seq: verdict.brokenAtSeq ?? '?' })}
+              </p>
+            )}
+          </div>
+        </Card>
+
+        <Card padding="lg" className="lg:col-span-2">
+          <h2 className="text-h3 text-fg">{t('ledger.selfTitle')}</h2>
+          <p className="mt-1 max-w-prose text-caption text-fg-secondary">{t('ledger.selfLead')}</p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button variant="secondary" size="md" loading={selfChecking} onClick={runSelfCheck}>
+              {t('ledger.selfRun')}
+            </Button>
+            {selfVerdict && (
+              <p
+                role="status"
+                className={`text-body font-medium ${selfVerdict.ok ? 'text-done-fg' : 'text-over-fg'}`}
+              >
+                <i
+                  className={`fas ${selfVerdict.ok ? 'fa-shield-halved' : 'fa-triangle-exclamation'} mr-2`}
+                  aria-hidden="true"
+                />
+                {selfVerdict.failed
+                  ? t('ledger.selfFailed')
+                  : selfVerdict.ok
+                    ? t('ledger.selfOk', { count: selfVerdict.entries, seq: selfVerdict.headSeq })
+                    : t('ledger.selfBroken', {
+                        seq: selfVerdict.brokenAtSeq,
+                        problem: t(`ledger.selfProblem_${selfVerdict.problem}`),
+                      })}
               </p>
             )}
           </div>
