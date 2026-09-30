@@ -160,8 +160,6 @@ Backend/public/uploads/
 !SECURITY.md
 !SETUP.md
 !setup_guide.md
-!task.md
-!implementation_plan.md
 
 # Deliberate documentation trees — these are project deliverables, not scratch files.
 !Documents/**
@@ -175,3 +173,8 @@ Backend/public/uploads/
 *.pdf
 *.docx
 *.pptx
+
+# Database dumps (export_db.bat output). They hold real account data and
+# password hashes, so they never belong in version control.
+backup*.sql
+*.dump.sql
