@@ -13,7 +13,8 @@
     "migrate:status": "node scripts/migrate.js status",
     "migrate:dry": "node scripts/migrate.js dry",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "seed:entities": "node scripts/seedEntities.js"
+    "seed:entities": "node scripts/seedEntities.js",
+    "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --testPathIgnorePatterns /node_modules/ --roots '<rootDir>/test-integration'"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -36,6 +37,10 @@
   },
   "jest": {
     "transform": {},
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/test-integration/"
+    ]
   }
 }

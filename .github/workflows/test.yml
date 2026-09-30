@@ -5,37 +5,91 @@ on:
     branches: ["main", "master", "Master"]
   pull_request:
     branches: ["main", "master", "Master"]
+
 jobs:
-  build:
+  frontend:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x]
-
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+      - name: Install
+        working-directory: ./Frontend
+        run: npm ci
+      - name: Test
+        working-directory: ./Frontend
+        run: npm test -- --run
+      - name: Build
+        working-directory: ./Frontend
+        run: npm run build
 
-    # Setup Node.js
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: Backend/package-lock.json
+      - name: Install
+        working-directory: ./Backend
+        run: npm ci
+      - name: Unit tests
+        working-directory: ./Backend
+        run: npm test
 
-    # Frontend Tests
-    - name: Install Frontend Dependencies
-      working-directory: ./Frontend
-      run: npm ci
-
-    - name: Run Frontend Tests
-      working-directory: ./Frontend
-      run: npm test -- --run # "--run" forces Vitest to run once (CI mode)
-
-    # Backend Tests
-    - name: Install Backend Dependencies
-      working-directory: ./Backend
-      run: npm ci
-
-    - name: Run Backend Tests
-      working-directory: ./Backend
-      run: npm test
+  # Builds a database exactly as every environment does (db:init, migrate, the
+  # two seeds) and runs the tests that need real MySQL: the append-only
+  # triggers, the ledger chain, and transactional money flows.
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root
+          MYSQL_DATABASE: buildright_ci
+          MYSQL_USER: buildright
+          MYSQL_PASSWORD: ci-app
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-root"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: buildright
+      DB_PASS: ci-app
+      DB_NAME: buildright_ci
+      DB_SSL: "false"
+      JWT_SECRET: ci-jwt-secret
+      LEDGER_HMAC_KEY: ci-ledger-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: Backend/package-lock.json
+      # Service containers cannot take server flags, so this is set at runtime.
+      # Without it MySQL 8 demands SUPER for CREATE TRIGGER (see docker-compose.yml).
+      - name: Allow triggers for the application user
+        run: mysql -h 127.0.0.1 -uroot -pci-root -e "SET GLOBAL log_bin_trust_function_creators = 1"
+      - name: Install
+        working-directory: ./Backend
+        run: npm ci
+      - name: Build the database
+        working-directory: ./Backend
+        run: |
+          npm run db:init
+          npm run migrate
+          npm run seed:entities
+          npm run seed
+      - name: Integration tests
+        working-directory: ./Backend
+        run: npm run test:integration
