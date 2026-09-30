@@ -38,7 +38,12 @@ export const GENESIS_HASH = createHash('sha256').update('BUILDRIGHT-LEDGER-GENES
 const signingKey = () => {
     if (process.env.LEDGER_HMAC_KEY) return process.env.LEDGER_HMAC_KEY;
     // Development fallback so the stack runs without ceremony. Production must
-    // set LEDGER_HMAC_KEY: rotating JWT_SECRET would otherwise orphan every signature.
+    // set LEDGER_HMAC_KEY: rotating JWT_SECRET would otherwise orphan every
+    // signature. config/requiredSecrets.js stops the server booting without it;
+    // this throw covers scripts that reach the ledger without going through index.js.
+    if (process.env.NODE_ENV === 'production') {
+        throw new Error('LEDGER_HMAC_KEY must be set in production');
+    }
     return `ledger:${process.env.JWT_SECRET || 'dev'}`;
 };
 

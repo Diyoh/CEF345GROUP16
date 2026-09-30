@@ -27,8 +27,16 @@ import contractorRoutes from './routes/contractorRoutes.js';
 import financeRoutes from './routes/financeRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
 
+import { findSecretProblems } from './config/requiredSecrets.js';
+
 // Load environment variables
 dotenv.config();
+
+const secretProblems = findSecretProblems();
+if (secretProblems.length) {
+    console.error(`Refusing to start in production:\n  - ${secretProblems.join('\n  - ')}`);
+    process.exit(1);
+}
 
 // Initialize the Express application
 const app = express();
