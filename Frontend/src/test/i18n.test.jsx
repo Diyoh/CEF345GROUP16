@@ -29,6 +29,29 @@ const paths = (obj, prefix = '') =>
       : [`${prefix}${key}`]
   );
 
+describe('flag translations', () => {
+  // The backend raises flags by code and the UI translates them. A new flag added
+  // on the server alone renders its English fallback in French and logs
+  // "missing translation" (it happened with three payment and contractor flags).
+  test('every flag the backend can raise has a label, detail and short label', async () => {
+    const { readFileSync } = await import('fs');
+    const { resolve } = await import('path');
+    // Tests run from Frontend/ (npm test, CI); the backend sits beside it.
+    const source = readFileSync(resolve(process.cwd(), '../Backend/services/projectFlags.js'), 'utf8');
+    const codes = [...source.matchAll(/code: '([a-z_]+)'/g)].map((m) => m[1]);
+    expect(codes.length).toBeGreaterThan(5);
+
+    const has = (dict, key) => typeof dict.flags[key] === 'string'
+      || (typeof dict.flags[`${key}_one`] === 'string' && typeof dict.flags[`${key}_other`] === 'string');
+    const missing = codes.flatMap((code) =>
+      [code, `${code}_detail`, `${code}_short`].flatMap((key) =>
+        [['en', en], ['fr', fr]].filter(([, dict]) => !has(dict, key)).map(([lang]) => `${lang}:${key}`)
+      )
+    );
+    expect(missing).toEqual([]);
+  });
+});
+
 describe('dictionary parity', () => {
   test('French defines every key English does', () => {
     const missing = paths(en).filter((k) => !paths(fr).includes(k));
