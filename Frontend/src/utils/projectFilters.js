@@ -14,6 +14,20 @@
 
 const normalise = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
+const fold = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/**
+ * Free-text search. Several words narrow the result: each must appear in the
+ * title or the location ("Bamenda road"). Accents are ignored, so "Yaounde"
+ * finds "Yaoundé". Mirrors the server's search so a CSV export matches the page.
+ */
+export const matchesSearch = (project, search) => {
+  const terms = fold(search).trim().split(/\s+/).filter(Boolean).slice(0, 5);
+  if (terms.length === 0) return true;
+  const haystack = `${fold(project.title)} ${fold(project.location)}`;
+  return terms.every((term) => haystack.includes(term));
+};
+
 const areasOf = (project) => (Array.isArray(project.areas) ? project.areas : []);
 
 /** Projects run by this ministry. Council work is deliberately excluded. */

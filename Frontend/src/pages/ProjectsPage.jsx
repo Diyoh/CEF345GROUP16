@@ -4,8 +4,9 @@ import { useAppStore } from '../useAppStore';
 import { api, csvExportUrl } from '../api';
 import { useI18n } from '../i18n';
 import { entityName } from '../utils/entities';
-import { matchesMinistry, matchesRegion, matchesCouncil } from '../utils/projectFilters';
+import { matchesMinistry, matchesRegion, matchesCouncil, matchesSearch } from '../utils/projectFilters';
 import { ProjectCard } from '../components/ProjectCard';
+import { AiSearch } from '../components/AiSearch';
 import { Button, Card, Select, EmptyState, Badge, Skeleton, SkeletonRegion, Pagination } from '../components/ui';
 import { ProjectStatus } from '../types';
 import { projectHealth, byVarianceAsc } from '../utils/projectHealth';
@@ -76,6 +77,16 @@ export const ProjectsPage = () => {
 
   const clearAll = () => setParams(new URLSearchParams(), { replace: true });
 
+  // A new question replaces the filters, so the result reflects only that
+  // question. The list/map view is kept: it is how the user is reading, not
+  // what they asked.
+  const applyAiFilters = (filters) => {
+    const next = new URLSearchParams();
+    if (params.get('view')) next.set('view', params.get('view'));
+    for (const [key, value] of Object.entries(filters)) if (value) next.set(key, value);
+    setParams(next, { replace: true });
+  };
+
   // Hierarchy-backed options, with the legacy free-text list as the fallback so
   // the filter never disappears while the tree loads.
   const regionOptions = useMemo(() => {
@@ -111,20 +122,15 @@ export const ProjectsPage = () => {
   }, [projects]);
 
   const filteredProjects = useMemo(() => {
-    const term = search.toLowerCase();
     return projects
       .filter((p) => {
-        const matchesSearch =
-          !term ||
-          p.title?.toLowerCase().includes(term) ||
-          p.location?.toLowerCase().includes(term);
         const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
         const matchesContractor =
           contractorFilter === 'All' ||
           p.contractorId === contractorFilter ||
           p.contractor_id === contractorFilter;
         return (
-          matchesSearch &&
+          matchesSearch(p, search) &&
           matchesStatus &&
           matchesMinistry(p, ministryFilter) &&
           matchesRegion(p, regionFilter, regionNameEnByCode[regionFilter]) &&
@@ -375,6 +381,8 @@ export const ProjectsPage = () => {
           </Button>
         </div>
       </div>
+
+      <AiSearch onApply={applyAiFilters} />
 
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
         <aside className="hidden w-64 shrink-0 lg:sticky lg:top-24 lg:block">

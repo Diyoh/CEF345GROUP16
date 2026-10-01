@@ -598,9 +598,12 @@ export const listProjects = async ({ status, search, flagged, entityIds, limit =
         params.push(status);
     }
 
-    if (search) {
+    // Several words narrow the search: each must appear in the title or the
+    // location ("Bamenda road"). Capped so a pasted paragraph stays cheap.
+    const terms = String(search || '').trim().split(/\s+/).filter(Boolean).slice(0, 5);
+    for (const term of terms) {
         query += ' AND (p.title LIKE ? OR p.location LIKE ?)';
-        params.push(`%${search}%`, `%${search}%`);
+        params.push(`%${term}%`, `%${term}%`);
     }
 
     // Filtering in the database rather than client-side: on a metered mobile connection,

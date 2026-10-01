@@ -266,6 +266,22 @@ describe('project coordinates', () => {
     });
 });
 
+describe('listProjects search', () => {
+    test('each word must match the title or the location', async () => {
+        pool.query.mockResolvedValue([[], []]);
+        await projectService.listProjects({ search: '  Bamenda   road ' });
+        const [sql, params] = pool.query.mock.calls[0];
+        expect(sql.match(/p\.title LIKE \? OR p\.location LIKE \?/g)).toHaveLength(2);
+        expect(params.slice(0, 4)).toEqual(['%Bamenda%', '%Bamenda%', '%road%', '%road%']);
+    });
+
+    test('at most five words are used', async () => {
+        pool.query.mockResolvedValue([[], []]);
+        await projectService.listProjects({ search: 'a b c d e f g' });
+        expect(pool.query.mock.calls[0][0].match(/p\.title LIKE/g)).toHaveLength(5);
+    });
+});
+
 describe('PROJECT_STATUSES', () => {
     test('matches the ENUM defined in the database schema', () => {
         expect(PROJECT_STATUSES).toEqual(['Planned', 'Ongoing', 'Stalled', 'Completed']);

@@ -6,8 +6,8 @@
  * area shape the schema allows, plus the legacy rows that predate the hierarchy.
  */
 
-import { describe, test, expect } from 'vitest';
-import { matchesMinistry, matchesRegion, matchesCouncil } from '../utils/projectFilters';
+import { describe, test, it, expect } from 'vitest';
+import { matchesMinistry, matchesRegion, matchesCouncil, matchesSearch } from '../utils/projectFilters';
 
 const ministryRoad = {
   region: 'North West',
@@ -87,5 +87,19 @@ describe('matchesCouncil', () => {
   test('survives projects with no decoration at all', () => {
     expect(matchesCouncil(legacyProject, 'NW-BAMENDA-I')).toBe(false);
     expect(matchesCouncil({}, 'All')).toBe(true);
+  });
+});
+
+describe('matchesSearch', () => {
+  const project = { title: 'Bamenda Ring Road', location: 'Bamenda' };
+  it('matches every word against title or location', () => {
+    expect(matchesSearch(project, 'Bamenda road')).toBe(true);
+    expect(matchesSearch(project, 'bamenda hospital')).toBe(false);
+  });
+  it('ignores accents and case', () => {
+    expect(matchesSearch({ title: 'Lycée', location: 'Yaoundé' }, 'yaounde LYCEE')).toBe(true);
+  });
+  it('an empty search matches everything', () => {
+    expect(matchesSearch(project, '   ')).toBe(true);
   });
 });

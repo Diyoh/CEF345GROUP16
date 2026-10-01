@@ -278,6 +278,17 @@ export const api = {
         return await res.json();
     },
 
+    // Optional AI search. Status says whether to show it at all.
+    getAiStatus: async () => {
+        const res = await fetch(`${BASE_URL}/ai/status`, getOptions('GET'));
+        return await res.json();
+    },
+
+    aiSearch: async (query, locale) => {
+        const res = await fetch(`${BASE_URL}/ai/search`, getOptions('POST', { query, locale }));
+        return await res.json();
+    },
+
     getLedgerHead: async () => {
         const res = await fetch(`${BASE_URL}/finance/ledger/head`, getOptions('GET'));
         return await res.json();

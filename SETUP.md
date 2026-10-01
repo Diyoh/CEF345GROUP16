@@ -94,6 +94,44 @@ docker compose down -v              # stop and delete the database
 
 The sign-in accounts are listed under "Demo accounts" in the [README](README.md).
 
+## AI search with a free local model (optional)
+
+The Projects page can take a question in plain English, French or Pidgin ("stalled roads
+in Bamenda", "écoles en cours à Yaoundé") and turn it into its filters. The model only
+picks filters; the page then lists the real records. It is off unless you turn it on.
+
+1. Install [Ollama](https://ollama.com) and download the model (about 2 GB, once):
+
+   ```bash
+   ollama pull qwen2.5:3b
+   ```
+
+2. Turn it on:
+
+   - **Local backend:** in `Backend/.env` set `AI_PROVIDER=ollama`. The defaults for
+     `AI_MODEL` (`qwen2.5:3b`) and `OLLAMA_URL` (`http://localhost:11434`) fit a standard
+     Ollama install.
+   - **Docker:** the root `.env.example` already sets `AI_PROVIDER=ollama`, and the backend
+     container reaches Ollama on your computer through `host.docker.internal`.
+
+3. Restart the backend. It logs `AI features: ollama, model qwen2.5:3b`, and the "Ask in
+   plain words" box appears above the projects list. If Ollama is not running or the
+   model is not pulled, the box stays hidden and the rest of the site works as before.
+
+On a laptop without a graphics card each question takes roughly 10 to 15 seconds; the
+first one after a restart is slower while the model loads.
+
+**Other models.** Any Ollama model works: set `AI_MODEL`, for example `llama3.2:3b`, or a
+larger model if your computer has the memory. `AI_PROVIDER=anthropic` with
+`ANTHROPIC_API_KEY` uses Claude through the paid Anthropic API instead; nothing else changes.
+
+**How it stays trustworthy.** Statuses, ministries, regions, councils, towns and kinds of
+work are recognised by code from word lists in English, French and Pidgin
+(`Backend/services/ai/searchLexicon.js`). The model fills in only what those lists cannot,
+and its answer is kept only where it quotes words that really are in the question. The
+assistant cannot change any record. The chosen filters are shown to the user, who can
+remove them.
+
 ## Tests
 
 ```bash

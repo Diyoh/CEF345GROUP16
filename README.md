@@ -20,6 +20,9 @@ arrived.
   signed ledger. Anyone can recompute the chain in their own browser from the Ledger page.
 - **Two-factor money actions.** Each financial action requires the password and a private
   confirmation number (PCN).
+- **Ask in plain words (optional).** A free local AI model (via Ollama) turns questions in
+  English, French or Pidgin into the page's filters. It never changes a record; see
+  [SETUP.md](SETUP.md#ai-search-with-a-free-local-model-optional).
 - **Open data API** at `/api/v1/public`, no key required.
 - **Staff desks** for the platform administrator, ministries and councils, contractors and
   developers, with role- and institution-scoped access.
