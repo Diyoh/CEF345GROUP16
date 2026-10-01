@@ -1,130 +1,60 @@
-# BuildRight Cameroon - Infrastructure Monitoring Platform
+# BuildRight Cameroon
 
-BuildRight is a web platform designed to promote transparency and accountability in public infrastructure projects across Cameroon. It connects Contractors, Developers (Government/Auditors), and the Public to monitor project progress, budget spending, and completion statuses.
+A public record of Cameroon's infrastructure projects and the money behind them. Citizens see
+every project's budget, spending and progress. Ministries, councils and contractors record
+each payment on both sides, and the platform publishes any gap between what was sent and what
+arrived.
 
-![BuildRight Logo](https://via.placeholder.com/150)
+## What it does
 
-## Features
+- **Public portal.** Browse projects as a list or on a map of Cameroon, filter by region,
+  ministry, council, contractor or status, and download exactly what you are looking at as
+  CSV. English and French throughout.
+- **Automatic flags.** Projects spending faster than they build, past their deadline, stalled,
+  without photo evidence, or with a payment the contractor disputes are flagged without anyone
+  having to report them.
+- **Follow the money.** The Ministry of Finance allocates and sends funds; the receiving
+  ministry or council separately confirms what arrived; institutions pay contractors, who
+  separately affirm what they received. Every gap is computed and published.
+- **Tamper-evident ledger.** Every money action is written to an append-only, hash-chained,
+  signed ledger. Anyone can recompute the chain in their own browser from the Ledger page.
+- **Two-factor money actions.** Each financial action requires the password and a private
+  confirmation number (PCN).
+- **Ask in plain words (optional).** A free local AI model (via Ollama) turns questions in
+  English, French or Pidgin into the page's filters. It never changes a record; see
+  [SETUP.md](SETUP.md#ai-search-with-a-free-local-model-optional).
+- **Open data API** at `/api/v1/public`, no key required.
+- **Staff desks** for the platform administrator, ministries and councils, contractors and
+  developers, with role- and institution-scoped access.
 
-- **Public Portal**: View all infrastructure projects on a map or list, filter by region and contractor.
-- **Contractor Dashboard**: Contractors can log in to update their assigned projects (progress %, budget spent, photos).
-- **Admin/Developer Dashboard**: Government officials can create projects, assign contractors, and generate access codes.
-- **Real-time Updates**: Live progress tracking using WebSockets (Socket.io).
-- **Security**: Role-based access control (Admin, Contractor, Developer Admin), JWT authentication, and secure password hashing.
+## Tech stack
 
-## Tech Stack
+React 18, Vite, Tailwind CSS · Node.js, Express, MySQL 8 · Socket.io for live updates ·
+Leaflet and OpenStreetMap for the map · Docker Compose for local deployment.
 
-- **Frontend**: React, Vite, TailwindCSS
-- **Backend**: Node.js, Express, MySQL
-- **Database**: MySQL
-- **Real-time**: Socket.io
+## Quick start
 
-## Prerequisites
+With Docker:
 
-Before running the project, ensure you have:
+```bash
+./start-docker.sh             # or start-docker.bat on Windows
+docker compose exec backend npm run db:init
+docker compose exec backend npm run migrate
+docker compose exec backend npm run seed:entities
+docker compose exec backend npm run seed
+```
 
-1.  **Node.js** (v18 or higher)
-2.  **MySQL Server** (running locally or remotely)
-3.  **Git**
+Then open http://localhost:8080. For running without Docker, configuration, tests and
+production notes, see **[SETUP.md](SETUP.md)**.
 
-## Installation
+## Project structure
 
-1.  **Clone the repository**:
-
-    ```bash
-    git clone https://github.com/yourusername/buildright-cameroon.git
-    cd buildright-cameroon
-    ```
-
-2.  **Install Backend Dependencies**:
-
-    ```bash
-    cd Backend
-    npm install
-    ```
-
-3.  **Install Frontend Dependencies**:
-    ```bash
-    cd ../Frontend
-    npm install
-    ```
-
-## Configuration
-
-1.  **Database Setup**:
-    - Create a MySQL database named `buildright` (or your preferred name).
-    - Run the provided seed/schema scripts if available (or use `npm run seed` in Backend if configured).
-
-2.  **Environment Variables**:
-    - Navigate to `Backend/`
-    - Create a file named `.env`
-    - Copy the contents from `.env.example` and update with your credentials:
-      ```env
-      PORT=5000
-      DB_HOST=localhost
-      DB_USER=root
-      DB_PASS=your_password
-      DB_NAME=buildright
-      JWT_SECRET=your_secure_random_string
-      ```
-
-## Running the Application
-
-1.  **Start the Backend**:
-
-    ```bash
-    cd Backend
-    npm start
-    # Server will run on http://localhost:5000
-    ```
-
-2.  **Start the Frontend**:
-
-    ```bash
-    # Open a new terminal
-    cd Frontend
-    npm run dev
-    # Client will run on http://localhost:5173
-    ```
-
-3.  **Access the App**:
-    Open your browser and navigate to `http://localhost:5173`.
-
-## Docker Deployment (Recommended)
-
-1.  **Start Services**:
-    Simply run the provided startup script:
-
-    ```bash
-    ./start-docker.bat
-    ```
-
-    Or manually:
-
-    ```bash
-    docker-compose up --build -d
-    ```
-
-2.  **Access**:
-    - **App**: `http://localhost:8080`
-    - **API**: `http://localhost:5000`
-    - **Database**: Port `3306`
-
-3.  **Database Data**:
-    - The `Database/` folder is mapped to the container. Any `.sql` files there will be executed on the _first_ run to initialize the database.
-    - Data persists in the `db_data` volume.
-
-## Project Structure
-
-- **/Backend**: Node.js API server
-  - `/controllers`: Business logic
-  - `/routes`: API endpoints
-  - `/config`: Database connection
-  - `/middleware`: Auth & upload handling
-- **/Frontend**: React application
-  - `/src/pages`: Main views
-  - `/src/components`: Reusable UI components
-  - `/src/store.jsx`: Global state management
+| Folder | Contents |
+|---|---|
+| `Backend/` | Express API: `routes/`, `controllers/`, `services/` (business rules), `middleware/`, `scripts/` (database setup and migrations), `test/` (unit), `test-integration/` (real MySQL) |
+| `Frontend/` | React app: `src/pages/`, `src/components/`, `src/i18n/` (English and French), `docs/design/` (design specification) |
+| `Database/` | `schema.sql` (a fresh install), `migrations/` (changes to existing databases), `data/` (reference data) |
+| `Documents/` | Architecture, API reference, manuals and course reports; see its [index](Documents/README.md) |
 
 ## Demo accounts
 

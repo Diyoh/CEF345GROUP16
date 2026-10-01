@@ -1,6 +1,10 @@
 import React from 'react';
 import { Badge } from './ui';
 import { useT } from '../i18n';
+import { formatMoney } from '../utils/helpers';
+
+/** Flag params that are amounts in FCFA, formatted before they reach a sentence. */
+const MONEY_PARAMS = ['paid', 'affirmed'];
 
 /**
  * Server-computed anomaly flags. Source: Backend/services/projectFlags.js.
@@ -45,7 +49,10 @@ const ICON = {
 const useFlagText = () => {
   const t = useT();
   return (flag) => {
-    const params = flag.params || {};
+    const params = { ...(flag.params || {}) };
+    for (const key of MONEY_PARAMS) {
+      if (typeof params[key] === 'number') params[key] = formatMoney(params[key], 'full');
+    }
     const label = t(`flags.${flag.code}`);
     const detailKey = `flags.${flag.code}_detail`;
 

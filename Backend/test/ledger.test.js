@@ -115,4 +115,16 @@ describe('verification detects', () => {
         rows[0].entry_type = 'income.recorded';
         expect(await ledger.verifyChain()).toMatchObject({ ok: false, brokenAtSeq: 1, problem: expect.stringMatching(/diverge/) });
     });
+
+    it('a displayed amount edited in its column while the payload is left alone', async () => {
+        await append();
+        rows[0].amount_xaf = 1;
+        expect(await ledger.verifyChain()).toMatchObject({ ok: false, brokenAtSeq: 1, problem: expect.stringMatching(/diverge/) });
+    });
+
+    it('the acting institution edited in its column', async () => {
+        await append();
+        rows[0].actor_entity_id = 'someone-else';
+        expect(await ledger.verifyChain()).toMatchObject({ ok: false, brokenAtSeq: 1, problem: expect.stringMatching(/diverge/) });
+    });
 });

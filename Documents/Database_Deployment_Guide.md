@@ -30,7 +30,14 @@ You need to move your data from your local computer to the cloud.
 ## Step 3: Import Data to Cloud
 
 1.  Connect to your cloud database using a tool like **MySQL Workbench**, **DBeaver**, or the terminal.
-2.  Run the contents of `backup.sql` (or `schema.sql` + `contractors_seed.sql`) in the cloud database query window.
+2.  Run the contents of `backup.sql` in the cloud database query window.
+
+    For a fresh database with no data to carry over, skip the dump: point `Backend/.env`
+    at the cloud database and run `npm run db:init`, `npm run migrate`,
+    `npm run seed:entities` and `npm run seed` from `Backend/`.
+
+    Dumps contain account data and password hashes. `backup*.sql` is gitignored:
+    never commit one.
 
 ## Step 4: Update Vercel Environment Variables
 

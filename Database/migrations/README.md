@@ -9,8 +9,8 @@ uses raw `mysql2` queries everywhere would be a larger change than the schema ed
 1. **Never edit an applied migration.** Write a new one.
 2. **Never edit `../schema.sql` alone** — it describes a *fresh* install. Any change to it needs
    a matching migration so existing databases (local, Docker, Aiven) receive the same change.
-3. **Never edit the `*.sql` backups** (`backup.sql`, `backup_latest.sql`, `backup_utf8.sql`,
-   `Database/backup*.sql`). They are point-in-time dumps, not schema sources.
+3. **Never treat a `backup*.sql` dump as a schema source.** Dumps are point-in-time copies
+   of a database, hold account data, and are gitignored so they are never committed.
 4. Number files `NNN_short_description.sql`, zero-padded, sequential.
 
 ## Applying

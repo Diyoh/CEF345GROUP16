@@ -60,6 +60,9 @@ CREATE TABLE IF NOT EXISTS projects (
     description TEXT NOT NULL,
     location VARCHAR(255) NOT NULL,
     region VARCHAR(100) NOT NULL,
+    -- Optional site position for the public map (migration 012).
+    latitude DECIMAL(9, 6) NULL,
+    longitude DECIMAL(9, 6) NULL,
     budget DECIMAL(15, 2) DEFAULT 0.00,
     spent DECIMAL(15, 2) DEFAULT 0.00,
     progress INTEGER DEFAULT 0,

@@ -11,7 +11,7 @@
  */
 
 import express from 'express';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 import {
     createAllocation,
@@ -38,7 +38,10 @@ const secondFactorLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 5,
     skipSuccessfulRequests: true,
-    keyGenerator: (req) => req.user?.id || req.ip,
+    // Per user (the limiter runs after protect). The IP fallback goes through
+    // ipKeyGenerator so an IPv6 client cannot rotate addresses within its
+    // subnet to dodge the limit.
+    keyGenerator: (req) => req.user?.id || ipKeyGenerator(req.ip),
     message: { success: false, error: 'Too many failed confirmations. Try again in fifteen minutes.' },
     standardHeaders: true,
     legacyHeaders: false,

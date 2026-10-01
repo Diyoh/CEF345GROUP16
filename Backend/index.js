@@ -26,9 +26,22 @@ import entityRoutes from './routes/entityRoutes.js';
 import contractorRoutes from './routes/contractorRoutes.js';
 import financeRoutes from './routes/financeRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
+import { getProvider } from './services/ai/providers.js';
+
+import { findSecretProblems } from './config/requiredSecrets.js';
 
 // Load environment variables
 dotenv.config();
+
+const secretProblems = findSecretProblems();
+if (secretProblems.length) {
+    console.error(`Refusing to start in production:\n  - ${secretProblems.join('\n  - ')}`);
+    process.exit(1);
+}
+
+// A misspelled AI_PROVIDER stops the server here rather than at the first search.
+const aiProvider = getProvider();
 
 // Initialize the Express application
 const app = express();
@@ -109,6 +122,7 @@ app.use('/api/v1/stats', statsRoutes);
 app.use('/api/v1/entities', entityRoutes);
 app.use('/api/v1/contractor', contractorRoutes);
 app.use('/api/v1/finance', financeRoutes);
+app.use('/api/v1/ai', aiRoutes);
 
 // Root Endpoint
 app.get('/', (req, res) => {
@@ -154,6 +168,9 @@ app.set('io', io);
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Accepting browser requests from: ${allowedOrigins.join(', ') || '(none configured)'}`);
+    console.log(aiProvider.name === 'none'
+        ? 'AI features: off (set AI_PROVIDER to enable)'
+        : `AI features: ${aiProvider.name}, model ${aiProvider.model}`);
 
     // The server checks its own ledger on every boot and says so out loud.
     // A broken chain at startup is the loudest possible alarm; a healthy one

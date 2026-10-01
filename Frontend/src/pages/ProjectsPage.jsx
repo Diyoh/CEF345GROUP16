@@ -1,11 +1,12 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../useAppStore';
 import { api, csvExportUrl } from '../api';
 import { useI18n } from '../i18n';
 import { entityName } from '../utils/entities';
-import { matchesMinistry, matchesRegion, matchesCouncil } from '../utils/projectFilters';
+import { matchesMinistry, matchesRegion, matchesCouncil, matchesSearch } from '../utils/projectFilters';
 import { ProjectCard } from '../components/ProjectCard';
+import { AiSearch } from '../components/AiSearch';
 import { Button, Card, Select, EmptyState, Badge, Skeleton, SkeletonRegion, Pagination } from '../components/ui';
 import { ProjectStatus } from '../types';
 import { projectHealth, byVarianceAsc } from '../utils/projectHealth';
@@ -23,6 +24,9 @@ import { projectHealth, byVarianceAsc } from '../utils/projectHealth';
  * ends on a short row.
  */
 const PAGE_SIZE = 12;
+
+// Leaflet and its CSS load only when someone opens the map view.
+const ProjectMap = lazy(() => import('../components/ProjectMap'));
 
 const SORTS = {
   attention: { labelKey: 'projects.sortAttention', fn: byVarianceAsc },
@@ -43,6 +47,7 @@ export const ProjectsPage = () => {
   const councilFilter = params.get('council') || 'All';
   const contractorFilter = params.get('contractor') || 'All';
   const sort = params.get('sort') || 'attention';
+  const view = params.get('view') === 'map' ? 'map' : 'list';
 
   // The hierarchy drives the ministry, region and council selects. Reference
   // data, fetched once; while it loads (or if it fails) the page falls back to
@@ -71,6 +76,16 @@ export const ProjectsPage = () => {
   };
 
   const clearAll = () => setParams(new URLSearchParams(), { replace: true });
+
+  // A new question replaces the filters, so the result reflects only that
+  // question. The list/map view is kept: it is how the user is reading, not
+  // what they asked.
+  const applyAiFilters = (filters) => {
+    const next = new URLSearchParams();
+    if (params.get('view')) next.set('view', params.get('view'));
+    for (const [key, value] of Object.entries(filters)) if (value) next.set(key, value);
+    setParams(next, { replace: true });
+  };
 
   // Hierarchy-backed options, with the legacy free-text list as the fallback so
   // the filter never disappears while the tree loads.
@@ -107,20 +122,15 @@ export const ProjectsPage = () => {
   }, [projects]);
 
   const filteredProjects = useMemo(() => {
-    const term = search.toLowerCase();
     return projects
       .filter((p) => {
-        const matchesSearch =
-          !term ||
-          p.title?.toLowerCase().includes(term) ||
-          p.location?.toLowerCase().includes(term);
         const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
         const matchesContractor =
           contractorFilter === 'All' ||
           p.contractorId === contractorFilter ||
           p.contractor_id === contractorFilter;
         return (
-          matchesSearch &&
+          matchesSearch(p, search) &&
           matchesStatus &&
           matchesMinistry(p, ministryFilter) &&
           matchesRegion(p, regionFilter, regionNameEnByCode[regionFilter]) &&
@@ -306,6 +316,25 @@ export const ProjectsPage = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <div role="group" aria-label={t('projects.viewLabel')} className="flex rounded-md border border-line p-0.5">
+            {[
+              { key: 'list', icon: 'fa-table-cells-large', label: t('projects.viewList') },
+              { key: 'map', icon: 'fa-map-location-dot', label: t('projects.viewMap') },
+            ].map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                aria-pressed={view === option.key}
+                onClick={() => setParam('view', option.key === 'list' ? null : option.key)}
+                className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-caption font-medium ${
+                  view === option.key ? 'bg-sunken text-fg' : 'text-fg-secondary hover:text-fg'
+                }`}
+              >
+                <i className={`fas ${option.icon}`} aria-hidden="true" />
+                {option.label}
+              </button>
+            ))}
+          </div>
           <Select
             aria-label={t('projects.sortLabel')}
             size="sm"
@@ -353,6 +382,8 @@ export const ProjectsPage = () => {
         </div>
       </div>
 
+      <AiSearch onApply={applyAiFilters} />
+
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
         <aside className="hidden w-64 shrink-0 lg:sticky lg:top-24 lg:block">
           <Card padding="lg">
@@ -373,7 +404,7 @@ export const ProjectsPage = () => {
             <p className="tabular text-caption text-fg-tertiary">
               {/* Once the list is split, "24 of 60" beside a grid of 12 is a contradiction
                   the reader has to resolve. Name the slice instead. */}
-              {pageCount > 1
+              {pageCount > 1 && view === 'list'
                 ? t('projects.rangeOf', {
                     from: (page - 1) * PAGE_SIZE + 1,
                     to: (page - 1) * PAGE_SIZE + pagedProjects.length,
@@ -409,6 +440,10 @@ export const ProjectsPage = () => {
                 </Card>
               ))}
             </SkeletonRegion>
+          ) : filteredProjects.length > 0 && view === 'map' ? (
+            <Suspense fallback={<Skeleton className="h-[28rem] w-full rounded-lg md:h-[36rem]" />}>
+              <ProjectMap projects={filteredProjects} />
+            </Suspense>
           ) : filteredProjects.length > 0 ? (
             <>
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">

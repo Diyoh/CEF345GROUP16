@@ -1,6 +1,7 @@
 # BuildRight Governance and Finance Architecture
 
-Status: proposal for review. Nothing in this document is built yet.
+Status: implemented. Phases G1 to G5 (section 12) are built, as migrations 005 to 011 and
+the services they describe. Kept as the design record: read it for the reasoning.
 Scope: the changes requested on 2026-08-24, namely the Cameroonian administrative
 hierarchy (ministries, regions, councils), projects owned at every level, budget
 allocation and payment tracking from the Ministry of Finance down to the contractor's
